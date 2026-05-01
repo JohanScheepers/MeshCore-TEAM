@@ -111,6 +111,91 @@ class ChannelRepository {
         '[Channel] Updated maxPrivateChannels to $_maxPrivateChannels (firmware supports $maxChannels total)');
   }
 
+  /// Derive PSK for a hashtag channel from its name.
+  ///
+  /// PSK = first 16 bytes of SHA256(name), where [name] includes the '#' prefix
+  /// (e.g. "#public"). This is the same derivation used by the reference firmware
+  /// so any device that knows the channel name arrives at the same AES key.
+  static Uint8List hashtagChannelPsk(String name) {
+    final bytes = utf8.encode(name);
+    final digest = sha256.convert(bytes);
+    return Uint8List.fromList(digest.bytes.sublist(0, 16));
+  }
+
+  /// Create (or join) a hashtag channel whose PSK is derived from [name].
+  ///
+  /// [name] should start with '#' (the prefix is added automatically if absent).
+  /// Because the key is fully derived from the name, any device that calls this
+  /// with the same name ends up on the same encrypted channel — no QR exchange
+  /// needed.
+  Future<ChannelData> createHashtagChannel(String name) async {
+    String normalised = name.trim();
+    if (!normalised.startsWith('#')) {
+      normalised = '#$normalised';
+    }
+    if (normalised.length < 2) {
+      throw ArgumentError('Channel name cannot be empty');
+    }
+
+    final companionKey = _settingsService.settings.currentCompanionPublicKey;
+    if (companionKey == null || companionKey.isEmpty) {
+      throw StateError('No companion selected');
+    }
+
+    final psk = hashtagChannelPsk(normalised);
+    final hash = _calculateHash(psk);
+
+    // If already present (same companion or previously added) just return it.
+    final existing = await _channelsDao.getChannelByHash(hash);
+    if (existing != null) return existing;
+
+    final existingChannels =
+        await _channelsDao.getChannelsByCompanion(companionKey);
+    final usedIndices = existingChannels.map((c) => c.channelIndex).toSet();
+    final nextIndex = _nextAvailablePrivateIndex(usedIndices);
+    if (nextIndex == null) {
+      throw StateError(
+          'Maximum number of channels ($_maxPrivateChannels) reached');
+    }
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final channelCompanion = ChannelsCompanion.insert(
+      hash: drift.Value(hash),
+      name: normalised,
+      sharedKey: psk,
+      isPublic: false,
+      shareLocation: const drift.Value(true),
+      channelIndex: nextIndex,
+      createdAt: now,
+      companionDeviceKey: drift.Value(companionKey),
+    );
+
+    if (_bleManager.isConnected) {
+      final result = await _registerChannelWithFirmware(
+        channelIndex: nextIndex,
+        name: normalised,
+        psk: psk,
+      );
+      if (!result.isSuccess) {
+        if (result.errorCode == 3) {
+          throw StateError(
+              'Maximum number of channels reached. Delete an existing channel before joining a new one.');
+        }
+        throw StateError(
+            'Failed to register channel with firmware (error ${result.errorCode ?? 'unknown'})');
+      }
+      await Future.delayed(const Duration(milliseconds: 300));
+    } else {
+      debugPrint(
+          '[Channel] Not connected - hashtag channel created in local DB only, will sync on reconnect');
+    }
+
+    await _channelsDao.upsertChannel(channelCompanion);
+    final created = await _channelsDao.getChannelByHash(hash);
+    if (created == null) throw StateError('Channel creation failed');
+    return created;
+  }
+
   /// Create a new private channel with a random PSK.
   /// Matches Android createPrivateChannel(): finds next available index and registers with firmware when connected.
   Future<ChannelData> createPrivateChannel(String name) async {

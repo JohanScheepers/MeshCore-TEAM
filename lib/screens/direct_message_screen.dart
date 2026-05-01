@@ -5,13 +5,17 @@
 // This file is part of TEAM-Flutter.
 // Non-commercial use only. See LICENSE file for details.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:typed_data';
 
 import '../database/database.dart';
+import '../repositories/contact_repository.dart';
 import '../repositories/message_repository.dart';
 import '../services/message_notification_service.dart';
+import '../widgets/chat_message_text.dart';
 
 /// Direct message chat screen for one-on-one conversations
 class DirectMessageScreen extends StatefulWidget {
@@ -28,15 +32,23 @@ class DirectMessageScreen extends StatefulWidget {
 
 class _DirectMessageScreenState extends State<DirectMessageScreen> {
   late final MessageRepository _messageRepository;
+  late final ContactRepository _contactRepository;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   int _previousMessageCount = 0;
   int? _firstUnreadTimestamp;
+  List<ContactData> _allContacts = [];
+  List<ContactData> _mentionSuggestions = [];
+  StreamSubscription<List<ContactData>>? _contactsSub;
 
   @override
   void initState() {
     super.initState();
     _messageRepository = Provider.of<MessageRepository>(context, listen: false);
+    _contactRepository = Provider.of<ContactRepository>(context, listen: false);
+    _contactsSub = _contactRepository.getAllContacts().listen((contacts) {
+      if (mounted) setState(() => _allContacts = contacts);
+    });
 
     // Track active chat for notification suppression
     MessageNotificationService.isMessagesScreenVisible = true;
@@ -58,6 +70,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _contactsSub?.cancel();
 
     // Mark all messages as read when navigating away
     _messageRepository.messagesDao
@@ -215,6 +228,9 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
             ),
           ),
 
+          // @mention suggestions
+          _buildMentionSuggestions(),
+
           // Message input
           SafeArea(
             top: false,
@@ -260,6 +276,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                             _firstUnreadTimestamp = null; // Hide divider
                           });
                         }
+                        _updateMentionSuggestions(text);
                       },
                     ),
                   ),
@@ -308,8 +325,8 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    message.content,
+                  ChatMessageText(
+                    text: message.content,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: isFromMe
                           ? theme.colorScheme.onPrimaryContainer
@@ -397,6 +414,76 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
     }
   }
 
+  Widget _buildMentionSuggestions() {
+    if (_mentionSuggestions.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    return Material(
+      elevation: 4,
+      color: theme.colorScheme.surface,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 200),
+        child: ListView.builder(
+          padding: EdgeInsets.zero,
+          shrinkWrap: true,
+          itemCount: _mentionSuggestions.length,
+          itemBuilder: (context, index) {
+            final contact = _mentionSuggestions[index];
+            final name = contact.name ?? 'Unknown';
+            return ListTile(
+              leading: const CircleAvatar(
+                child: Icon(Icons.person, size: 18),
+              ),
+              title: Text(name),
+              dense: true,
+              onTap: () => _applyMention(name),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void _updateMentionSuggestions(String text) {
+    final cursor = _messageController.selection.baseOffset;
+    if (cursor <= 0) {
+      if (_mentionSuggestions.isNotEmpty) setState(() => _mentionSuggestions = []);
+      return;
+    }
+    final before = text.substring(0, cursor.clamp(0, text.length));
+    final atIndex = before.lastIndexOf('@');
+    if (atIndex == -1) {
+      if (_mentionSuggestions.isNotEmpty) setState(() => _mentionSuggestions = []);
+      return;
+    }
+    final query = before.substring(atIndex + 1);
+    if (query.isEmpty || query.contains(' ')) {
+      if (_mentionSuggestions.isNotEmpty) setState(() => _mentionSuggestions = []);
+      return;
+    }
+    final queryLower = query.toLowerCase();
+    final filtered = _allContacts
+        .where((c) => (c.name ?? '').toLowerCase().contains(queryLower))
+        .toList();
+    setState(() => _mentionSuggestions = filtered);
+  }
+
+  void _applyMention(String contactName) {
+    final text = _messageController.text;
+    final cursor = _messageController.selection.baseOffset;
+    if (cursor <= 0) return;
+    final before = text.substring(0, cursor.clamp(0, text.length));
+    final atIndex = before.lastIndexOf('@');
+    if (atIndex == -1) return;
+    final after = cursor < text.length ? text.substring(cursor) : '';
+    final newText = '${text.substring(0, atIndex)}@$contactName $after';
+    final newCursor = atIndex + contactName.length + 2; // @name[space]
+    _messageController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newCursor),
+    );
+    setState(() => _mentionSuggestions = []);
+  }
+
   Future<void> _sendMessage() async {
     if (widget.contact.isRepeater) {
       if (mounted) {
@@ -414,6 +501,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
 
     // Clear input immediately
     _messageController.clear();
+    setState(() => _mentionSuggestions = []);
 
     // Scroll to bottom
     WidgetsBinding.instance.addPostFrameCallback((_) {

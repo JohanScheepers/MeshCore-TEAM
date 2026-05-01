@@ -112,6 +112,15 @@ class ChannelsScreen extends StatelessWidget {
                 },
               ),
               ListTile(
+                leading: const Icon(Icons.tag),
+                title: const Text('Join Hashtag Channel'),
+                subtitle: const Text('Derive key from #name — no QR needed'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _showJoinHashtagChannelDialog(context, channelRepository);
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.qr_code_scanner),
                 title: const Text('Add via Link / QR Code'),
                 onTap: () {
@@ -206,6 +215,84 @@ class ChannelsScreen extends StatelessWidget {
     // Controllers are method-local and will be GC'd; explicit disposal
     // races with the dialog exit animation and causes _dependents.isEmpty
     // assertions, so we intentionally skip it.
+  }
+
+  Future<void> _showJoinHashtagChannelDialog(
+      BuildContext context, ChannelRepository channelRepository) async {
+    final controller = TextEditingController(text: '#');
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        bool isJoining = false;
+        return StatefulBuilder(
+          builder: (dialogContext, setState) {
+            Future<void> join() async {
+              if (isJoining) return;
+              setState(() {
+                isJoining = true;
+              });
+              try {
+                final joined =
+                    await channelRepository.createHashtagChannel(controller.text);
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Joined: ${joined.name}')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(e.toString())),
+                  );
+                }
+                if (dialogContext.mounted) {
+                  setState(() {
+                    isJoining = false;
+                  });
+                }
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Join Hashtag Channel'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    enabled: !isJoining,
+                    decoration: const InputDecoration(
+                      labelText: 'Channel name',
+                      hintText: '#public',
+                      helperText:
+                          'Anyone who types the same name joins the same channel',
+                    ),
+                    onSubmitted: (_) => join(),
+                  ),
+                  if (isJoining) ...[
+                    const SizedBox(height: 16),
+                    const LinearProgressIndicator(),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed:
+                      isJoining ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: isJoining ? null : join,
+                  child: const Text('Join'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _showImportChannelDialog(
