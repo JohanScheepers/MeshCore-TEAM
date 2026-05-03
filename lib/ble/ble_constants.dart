@@ -32,6 +32,7 @@ class BleConstants {
   static const int cmdSyncNextMessage = 10; // Poll for new messages
   static const int cmdSetRadioParams = 11;
   static const int cmdSetRadioTxPower = 12;
+  static const int cmdResetPath = 13; // Clear stored path for a contact (forces flood on next send)
   static const int cmdSetAdvertLatLon = 14;
   static const int cmdRemoveContact = 15;
   static const int cmdReboot = 19;
@@ -39,6 +40,8 @@ class BleConstants {
   static const int cmdGetChannel = 31;
   static const int cmdSetChannel = 32;
   static const int cmdSendTelemetryReq = 39;
+  static const int cmdGetCustomVars = 40;
+  static const int cmdSetCustomVar = 41;
 
   // 57+ range: upstream firmware added new commands; custom commands were moved.
   static const int cmdSendAnonReq = 57;
@@ -54,6 +57,7 @@ class BleConstants {
   // Response codes (received from device)
   static const int respOk = 0;
   static const int respErr = 1;
+  static const int respCustomVars = 21;
   static const int respContactsStart = 2;
   static const int respContact = 3;
   static const int respEndOfContacts = 4;

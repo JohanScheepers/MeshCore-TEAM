@@ -239,10 +239,42 @@ class ConnectionViewModel extends ChangeNotifier {
             '[ConnectionVM] ⚠️ setAutonomousSettings verification mismatch (expected: enabled=$expectedEnabled, channelHash=$expectedChannelHash, interval=$expectedInterval, minDistance=$expectedMinDistance; actual: enabled=${applied.enabled}, channelHash=${applied.channelHash}, interval=${applied.intervalSec}, minDistance=${applied.minDistanceMeters})');
       }
 
+      if (verified) {
+        // Sync GPS hardware state: on when autonomous enabled OR companion GPS source selected.
+        final locationSource = _settingsService.settings.locationSource;
+        final needsGps = enabled || locationSource == 'companion';
+        await setGpsEnabled(needsGps);
+      }
+
       return verified;
     } catch (e) {
       _lastAutonomousSettingsErrorCode = -4;
       debugPrint('[ConnectionVM] ❌ setAutonomousSettings failed: $e');
+      return false;
+    }
+  }
+
+  /// Enable or disable the companion radio's GPS hardware via CMD_SET_CUSTOM_VAR.
+  /// GPS should be on when location source is "companion" OR autonomous mode is enabled.
+  /// Returns true on success, false on failure or if no GPS hardware (ERR 6).
+  Future<bool> setGpsEnabled(bool enabled) async {
+    if (!isConnected) return false;
+    try {
+      final cmd = BleCommands.buildSetCustomVar('gps', enabled ? '1' : '0');
+      final result = await _sendCommandAwaitOkOrErr(cmd);
+      if (!result.isSuccess) {
+        if (result.errorCode == 6) {
+          debugPrint('[ConnectionVM] ℹ️ setGpsEnabled: no GPS hardware on companion (ERR 6)');
+        } else {
+          debugPrint(
+              '[ConnectionVM] ⚠️ setGpsEnabled($enabled) failed (timeout=${result.isTimeout}, sendFailed=${result.isSendFailed}, err=${result.errorCode})');
+        }
+      } else {
+        debugPrint('[ConnectionVM] ✅ setGpsEnabled($enabled) OK');
+      }
+      return result.isSuccess;
+    } catch (e) {
+      debugPrint('[ConnectionVM] ❌ setGpsEnabled failed: $e');
       return false;
     }
   }
@@ -877,6 +909,15 @@ class ConnectionViewModel extends ChangeNotifier {
     } else {
       debugPrint(
           '[ConnectionVM] ⚠️ Autonomous settings not available (stock firmware?)');
+    }
+
+    // Re-apply GPS hardware state: on when companion GPS source selected OR autonomous mode enabled.
+    final locationSource = _settingsService.settings.locationSource;
+    final autonomousEnabled = autonomousState?.enabled ?? false;
+    final needsGps = locationSource == 'companion' || autonomousEnabled;
+    if (needsGps) {
+      debugPrint('[ConnectionVM] 📍 Re-enabling companion GPS (source=$locationSource, autonomous=$autonomousEnabled)...');
+      await setGpsEnabled(true);
     }
 
     // Start foreground service and save connection state
