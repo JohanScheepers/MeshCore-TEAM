@@ -401,4 +401,14 @@ class BleCommands {
     writer.writeBytes(Uint8List(3)); // 3 reserved bytes
     return writer.toBytes();
   }
+
+  /// Build SET_CUSTOM_VAR command
+  /// Format: [cmd][ASCII "key:value"]
+  /// Firmware null-terminates the frame buffer, so no null terminator is needed here.
+  static Uint8List buildSetCustomVar(String key, String value) {
+    final writer = BufferWriter();
+    writer.writeByte(BleConstants.cmdSetCustomVar);
+    writer.writeString('$key:$value');
+    return writer.toBytes();
+  }
 }

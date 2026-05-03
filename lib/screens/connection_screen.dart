@@ -690,7 +690,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     subtitle: _locationSourceLabel(
                         settingsService.settings.locationSource),
                     leading: Icons.location_on,
-                    onTap: () => _showLocationSourceDialog(settingsService),
+                    onTap: () => _showLocationSourceDialog(settingsService, connectionVM),
                   ),
                   const SizedBox(height: 8),
                   _buildSettingsCard(
@@ -955,7 +955,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   }
 
   Future<void> _showLocationSourceDialog(
-      SettingsService settingsService) async {
+      SettingsService settingsService, ConnectionViewModel connectionVM) async {
     String selected = settingsService.settings.locationSource;
 
     await showDialog<void>(
@@ -996,6 +996,25 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     await settingsService.setLocationSource(selected);
+                    if (!context.mounted) return;
+                    // Enable GPS when companion source selected; disable only if
+                    // autonomous mode is also off.
+                    if (connectionVM.isConnected) {
+                      final autonomousEnabled =
+                          connectionVM.currentAutonomousEnabled ?? false;
+                      final needsGps =
+                          selected == LocationSource.companion || autonomousEnabled;
+                      final ok = await connectionVM.setGpsEnabled(needsGps);
+                      if (!ok && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                                'Could not configure companion GPS — no GPS hardware?'),
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    }
                     if (context.mounted) Navigator.of(context).pop();
                   },
                   child: const Text('Save'),
@@ -1267,7 +1286,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     }
     final initialAutonomousEnabled = autonomousEnabled;
 
-    String selectedPreset = presets.first.name; // Custom
+    String selectedPreset =
+        campModeEnabled ? campPresets.first.name : presets.first.name;
 
     final frequencyController =
         TextEditingController(text: caps.frequencyMHz.toString());
@@ -1576,12 +1596,14 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                             min: 1,
                             max: maxPower.toDouble().clamp(1, 30),
                             divisions: (maxPower.clamp(1, 30) - 1).clamp(1, 29),
-                            onChanged: (isApplying || campModeEnabled)
+                            onChanged: isApplying
                                 ? null
                                 : (v) {
                                     setState(() {
                                       txPower = v.round();
-                                      selectedPreset = 'Custom';
+                                      if (!campModeEnabled) {
+                                        selectedPreset = 'Custom';
+                                      }
                                     });
                                   },
                           ),
@@ -1627,9 +1649,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                             final applyCr = campModeEnabled
                                 ? selected!.settings!.codingRate
                                 : codingRate;
-                            final applyTx = campModeEnabled
-                                ? selected!.settings!.txPowerDbm
-                                : txPower;
+                            final applyTx = txPower;
 
                             final enableClientRepeat = supportsForwarding &&
                                 campModeEnabled &&
