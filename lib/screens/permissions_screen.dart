@@ -74,7 +74,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
       debugPrint('🔐 Requesting ${permissionsToRequest.length} permissions sequentially...');
 
       // Request permissions one at a time so iOS doesn't stack dialogs.
-      bool allGranted = true;
+      bool requiredGranted = true;
       final deniedPermissions = <String>[];
 
       for (final permission in permissionsToRequest) {
@@ -82,13 +82,21 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
         debugPrint('🔐 ${permission.toString()}: ${status.toString()}');
 
         if (!status.isGranted) {
-          allGranted = false;
-          deniedPermissions.add(_getPermissionName(permission));
+          // On iOS, notifications are optional — don't block launch if denied.
+          final isOptional =
+              Platform.isIOS && permission == Permission.notification;
+          if (!isOptional) {
+            requiredGranted = false;
+            deniedPermissions.add(_getPermissionName(permission));
+          } else {
+            debugPrint(
+                'ℹ️ Notification permission denied (optional on iOS), continuing');
+          }
         }
       }
 
-      if (allGranted) {
-        debugPrint('✅ All permissions granted!');
+      if (requiredGranted) {
+        debugPrint('✅ Required permissions granted!');
 
         // Optional: request background location (Android only). This is not required
         // for initial app usage, so we don't block launch if denied.
@@ -101,7 +109,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
           await _requestBatteryOptimization();
         }
 
-        // All permissions granted, proceed to app
+        // Required permissions granted, proceed to app
         widget.onPermissionsGranted();
       } else {
         debugPrint('❌ Permissions denied: ${deniedPermissions.join(", ")}');
@@ -341,8 +349,8 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'MeshCore TEAM requires these permissions to function. '
-                        'Please grant all permissions to continue.',
+                        'MeshCore TEAM requires Bluetooth and Location permissions to function. '
+                        'Please grant these permissions to continue.',
                         style: Theme.of(context).textTheme.bodySmall,
                         textAlign: TextAlign.center,
                       ),
