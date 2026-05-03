@@ -72,6 +72,11 @@ class MessageRepository {
   Timer? _syncDebounceTimer;
   bool _syncRequestedWhileSyncing = false;
 
+  // In-flight DM retry state, keyed by message ID.
+  final Map<String, _PendingRetry> _pendingRetries = {};
+
+  static const int _dmMaxAttempts = 3;
+
   // Waypoint de-dupe guard: the same #WAY message may be delivered via PUSH and
   // then again via sync. Also protects against concurrent handling races.
   static const Duration _recentWaypointTtl = Duration(seconds: 10);
@@ -312,6 +317,11 @@ class MessageRepository {
     _syncRequestedWhileSyncing = false;
     _frameSubscription?.cancel();
     _frameSubscription = null;
+    // Cancel all pending DM retry timers (important on disconnect / iOS lifecycle).
+    for (final retry in _pendingRetries.values) {
+      retry.timer?.cancel();
+    }
+    _pendingRetries.clear();
   }
 
   void _requestMessageSync({required Duration delay, required String reason}) {
@@ -502,6 +512,9 @@ class MessageRepository {
           await _messagesDao.updateDeliveryStatus(
               matchingMessage.id, 'DELIVERED');
         }
+
+        // Cancel any pending retry timer — ACK received, no more retries needed.
+        _pendingRetries.remove(matchingMessage.id)?.timer?.cancel();
 
         debugPrint(
             '[MessageSync] ✅ Message delivery confirmed: $newCount device(s) heard it');
@@ -1660,27 +1673,30 @@ class MessageRepository {
       await _messagesDao.insertMessage(message);
       debugPrint('[MessageRepository] 💾 Message stored with ID $messageId');
 
-      // Send via BLE - firmware will calculate the ACK checksum
+      // Send via BLE — firmware routes based on its stored path for this contact.
+      // attempt=0 uses whatever path firmware currently has (direct if known, flood if not).
       final recipientBytes = _hexToBytes(recipientPublicKey);
-      final frameSuccess =
-          await _bleService.sendDirectMessage(recipientBytes, content);
+      final frameSuccess = await _bleService.sendDirectMessage(
+          recipientBytes, content,
+          attempt: 0, timestamp: timestamp);
 
       if (!frameSuccess) {
         debugPrint('[MessageRepository] ❌ Failed to send BLE frame');
+        await _messagesDao.updateDeliveryStatus(messageId, 'FAILED');
         return null;
       }
 
-      // Wait for RESP_CODE_SENT from firmware (contains expectedAck calculated by firmware)
+      // Wait for RESP_CODE_SENT from firmware (contains expectedAck and timeoutMs)
       debugPrint('[MessageRepository] ⏳ Waiting for RESP_CODE_SENT...');
       final sentResponse = await _waitForSentResponse(timeoutMs: 2000);
 
       if (sentResponse == null) {
         debugPrint('[MessageRepository] ⏱️ Timeout waiting for RESP_CODE_SENT');
-        // Message may still have been sent, keep status as SENDING
+        // No firmware confirmation at all — leave as SENDING, do not retry
         return messageId;
       }
 
-      // Extract expectedAck from firmware response and update message
+      // Store ACK checksum so incoming PUSH_SEND_CONFIRMED (0x82) can match this send
       if (sentResponse.expectedAck != null) {
         await _messagesDao.updateMessageAckChecksum(
             messageId, sentResponse.expectedAck!);
@@ -1688,14 +1704,101 @@ class MessageRepository {
             '[MessageRepository] 🔐 ACK checksum stored: ${_bytesToHex(sentResponse.expectedAck!)}');
       }
 
-      // Update status to SENT
       await _messagesDao.updateDeliveryStatus(messageId, 'SENT');
-      debugPrint('[MessageRepository] ✅ Direct message sent successfully');
+
+      // Schedule a retry in case no PUSH_SEND_CONFIRMED arrives within the
+      // firmware's estimated timeout. On timeout, CMD_RESET_PATH is issued to
+      // clear stale path data, then the message is resent with flood routing.
+      final timeoutMs = sentResponse.timeoutMs ?? 8000;
+      final retry = _PendingRetry(
+        attempt: 0,
+        recipientBytes: recipientBytes,
+        content: content,
+        timestamp: timestamp,
+        messageId: messageId,
+      );
+      _pendingRetries[messageId] = retry;
+      _scheduleDmRetry(retry, Duration(milliseconds: timeoutMs));
+
+      debugPrint(
+          '[MessageRepository] ✅ DM sent (attempt 0, flood=${sentResponse.isFlood}), '
+          'waiting for ACK (timeout=${timeoutMs}ms)');
       return messageId;
     } catch (e) {
       debugPrint('[MessageRepository] ⚠️ Error sending direct message: $e');
       return null;
     }
+  }
+
+  /// Schedule a DM retry timer. Cancels any existing timer on [retry].
+  void _scheduleDmRetry(_PendingRetry retry, Duration timeout) {
+    retry.timer?.cancel();
+    retry.timer = Timer(timeout, () => unawaited(_onDmRetryTimeout(retry)));
+  }
+
+  /// Called when the ACK timer fires for a direct message.
+  /// Issues CMD_RESET_PATH to clear the stale firmware path, then resends
+  /// with flood routing. Repeats up to [_dmMaxAttempts] times before failing.
+  Future<void> _onDmRetryTimeout(_PendingRetry retry) async {
+    // Guard: message may have been delivered while the timer was pending.
+    final msg = await _messagesDao.getMessageById(retry.messageId);
+    if (msg == null || msg.deliveryStatus != 'SENT') {
+      _pendingRetries.remove(retry.messageId);
+      return;
+    }
+
+    final nextAttempt = retry.attempt + 1;
+
+    if (nextAttempt > _dmMaxAttempts) {
+      debugPrint(
+          '[MessageRepository] ❌ DM failed after ${retry.attempt} attempt(s): ${retry.messageId.substring(0, 8)}');
+      await _messagesDao.updateDeliveryStatus(retry.messageId, 'FAILED');
+      _pendingRetries.remove(retry.messageId);
+      return;
+    }
+
+    debugPrint(
+        '[MessageRepository] 🔄 DM retry $nextAttempt/$_dmMaxAttempts — '
+        'clearing path, resending as flood: ${retry.messageId.substring(0, 8)}');
+
+    // Clear the firmware's stored path so the next send uses flood routing.
+    await _bleService.resetContactPath(retry.recipientBytes);
+
+    retry.attempt = nextAttempt;
+
+    final sent = await _bleService.sendDirectMessage(
+        retry.recipientBytes, retry.content,
+        attempt: nextAttempt, timestamp: retry.timestamp);
+
+    if (!sent) {
+      debugPrint('[MessageRepository] ❌ Failed to send retry BLE frame');
+      await _messagesDao.updateDeliveryStatus(retry.messageId, 'FAILED');
+      _pendingRetries.remove(retry.messageId);
+      return;
+    }
+
+    final sentResponse = await _waitForSentResponse(timeoutMs: 2000);
+    if (sentResponse == null) {
+      debugPrint(
+          '[MessageRepository] ⏱️ Timeout waiting for RESP_CODE_SENT on retry $nextAttempt');
+      await _messagesDao.updateDeliveryStatus(retry.messageId, 'FAILED');
+      _pendingRetries.remove(retry.messageId);
+      return;
+    }
+
+    // Update ACK checksum for the new attempt so PUSH_SEND_CONFIRMED can match.
+    if (sentResponse.expectedAck != null) {
+      await _messagesDao.updateMessageAckChecksum(
+          retry.messageId, sentResponse.expectedAck!);
+      debugPrint('[MessageRepository] 🔐 Retry ACK checksum updated');
+    }
+
+    // Restart the timer with the firmware's new timeout estimate.
+    final timeoutMs = sentResponse.timeoutMs ?? 8000;
+    _scheduleDmRetry(retry, Duration(milliseconds: timeoutMs));
+    debugPrint(
+        '[MessageRepository] ⏳ Retry $nextAttempt sent (flood=${sentResponse.isFlood}), '
+        'waiting for ACK (timeout=${timeoutMs}ms)');
   }
 
   /// Send channel message
@@ -1914,6 +2017,24 @@ class MessageRepository {
     _telemetryStreamController.close();
     _topologyStreamController.close();
   }
+}
+
+/// Tracks in-flight retry state for a single direct message.
+class _PendingRetry {
+  Timer? timer;
+  int attempt;
+  final List<int> recipientBytes;
+  final String content;
+  final int timestamp;
+  final String messageId;
+
+  _PendingRetry({
+    required this.attempt,
+    required this.recipientBytes,
+    required this.content,
+    required this.timestamp,
+    required this.messageId,
+  });
 }
 
 /// Buffer for reassembling multi-part waypoint route messages.

@@ -32,6 +32,7 @@ class BleConstants {
   static const int cmdSyncNextMessage = 10; // Poll for new messages
   static const int cmdSetRadioParams = 11;
   static const int cmdSetRadioTxPower = 12;
+  static const int cmdResetPath = 13; // Clear stored path for a contact (forces flood on next send)
   static const int cmdSetAdvertLatLon = 14;
   static const int cmdRemoveContact = 15;
   static const int cmdReboot = 19;

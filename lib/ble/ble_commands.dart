@@ -154,6 +154,18 @@ class BleCommands {
     return writer.toBytes();
   }
 
+  /// Build RESET_PATH command
+  /// Clears the stored out-path for a contact on the firmware side, forcing
+  /// the next send to that contact to use flood routing.
+  /// publicKey: full 32-byte public key of the contact
+  /// Format: [cmd][32-byte pubkey]
+  static Uint8List buildResetPath(List<int> publicKey) {
+    final writer = BufferWriter();
+    writer.writeByte(BleConstants.cmdResetPath);
+    writer.writeBytes(Uint8List.fromList(publicKey)); // 32 bytes
+    return writer.toBytes();
+  }
+
   /// Build ADD_UPDATE_CONTACT command
   /// publicKey: 32-byte public key
   /// name: contact name (max 32 bytes)
