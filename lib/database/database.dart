@@ -19,6 +19,7 @@ import 'daos/waypoints_dao.dart';
 import 'daos/ack_records_dao.dart';
 import 'daos/companion_devices_dao.dart';
 import 'daos/offline_map_areas_dao.dart';
+import 'daos/imported_overlay_maps_dao.dart';
 
 part 'database.g.dart';
 
@@ -49,6 +50,7 @@ typedef AckRecord = AckRecordData;
     ContactPositionHistories,
     AckRecords,
     OfflineMapAreas,
+    ImportedOverlayMaps,
   ],
   daos: [
     ContactsDao,
@@ -58,6 +60,7 @@ typedef AckRecord = AckRecordData;
     AckRecordsDao,
     CompanionDevicesDao,
     OfflineMapAreasDao,
+    ImportedOverlayMapsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -67,7 +70,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -123,6 +126,12 @@ class AppDatabase extends _$AppDatabase {
                 contactDisplayStates, contactDisplayStates.isAutonomousDevice);
             print(
                 '[Migration] Added isAutonomousDevice to contact_display_states table');
+          }
+
+          // Migration from schema version 7 to 8: Add imported_overlay_maps table
+          if (from <= 7 && to >= 8) {
+            await m.createTable(importedOverlayMaps);
+            print('[Migration] Created imported_overlay_maps table');
           }
         },
       );

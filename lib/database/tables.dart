@@ -217,3 +217,22 @@ class OfflineMapAreas extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+
+/// Imported overlay maps table - stores metadata for imported KMZ raster overlay maps
+@DataClassName('ImportedOverlayMapData')
+class ImportedOverlayMaps extends Table {
+  TextColumn get id => text()(); // UUID (primary key)
+  TextColumn get name => text()();
+  TextColumn get dirPath =>
+      text()(); // Path to extracted tile folder in app documents dir
+  IntColumn get tileCount => integer()();
+  IntColumn get importedAt => integer()(); // Unix timestamp ms
+  BoolColumn get isVisible => boolean().withDefault(const Constant(true))();
+  RealColumn get boundsNorth => real()();
+  RealColumn get boundsSouth => real()();
+  RealColumn get boundsEast => real()();
+  RealColumn get boundsWest => real()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
