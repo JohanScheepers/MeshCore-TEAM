@@ -29,7 +29,7 @@ class ChatMessageText extends StatefulWidget {
 
 class _ChatMessageTextState extends State<ChatMessageText> {
   /// Matches #hashtag (alphanumeric, underscore, hyphen) and @mention (non-whitespace).
-  static final _tokenPattern = RegExp(r'(#[a-zA-Z0-9_-]+|@\S+)');
+  static final _tokenPattern = RegExp(r'(#[a-zA-Z0-9_-]+|@\[[^\]]+\])');
 
   final List<TapGestureRecognizer> _recognizers = [];
 

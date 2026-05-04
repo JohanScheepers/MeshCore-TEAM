@@ -560,8 +560,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final atIndex = before.lastIndexOf('@');
     if (atIndex == -1) return;
     final after = cursor < text.length ? text.substring(cursor) : '';
-    final newText = '${text.substring(0, atIndex)}@$contactName $after';
-    final newCursor = atIndex + contactName.length + 2; // @name[space]
+    final newText = '${text.substring(0, atIndex)}@[$contactName] $after';
+    final newCursor = atIndex + contactName.length + 4; // @[name][space]
     _messageController.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(offset: newCursor),

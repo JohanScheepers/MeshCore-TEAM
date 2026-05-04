@@ -264,7 +264,8 @@ class ConnectionViewModel extends ChangeNotifier {
       final result = await _sendCommandAwaitOkOrErr(cmd);
       if (!result.isSuccess) {
         if (result.errorCode == 6) {
-          debugPrint('[ConnectionVM] ℹ️ setGpsEnabled: no GPS hardware on companion (ERR 6)');
+          debugPrint(
+              '[ConnectionVM] ℹ️ setGpsEnabled: no GPS hardware on companion (ERR 6)');
         } else {
           debugPrint(
               '[ConnectionVM] ⚠️ setGpsEnabled($enabled) failed (timeout=${result.isTimeout}, sendFailed=${result.isSendFailed}, err=${result.errorCode})');
@@ -516,12 +517,12 @@ class ConnectionViewModel extends ChangeNotifier {
         final isAutoReconnect = _settingsService.isAutoReconnectInProgress;
         if (isAutoReconnect) {
           debugPrint(
-              '[ConnectionVM] ↩️ Auto-reconnected to same companion: running CONTACTS + MESSAGES sync (skip channels)');
+              '[ConnectionVM] ↩️ Auto-reconnected to same companion: running incremental sync (contacts + messages)');
           await _runContactAndMessageSync();
         } else {
           debugPrint(
-              '[ConnectionVM] 🔁 Manual reconnect to same companion: running incremental sync');
-          await _runContactAndMessageSync();
+              '[ConnectionVM] 🔁 Manual reconnect to same companion: running FULL sync');
+          await _runFullSyncPhases();
         }
       }
 
@@ -916,7 +917,8 @@ class ConnectionViewModel extends ChangeNotifier {
     final autonomousEnabled = autonomousState?.enabled ?? false;
     final needsGps = locationSource == 'companion' || autonomousEnabled;
     if (needsGps) {
-      debugPrint('[ConnectionVM] 📍 Re-enabling companion GPS (source=$locationSource, autonomous=$autonomousEnabled)...');
+      debugPrint(
+          '[ConnectionVM] 📍 Re-enabling companion GPS (source=$locationSource, autonomous=$autonomousEnabled)...');
       await setGpsEnabled(true);
     }
 
@@ -1165,6 +1167,28 @@ class ConnectionViewModel extends ChangeNotifier {
     debugPrint('[ConnectionVM] 🔴 Manual disconnect requested');
     await _settingsService.setManualDisconnect(true);
     await _meshConnectionService.stopService();
+  }
+
+  /// Trigger a full sync manually (user-initiated from the connection screen).
+  /// Ignored if not connected or a sync is already in progress.
+  Future<void> forceFullSync() async {
+    if (!isConnected) {
+      debugPrint('[ConnectionVM] forceFullSync: not connected — ignoring');
+      return;
+    }
+    if (!_syncStatus.isComplete) {
+      debugPrint('[ConnectionVM] forceFullSync: sync already in progress — ignoring');
+      return;
+    }
+    debugPrint('[ConnectionVM] 🔄 Manual full sync triggered');
+    try {
+      await _runFullSyncPhases();
+      await _finalizeAfterSync();
+    } catch (e) {
+      debugPrint('[ConnectionVM] ❌ Manual full sync failed: $e');
+      _updateSyncStatus(
+          const SyncStatus(phase: SyncPhase.idle, isComplete: true));
+    }
   }
 
   /// Update sync status and notify listeners

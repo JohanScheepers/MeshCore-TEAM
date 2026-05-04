@@ -135,7 +135,10 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               Text(
                 'v$_appVersion',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withAlpha(153),
                     ),
               ),
           ],
@@ -690,7 +693,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     subtitle: _locationSourceLabel(
                         settingsService.settings.locationSource),
                     leading: Icons.location_on,
-                    onTap: () => _showLocationSourceDialog(settingsService, connectionVM),
+                    onTap: () => _showLocationSourceDialog(
+                        settingsService, connectionVM),
                   ),
                   const SizedBox(height: 8),
                   _buildSettingsCard(
@@ -1002,8 +1006,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     if (connectionVM.isConnected) {
                       final autonomousEnabled =
                           connectionVM.currentAutonomousEnabled ?? false;
-                      final needsGps =
-                          selected == LocationSource.companion || autonomousEnabled;
+                      final needsGps = selected == LocationSource.companion ||
+                          autonomousEnabled;
                       final ok = await connectionVM.setGpsEnabled(needsGps);
                       if (!ok && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
