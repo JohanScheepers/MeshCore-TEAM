@@ -116,11 +116,22 @@ class BleService extends ChangeNotifier {
   }
 
   /// Send direct message
+  /// [attempt]: retry attempt counter (0 = first send). Affects ACK hash only.
   Future<bool> sendDirectMessage(
-      List<int> recipientPublicKey, String message) async {
-    debugPrint('📤 Sending DM');
-    final frame =
-        BleCommands.buildSendDirectMessage(recipientPublicKey, message);
+      List<int> recipientPublicKey, String message, {int attempt = 0, int? timestamp}) async {
+    debugPrint('📤 Sending DM (attempt=$attempt)');
+    final frame = BleCommands.buildSendDirectMessage(
+        recipientPublicKey, message,
+        attempt: attempt, timestamp: timestamp);
+    return await _connectionManager.sendFrame(frame);
+  }
+
+  /// Send RESET_PATH command for a contact
+  /// Clears the firmware's stored out-path, forcing the next send to flood.
+  /// [publicKey]: full 32-byte public key of the contact
+  Future<bool> resetContactPath(List<int> publicKey) async {
+    debugPrint('📤 Sending RESET_PATH (clearing stale route)');
+    final frame = BleCommands.buildResetPath(publicKey);
     return await _connectionManager.sendFrame(frame);
   }
 

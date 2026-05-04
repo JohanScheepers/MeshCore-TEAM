@@ -5250,6 +5250,529 @@ class OfflineMapAreasCompanion extends UpdateCompanion<OfflineMapAreaData> {
   }
 }
 
+class $ImportedOverlayMapsTable extends ImportedOverlayMaps
+    with TableInfo<$ImportedOverlayMapsTable, ImportedOverlayMapData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ImportedOverlayMapsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _dirPathMeta =
+      const VerificationMeta('dirPath');
+  @override
+  late final GeneratedColumn<String> dirPath = GeneratedColumn<String>(
+      'dir_path', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _tileCountMeta =
+      const VerificationMeta('tileCount');
+  @override
+  late final GeneratedColumn<int> tileCount = GeneratedColumn<int>(
+      'tile_count', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _importedAtMeta =
+      const VerificationMeta('importedAt');
+  @override
+  late final GeneratedColumn<int> importedAt = GeneratedColumn<int>(
+      'imported_at', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _isVisibleMeta =
+      const VerificationMeta('isVisible');
+  @override
+  late final GeneratedColumn<bool> isVisible = GeneratedColumn<bool>(
+      'is_visible', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_visible" IN (0, 1))'),
+      defaultValue: const Constant(true));
+  static const VerificationMeta _boundsNorthMeta =
+      const VerificationMeta('boundsNorth');
+  @override
+  late final GeneratedColumn<double> boundsNorth = GeneratedColumn<double>(
+      'bounds_north', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _boundsSouthMeta =
+      const VerificationMeta('boundsSouth');
+  @override
+  late final GeneratedColumn<double> boundsSouth = GeneratedColumn<double>(
+      'bounds_south', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _boundsEastMeta =
+      const VerificationMeta('boundsEast');
+  @override
+  late final GeneratedColumn<double> boundsEast = GeneratedColumn<double>(
+      'bounds_east', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _boundsWestMeta =
+      const VerificationMeta('boundsWest');
+  @override
+  late final GeneratedColumn<double> boundsWest = GeneratedColumn<double>(
+      'bounds_west', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        name,
+        dirPath,
+        tileCount,
+        importedAt,
+        isVisible,
+        boundsNorth,
+        boundsSouth,
+        boundsEast,
+        boundsWest
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'imported_overlay_maps';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<ImportedOverlayMapData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('dir_path')) {
+      context.handle(_dirPathMeta,
+          dirPath.isAcceptableOrUnknown(data['dir_path']!, _dirPathMeta));
+    } else if (isInserting) {
+      context.missing(_dirPathMeta);
+    }
+    if (data.containsKey('tile_count')) {
+      context.handle(_tileCountMeta,
+          tileCount.isAcceptableOrUnknown(data['tile_count']!, _tileCountMeta));
+    } else if (isInserting) {
+      context.missing(_tileCountMeta);
+    }
+    if (data.containsKey('imported_at')) {
+      context.handle(
+          _importedAtMeta,
+          importedAt.isAcceptableOrUnknown(
+              data['imported_at']!, _importedAtMeta));
+    } else if (isInserting) {
+      context.missing(_importedAtMeta);
+    }
+    if (data.containsKey('is_visible')) {
+      context.handle(_isVisibleMeta,
+          isVisible.isAcceptableOrUnknown(data['is_visible']!, _isVisibleMeta));
+    }
+    if (data.containsKey('bounds_north')) {
+      context.handle(
+          _boundsNorthMeta,
+          boundsNorth.isAcceptableOrUnknown(
+              data['bounds_north']!, _boundsNorthMeta));
+    } else if (isInserting) {
+      context.missing(_boundsNorthMeta);
+    }
+    if (data.containsKey('bounds_south')) {
+      context.handle(
+          _boundsSouthMeta,
+          boundsSouth.isAcceptableOrUnknown(
+              data['bounds_south']!, _boundsSouthMeta));
+    } else if (isInserting) {
+      context.missing(_boundsSouthMeta);
+    }
+    if (data.containsKey('bounds_east')) {
+      context.handle(
+          _boundsEastMeta,
+          boundsEast.isAcceptableOrUnknown(
+              data['bounds_east']!, _boundsEastMeta));
+    } else if (isInserting) {
+      context.missing(_boundsEastMeta);
+    }
+    if (data.containsKey('bounds_west')) {
+      context.handle(
+          _boundsWestMeta,
+          boundsWest.isAcceptableOrUnknown(
+              data['bounds_west']!, _boundsWestMeta));
+    } else if (isInserting) {
+      context.missing(_boundsWestMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ImportedOverlayMapData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ImportedOverlayMapData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      dirPath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}dir_path'])!,
+      tileCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}tile_count'])!,
+      importedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}imported_at'])!,
+      isVisible: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_visible'])!,
+      boundsNorth: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}bounds_north'])!,
+      boundsSouth: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}bounds_south'])!,
+      boundsEast: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}bounds_east'])!,
+      boundsWest: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}bounds_west'])!,
+    );
+  }
+
+  @override
+  $ImportedOverlayMapsTable createAlias(String alias) {
+    return $ImportedOverlayMapsTable(attachedDatabase, alias);
+  }
+}
+
+class ImportedOverlayMapData extends DataClass
+    implements Insertable<ImportedOverlayMapData> {
+  final String id;
+  final String name;
+  final String dirPath;
+  final int tileCount;
+  final int importedAt;
+  final bool isVisible;
+  final double boundsNorth;
+  final double boundsSouth;
+  final double boundsEast;
+  final double boundsWest;
+  const ImportedOverlayMapData(
+      {required this.id,
+      required this.name,
+      required this.dirPath,
+      required this.tileCount,
+      required this.importedAt,
+      required this.isVisible,
+      required this.boundsNorth,
+      required this.boundsSouth,
+      required this.boundsEast,
+      required this.boundsWest});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['dir_path'] = Variable<String>(dirPath);
+    map['tile_count'] = Variable<int>(tileCount);
+    map['imported_at'] = Variable<int>(importedAt);
+    map['is_visible'] = Variable<bool>(isVisible);
+    map['bounds_north'] = Variable<double>(boundsNorth);
+    map['bounds_south'] = Variable<double>(boundsSouth);
+    map['bounds_east'] = Variable<double>(boundsEast);
+    map['bounds_west'] = Variable<double>(boundsWest);
+    return map;
+  }
+
+  ImportedOverlayMapsCompanion toCompanion(bool nullToAbsent) {
+    return ImportedOverlayMapsCompanion(
+      id: Value(id),
+      name: Value(name),
+      dirPath: Value(dirPath),
+      tileCount: Value(tileCount),
+      importedAt: Value(importedAt),
+      isVisible: Value(isVisible),
+      boundsNorth: Value(boundsNorth),
+      boundsSouth: Value(boundsSouth),
+      boundsEast: Value(boundsEast),
+      boundsWest: Value(boundsWest),
+    );
+  }
+
+  factory ImportedOverlayMapData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ImportedOverlayMapData(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      dirPath: serializer.fromJson<String>(json['dirPath']),
+      tileCount: serializer.fromJson<int>(json['tileCount']),
+      importedAt: serializer.fromJson<int>(json['importedAt']),
+      isVisible: serializer.fromJson<bool>(json['isVisible']),
+      boundsNorth: serializer.fromJson<double>(json['boundsNorth']),
+      boundsSouth: serializer.fromJson<double>(json['boundsSouth']),
+      boundsEast: serializer.fromJson<double>(json['boundsEast']),
+      boundsWest: serializer.fromJson<double>(json['boundsWest']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'dirPath': serializer.toJson<String>(dirPath),
+      'tileCount': serializer.toJson<int>(tileCount),
+      'importedAt': serializer.toJson<int>(importedAt),
+      'isVisible': serializer.toJson<bool>(isVisible),
+      'boundsNorth': serializer.toJson<double>(boundsNorth),
+      'boundsSouth': serializer.toJson<double>(boundsSouth),
+      'boundsEast': serializer.toJson<double>(boundsEast),
+      'boundsWest': serializer.toJson<double>(boundsWest),
+    };
+  }
+
+  ImportedOverlayMapData copyWith(
+          {String? id,
+          String? name,
+          String? dirPath,
+          int? tileCount,
+          int? importedAt,
+          bool? isVisible,
+          double? boundsNorth,
+          double? boundsSouth,
+          double? boundsEast,
+          double? boundsWest}) =>
+      ImportedOverlayMapData(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        dirPath: dirPath ?? this.dirPath,
+        tileCount: tileCount ?? this.tileCount,
+        importedAt: importedAt ?? this.importedAt,
+        isVisible: isVisible ?? this.isVisible,
+        boundsNorth: boundsNorth ?? this.boundsNorth,
+        boundsSouth: boundsSouth ?? this.boundsSouth,
+        boundsEast: boundsEast ?? this.boundsEast,
+        boundsWest: boundsWest ?? this.boundsWest,
+      );
+  ImportedOverlayMapData copyWithCompanion(ImportedOverlayMapsCompanion data) {
+    return ImportedOverlayMapData(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      dirPath: data.dirPath.present ? data.dirPath.value : this.dirPath,
+      tileCount: data.tileCount.present ? data.tileCount.value : this.tileCount,
+      importedAt:
+          data.importedAt.present ? data.importedAt.value : this.importedAt,
+      isVisible: data.isVisible.present ? data.isVisible.value : this.isVisible,
+      boundsNorth:
+          data.boundsNorth.present ? data.boundsNorth.value : this.boundsNorth,
+      boundsSouth:
+          data.boundsSouth.present ? data.boundsSouth.value : this.boundsSouth,
+      boundsEast:
+          data.boundsEast.present ? data.boundsEast.value : this.boundsEast,
+      boundsWest:
+          data.boundsWest.present ? data.boundsWest.value : this.boundsWest,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImportedOverlayMapData(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('dirPath: $dirPath, ')
+          ..write('tileCount: $tileCount, ')
+          ..write('importedAt: $importedAt, ')
+          ..write('isVisible: $isVisible, ')
+          ..write('boundsNorth: $boundsNorth, ')
+          ..write('boundsSouth: $boundsSouth, ')
+          ..write('boundsEast: $boundsEast, ')
+          ..write('boundsWest: $boundsWest')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, dirPath, tileCount, importedAt,
+      isVisible, boundsNorth, boundsSouth, boundsEast, boundsWest);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ImportedOverlayMapData &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.dirPath == this.dirPath &&
+          other.tileCount == this.tileCount &&
+          other.importedAt == this.importedAt &&
+          other.isVisible == this.isVisible &&
+          other.boundsNorth == this.boundsNorth &&
+          other.boundsSouth == this.boundsSouth &&
+          other.boundsEast == this.boundsEast &&
+          other.boundsWest == this.boundsWest);
+}
+
+class ImportedOverlayMapsCompanion
+    extends UpdateCompanion<ImportedOverlayMapData> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> dirPath;
+  final Value<int> tileCount;
+  final Value<int> importedAt;
+  final Value<bool> isVisible;
+  final Value<double> boundsNorth;
+  final Value<double> boundsSouth;
+  final Value<double> boundsEast;
+  final Value<double> boundsWest;
+  final Value<int> rowid;
+  const ImportedOverlayMapsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.dirPath = const Value.absent(),
+    this.tileCount = const Value.absent(),
+    this.importedAt = const Value.absent(),
+    this.isVisible = const Value.absent(),
+    this.boundsNorth = const Value.absent(),
+    this.boundsSouth = const Value.absent(),
+    this.boundsEast = const Value.absent(),
+    this.boundsWest = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ImportedOverlayMapsCompanion.insert({
+    required String id,
+    required String name,
+    required String dirPath,
+    required int tileCount,
+    required int importedAt,
+    this.isVisible = const Value.absent(),
+    required double boundsNorth,
+    required double boundsSouth,
+    required double boundsEast,
+    required double boundsWest,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name),
+        dirPath = Value(dirPath),
+        tileCount = Value(tileCount),
+        importedAt = Value(importedAt),
+        boundsNorth = Value(boundsNorth),
+        boundsSouth = Value(boundsSouth),
+        boundsEast = Value(boundsEast),
+        boundsWest = Value(boundsWest);
+  static Insertable<ImportedOverlayMapData> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? dirPath,
+    Expression<int>? tileCount,
+    Expression<int>? importedAt,
+    Expression<bool>? isVisible,
+    Expression<double>? boundsNorth,
+    Expression<double>? boundsSouth,
+    Expression<double>? boundsEast,
+    Expression<double>? boundsWest,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (dirPath != null) 'dir_path': dirPath,
+      if (tileCount != null) 'tile_count': tileCount,
+      if (importedAt != null) 'imported_at': importedAt,
+      if (isVisible != null) 'is_visible': isVisible,
+      if (boundsNorth != null) 'bounds_north': boundsNorth,
+      if (boundsSouth != null) 'bounds_south': boundsSouth,
+      if (boundsEast != null) 'bounds_east': boundsEast,
+      if (boundsWest != null) 'bounds_west': boundsWest,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ImportedOverlayMapsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? name,
+      Value<String>? dirPath,
+      Value<int>? tileCount,
+      Value<int>? importedAt,
+      Value<bool>? isVisible,
+      Value<double>? boundsNorth,
+      Value<double>? boundsSouth,
+      Value<double>? boundsEast,
+      Value<double>? boundsWest,
+      Value<int>? rowid}) {
+    return ImportedOverlayMapsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      dirPath: dirPath ?? this.dirPath,
+      tileCount: tileCount ?? this.tileCount,
+      importedAt: importedAt ?? this.importedAt,
+      isVisible: isVisible ?? this.isVisible,
+      boundsNorth: boundsNorth ?? this.boundsNorth,
+      boundsSouth: boundsSouth ?? this.boundsSouth,
+      boundsEast: boundsEast ?? this.boundsEast,
+      boundsWest: boundsWest ?? this.boundsWest,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (dirPath.present) {
+      map['dir_path'] = Variable<String>(dirPath.value);
+    }
+    if (tileCount.present) {
+      map['tile_count'] = Variable<int>(tileCount.value);
+    }
+    if (importedAt.present) {
+      map['imported_at'] = Variable<int>(importedAt.value);
+    }
+    if (isVisible.present) {
+      map['is_visible'] = Variable<bool>(isVisible.value);
+    }
+    if (boundsNorth.present) {
+      map['bounds_north'] = Variable<double>(boundsNorth.value);
+    }
+    if (boundsSouth.present) {
+      map['bounds_south'] = Variable<double>(boundsSouth.value);
+    }
+    if (boundsEast.present) {
+      map['bounds_east'] = Variable<double>(boundsEast.value);
+    }
+    if (boundsWest.present) {
+      map['bounds_west'] = Variable<double>(boundsWest.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImportedOverlayMapsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('dirPath: $dirPath, ')
+          ..write('tileCount: $tileCount, ')
+          ..write('importedAt: $importedAt, ')
+          ..write('isVisible: $isVisible, ')
+          ..write('boundsNorth: $boundsNorth, ')
+          ..write('boundsSouth: $boundsSouth, ')
+          ..write('boundsEast: $boundsEast, ')
+          ..write('boundsWest: $boundsWest, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5266,6 +5789,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AckRecordsTable ackRecords = $AckRecordsTable(this);
   late final $OfflineMapAreasTable offlineMapAreas =
       $OfflineMapAreasTable(this);
+  late final $ImportedOverlayMapsTable importedOverlayMaps =
+      $ImportedOverlayMapsTable(this);
   late final ContactsDao contactsDao = ContactsDao(this as AppDatabase);
   late final ChannelsDao channelsDao = ChannelsDao(this as AppDatabase);
   late final MessagesDao messagesDao = MessagesDao(this as AppDatabase);
@@ -5275,6 +5800,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       CompanionDevicesDao(this as AppDatabase);
   late final OfflineMapAreasDao offlineMapAreasDao =
       OfflineMapAreasDao(this as AppDatabase);
+  late final ImportedOverlayMapsDao importedOverlayMapsDao =
+      ImportedOverlayMapsDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5288,7 +5815,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         contactDisplayStates,
         contactPositionHistories,
         ackRecords,
-        offlineMapAreas
+        offlineMapAreas,
+        importedOverlayMaps
       ];
 }
 
@@ -7706,6 +8234,259 @@ typedef $$OfflineMapAreasTableProcessedTableManager = ProcessedTableManager<
     ),
     OfflineMapAreaData,
     PrefetchHooks Function()>;
+typedef $$ImportedOverlayMapsTableCreateCompanionBuilder
+    = ImportedOverlayMapsCompanion Function({
+  required String id,
+  required String name,
+  required String dirPath,
+  required int tileCount,
+  required int importedAt,
+  Value<bool> isVisible,
+  required double boundsNorth,
+  required double boundsSouth,
+  required double boundsEast,
+  required double boundsWest,
+  Value<int> rowid,
+});
+typedef $$ImportedOverlayMapsTableUpdateCompanionBuilder
+    = ImportedOverlayMapsCompanion Function({
+  Value<String> id,
+  Value<String> name,
+  Value<String> dirPath,
+  Value<int> tileCount,
+  Value<int> importedAt,
+  Value<bool> isVisible,
+  Value<double> boundsNorth,
+  Value<double> boundsSouth,
+  Value<double> boundsEast,
+  Value<double> boundsWest,
+  Value<int> rowid,
+});
+
+class $$ImportedOverlayMapsTableFilterComposer
+    extends Composer<_$AppDatabase, $ImportedOverlayMapsTable> {
+  $$ImportedOverlayMapsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get dirPath => $composableBuilder(
+      column: $table.dirPath, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get tileCount => $composableBuilder(
+      column: $table.tileCount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get importedAt => $composableBuilder(
+      column: $table.importedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isVisible => $composableBuilder(
+      column: $table.isVisible, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get boundsNorth => $composableBuilder(
+      column: $table.boundsNorth, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get boundsSouth => $composableBuilder(
+      column: $table.boundsSouth, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get boundsEast => $composableBuilder(
+      column: $table.boundsEast, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get boundsWest => $composableBuilder(
+      column: $table.boundsWest, builder: (column) => ColumnFilters(column));
+}
+
+class $$ImportedOverlayMapsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ImportedOverlayMapsTable> {
+  $$ImportedOverlayMapsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get dirPath => $composableBuilder(
+      column: $table.dirPath, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get tileCount => $composableBuilder(
+      column: $table.tileCount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get importedAt => $composableBuilder(
+      column: $table.importedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isVisible => $composableBuilder(
+      column: $table.isVisible, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get boundsNorth => $composableBuilder(
+      column: $table.boundsNorth, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get boundsSouth => $composableBuilder(
+      column: $table.boundsSouth, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get boundsEast => $composableBuilder(
+      column: $table.boundsEast, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get boundsWest => $composableBuilder(
+      column: $table.boundsWest, builder: (column) => ColumnOrderings(column));
+}
+
+class $$ImportedOverlayMapsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ImportedOverlayMapsTable> {
+  $$ImportedOverlayMapsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get dirPath =>
+      $composableBuilder(column: $table.dirPath, builder: (column) => column);
+
+  GeneratedColumn<int> get tileCount =>
+      $composableBuilder(column: $table.tileCount, builder: (column) => column);
+
+  GeneratedColumn<int> get importedAt => $composableBuilder(
+      column: $table.importedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isVisible =>
+      $composableBuilder(column: $table.isVisible, builder: (column) => column);
+
+  GeneratedColumn<double> get boundsNorth => $composableBuilder(
+      column: $table.boundsNorth, builder: (column) => column);
+
+  GeneratedColumn<double> get boundsSouth => $composableBuilder(
+      column: $table.boundsSouth, builder: (column) => column);
+
+  GeneratedColumn<double> get boundsEast => $composableBuilder(
+      column: $table.boundsEast, builder: (column) => column);
+
+  GeneratedColumn<double> get boundsWest => $composableBuilder(
+      column: $table.boundsWest, builder: (column) => column);
+}
+
+class $$ImportedOverlayMapsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $ImportedOverlayMapsTable,
+    ImportedOverlayMapData,
+    $$ImportedOverlayMapsTableFilterComposer,
+    $$ImportedOverlayMapsTableOrderingComposer,
+    $$ImportedOverlayMapsTableAnnotationComposer,
+    $$ImportedOverlayMapsTableCreateCompanionBuilder,
+    $$ImportedOverlayMapsTableUpdateCompanionBuilder,
+    (
+      ImportedOverlayMapData,
+      BaseReferences<_$AppDatabase, $ImportedOverlayMapsTable,
+          ImportedOverlayMapData>
+    ),
+    ImportedOverlayMapData,
+    PrefetchHooks Function()> {
+  $$ImportedOverlayMapsTableTableManager(
+      _$AppDatabase db, $ImportedOverlayMapsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ImportedOverlayMapsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ImportedOverlayMapsTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ImportedOverlayMapsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String> dirPath = const Value.absent(),
+            Value<int> tileCount = const Value.absent(),
+            Value<int> importedAt = const Value.absent(),
+            Value<bool> isVisible = const Value.absent(),
+            Value<double> boundsNorth = const Value.absent(),
+            Value<double> boundsSouth = const Value.absent(),
+            Value<double> boundsEast = const Value.absent(),
+            Value<double> boundsWest = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              ImportedOverlayMapsCompanion(
+            id: id,
+            name: name,
+            dirPath: dirPath,
+            tileCount: tileCount,
+            importedAt: importedAt,
+            isVisible: isVisible,
+            boundsNorth: boundsNorth,
+            boundsSouth: boundsSouth,
+            boundsEast: boundsEast,
+            boundsWest: boundsWest,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String name,
+            required String dirPath,
+            required int tileCount,
+            required int importedAt,
+            Value<bool> isVisible = const Value.absent(),
+            required double boundsNorth,
+            required double boundsSouth,
+            required double boundsEast,
+            required double boundsWest,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              ImportedOverlayMapsCompanion.insert(
+            id: id,
+            name: name,
+            dirPath: dirPath,
+            tileCount: tileCount,
+            importedAt: importedAt,
+            isVisible: isVisible,
+            boundsNorth: boundsNorth,
+            boundsSouth: boundsSouth,
+            boundsEast: boundsEast,
+            boundsWest: boundsWest,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$ImportedOverlayMapsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $ImportedOverlayMapsTable,
+    ImportedOverlayMapData,
+    $$ImportedOverlayMapsTableFilterComposer,
+    $$ImportedOverlayMapsTableOrderingComposer,
+    $$ImportedOverlayMapsTableAnnotationComposer,
+    $$ImportedOverlayMapsTableCreateCompanionBuilder,
+    $$ImportedOverlayMapsTableUpdateCompanionBuilder,
+    (
+      ImportedOverlayMapData,
+      BaseReferences<_$AppDatabase, $ImportedOverlayMapsTable,
+          ImportedOverlayMapData>
+    ),
+    ImportedOverlayMapData,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7729,4 +8510,6 @@ class $AppDatabaseManager {
       $$AckRecordsTableTableManager(_db, _db.ackRecords);
   $$OfflineMapAreasTableTableManager get offlineMapAreas =>
       $$OfflineMapAreasTableTableManager(_db, _db.offlineMapAreas);
+  $$ImportedOverlayMapsTableTableManager get importedOverlayMaps =>
+      $$ImportedOverlayMapsTableTableManager(_db, _db.importedOverlayMaps);
 }
