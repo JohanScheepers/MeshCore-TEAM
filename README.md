@@ -44,12 +44,16 @@ Core user-facing features that are already implemented:
 	- Create private channels
 	- Import via link/QR
 	- Share private channels via link/QR
+	- Hashtag channel creation directly from the chat input
+	- `@mention` autocomplete suggestions from known contacts
 - Map screen
 	- Phone location + optional "track-up" mode
 	- Contact markers (when location tracking is enabled)
-	- Waypoints (create/edit/manage)
-	- Routes (create multi-point paths, edit, color-code, share via mesh)
-	- Offline map download + management
+		- Contact path history (dotted trail showing recent GPS fixes per contact)
+		- Waypoints (create/edit/manage)
+		- Routes (create multi-point paths, edit, color-code, share via mesh)
+		- Offline map download + management
+		- KMZ overlay map import — render Garmin-style custom maps as georeferenced raster overlays
 - Location settings
 	- Location source: phone GPS vs companion radio GPS
 	- Location tracking ("telemetry") to a selected private channel
@@ -60,9 +64,9 @@ Core user-facing features that are already implemented:
 - **Autonomous mode** — firmware-side GPS tracking that operates without a phone connection
 - Capability advertisement between peers (`#CAP:` on the telemetry channel)
 - Team Config export/import
-	- Export channels, waypoints, radio settings, and offline map tiles as a portable `.teamcfg.zip` file
-	- Import config on a connected companion — channels are registered with the radio, radio settings applied, waypoints and map tiles merged
-	- Named configs with per-item selection (choose which channels, waypoints, and map areas to include)
+		- Export channels, waypoints, radio settings, offline map tiles, and KMZ overlay maps as a portable `.teamcfg.zip` file
+		- Import config on a connected companion — channels are registered with the radio, radio settings applied, waypoints and map tiles merged, overlay maps extracted
+		- Named configs with per-item selection (choose which channels, waypoints, map areas, and overlay maps to include)
 	- Offline sharing — serve configs over a local hotspot with QR code download (no internet required)
 - Wipe Local Data — selectively clear channels (from firmware too), waypoints/routes, and offline maps with double confirmation
 - Foreground service for background BLE stability (Android)
@@ -230,16 +234,32 @@ Channel share links use this format:
 
 Treat the link like a password: anyone who has it can join the channel.
 
+#### Hashtag channels and mentions
+
+You can create a channel directly from the chat input by typing a hashtag (e.g. `#ops`). The app will prompt you to create a new private channel with that name if one doesn't already exist.
+
+Type `@` in any chat to see an autocomplete list of known contacts. Tapping a suggestion inserts a formatted mention chip into the message.
+
 ### 5) Map, offline maps, waypoints, and routes
 
 - Open **Map** (fourth tab) to see your position.
 - Use the map menus to:
 	- change the map provider (layers icon)
+	- toggle overlay map visibility per imported KMZ map (layers icon)
 	- download offline tiles (**Download Map Area**)
 	- manage stored areas (**Manage Offline Maps**)
 	- manage waypoints (**Manage Waypoints**)
+	- import and manage KMZ overlay maps (**Manage Imported Maps**)
 
 Contact markers appear on the map when they have sent location telemetry on the tracking channel within the last 12 hours.
+
+#### Contact path history
+
+Each contact's recent movement can be shown as a dotted trail on the map. Enable **Show Contact Paths** from the map settings menu to display paths for all contacts, or toggle per-contact from the contact details dialog. A 25-metre stationary gate prevents dot clustering when a contact isn't moving.
+
+#### KMZ overlay maps
+
+Garmin-style KMZ custom map files can be imported and rendered as georeferenced raster overlays on top of the base map. The app automatically selects the appropriate pyramid level based on the current zoom — higher-detail tiles are used when zoomed in, lower-detail tiles when zoomed out. Import KMZ files from the **Manage Imported Maps** screen (accessible via the map settings menu). Imported maps can be toggled per-map from the layers menu and deleted from the Manage Imported Maps screen.
 
 #### Waypoints
 
@@ -280,10 +300,10 @@ Team Config lets a group leader export channels, waypoints, radio settings, and 
 1. Connect to your companion radio.
 2. Tap the **⋮ menu** on the Connection screen and choose **Create Team Config**.
 3. Enter a **config name** (e.g. "Alpha Team").
-4. Select the **channels**, **waypoints**, and **offline map areas** to include. Toggle **Radio Settings** to include your frequency/bandwidth/SF/CR.
+4. Select the **channels**, **waypoints**, **offline map areas**, and **overlay maps (KMZ)** to include. Toggle **Radio Settings** to include your frequency/bandwidth/SF/CR.
 5. Tap **Export Config** and choose a save location.
 
-The exported `.teamcfg.zip` contains a `config.json` (channels, waypoints, radio settings), tile area metadata, and cached map tiles. Share it with group members via email, USB, or any file transfer method — or use **Share Config Offline** (see below).
+The exported `.teamcfg.zip` contains a `config.json` (channels, waypoints, radio settings), tile area metadata, cached map tiles, and any selected KMZ overlay map tile sets. Share it with group members via email, USB, or any file transfer method — or use **Share Config Offline** (see below).
 
 #### Importing a config
 
@@ -394,10 +414,14 @@ Planned features and improvements (see also the [issues tracker](../../issues)):
 
 - **Forwarding V2** — topology-aware routing using the mesh graph model (`#T:` topology events). V2 will build a real-time network graph and use it to compute targeted forward lists (`SET_FORWARD_LIST`) instead of relying solely on `maxHops`. The topology strategy skeleton is in place and currently falls back to V1; the graph model and prefix-based routing logic are next.
 - **iOS background reliability** — improve BLE connection persistence using Core Bluetooth state restoration; implement the Always-location upgrade flow for background tracking.
-- 1.0.3 Added - **Group member location history** — track and display historical location trails for group members on the map.
-- 1.0.3-beta2 Added - **Team Config export/import** — export/import channels, waypoints, radio settings, and offline map tiles as a portable `.teamcfg.zip` file for easy group onboarding. Includes offline sharing via local hotspot + QR code.
 - Topology map visualization — display the mesh network graph on the map screen
 - Multi-companion device switching
+
+*Previously shipped:*
+- ~~**Group member location history**~~ — shipped in v1.0.3
+- ~~**Team Config export/import**~~ — shipped in v1.0.3-beta2; overlay maps added in v1.1.4
+- ~~**Hashtag channel creation + @mentions**~~ — shipped in v1.1.4
+- ~~**KMZ overlay map import**~~ — shipped in v1.1.4
 
 ### Possible future features
 
