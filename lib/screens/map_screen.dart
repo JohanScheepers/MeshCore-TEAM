@@ -91,7 +91,8 @@ class _MapScreenState extends State<MapScreen> {
   List<ImportedOverlayMapData> _overlayMaps = [];
   final Map<String, List<KmzTile>> _overlayTilesCache = {};
   StreamSubscription<List<ImportedOverlayMapData>>? _overlayMapsSub;
-  double _mapZoom = 15.0; // triggers rebuild when zoom changes so overlay budget is re-evaluated
+  double _mapZoom =
+      15.0; // triggers rebuild when zoom changes so overlay budget is re-evaluated
 
   void _showComingSoon(String featureName) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -174,12 +175,14 @@ class _MapScreenState extends State<MapScreen> {
       // Find the highest level whose viewport-culled tile count fits the budget.
       int targetLevel = sortedLevels.isEmpty ? -1 : sortedLevels.last;
       for (final level in sortedLevels) {
-        final count = allTiles.where((t) =>
-            t.level == level &&
-            t.north >= visibleBounds.south &&
-            t.south <= visibleBounds.north &&
-            t.east >= visibleBounds.west &&
-            t.west <= visibleBounds.east).length;
+        final count = allTiles
+            .where((t) =>
+                t.level == level &&
+                t.north >= visibleBounds.south &&
+                t.south <= visibleBounds.north &&
+                t.east >= visibleBounds.west &&
+                t.west <= visibleBounds.east)
+            .length;
         if (count <= _kMaxOverlayTiles) {
           targetLevel = level;
           break;
@@ -234,7 +237,8 @@ class _MapScreenState extends State<MapScreen> {
     final kmzService = KmzImportService();
     for (final m in maps) {
       if (_overlayTilesCache.containsKey(m.id)) {
-        print('[KMZ]   map "${m.name}" already in cache (${_overlayTilesCache[m.id]!.length} tiles)');
+        print(
+            '[KMZ]   map "${m.name}" already in cache (${_overlayTilesCache[m.id]!.length} tiles)');
         continue;
       }
       print('[KMZ]   loading map "${m.name}" from ${m.dirPath}');

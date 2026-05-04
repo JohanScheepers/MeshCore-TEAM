@@ -13,6 +13,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:path_provider/path_provider.dart';
+
 import 'package:meshcore_team/database/database.dart';
 import 'package:meshcore_team/models/map_tile_providers.dart';
 import 'package:meshcore_team/repositories/channel_repository.dart';
@@ -43,6 +45,8 @@ class TeamConfigPreview {
   final TeamConfigRadioSettings? radioSettings;
   final int tileCount;
   final int tileSizeBytes;
+  final List<TeamConfigOverlayMapEntry> overlayMaps;
+  final int overlayMapSizeBytes;
 
   const TeamConfigPreview({
     required this.version,
@@ -55,6 +59,8 @@ class TeamConfigPreview {
     this.radioSettings,
     required this.tileCount,
     required this.tileSizeBytes,
+    this.overlayMaps = const [],
+    this.overlayMapSizeBytes = 0,
   });
 }
 
@@ -218,6 +224,51 @@ class TeamConfigTileAreaEntry {
       );
 }
 
+class TeamConfigOverlayMapEntry {
+  final String id;
+  final String name;
+  final int tileCount;
+  final int sizeBytes;
+  final double north;
+  final double south;
+  final double east;
+  final double west;
+
+  const TeamConfigOverlayMapEntry({
+    required this.id,
+    required this.name,
+    required this.tileCount,
+    required this.sizeBytes,
+    required this.north,
+    required this.south,
+    required this.east,
+    required this.west,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'tileCount': tileCount,
+        'sizeBytes': sizeBytes,
+        'north': north,
+        'south': south,
+        'east': east,
+        'west': west,
+      };
+
+  factory TeamConfigOverlayMapEntry.fromJson(Map<String, dynamic> json) =>
+      TeamConfigOverlayMapEntry(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        tileCount: json['tileCount'] as int? ?? 0,
+        sizeBytes: json['sizeBytes'] as int? ?? 0,
+        north: (json['north'] as num).toDouble(),
+        south: (json['south'] as num).toDouble(),
+        east: (json['east'] as num).toDouble(),
+        west: (json['west'] as num).toDouble(),
+      );
+}
+
 /// Result of an import operation.
 class TeamConfigImportResult {
   final int channelsImported;
@@ -228,6 +279,8 @@ class TeamConfigImportResult {
   final int tilesSkipped;
   final int tileAreasImported;
   final bool radioSettingsApplied;
+  final int overlayMapsImported;
+  final int overlayMapsSkipped;
 
   const TeamConfigImportResult({
     this.channelsImported = 0,
@@ -238,6 +291,8 @@ class TeamConfigImportResult {
     this.tilesSkipped = 0,
     this.tileAreasImported = 0,
     this.radioSettingsApplied = false,
+    this.overlayMapsImported = 0,
+    this.overlayMapsSkipped = 0,
   });
 
   @override
@@ -246,6 +301,7 @@ class TeamConfigImportResult {
     if (channelsImported > 0) parts.add('$channelsImported channels');
     if (waypointsImported > 0) parts.add('$waypointsImported waypoints');
     if (tilesImported > 0) parts.add('$tilesImported tiles');
+    if (overlayMapsImported > 0) parts.add('$overlayMapsImported overlay maps');
     if (radioSettingsApplied) parts.add('radio settings');
     final imported =
         parts.isEmpty ? 'Nothing new' : 'Imported ${parts.join(', ')}';
@@ -253,6 +309,7 @@ class TeamConfigImportResult {
     if (channelsSkipped > 0) skipped.add('$channelsSkipped channels');
     if (waypointsSkipped > 0) skipped.add('$waypointsSkipped waypoints');
     if (tilesSkipped > 0) skipped.add('$tilesSkipped tiles');
+    if (overlayMapsSkipped > 0) skipped.add('$overlayMapsSkipped overlay maps');
     return skipped.isEmpty
         ? imported
         : '$imported (skipped ${skipped.join(', ')})';
@@ -272,6 +329,7 @@ class TeamConfigService {
     required List<WaypointData> waypoints,
     required List<OfflineMapAreaData> mapAreas,
     required MapTileCacheService tileCache,
+    List<ImportedOverlayMapData> overlayMaps = const [],
     String name = '',
     String description = '',
     TeamConfigRadioSettings? radioSettings,
@@ -405,6 +463,58 @@ class TeamConfigService {
       ));
     }
 
+    // --- Pack overlay map tile files ---
+    final overlayMapEntries = <TeamConfigOverlayMapEntry>[];
+    int overlayMapSizeBytes = 0;
+
+    for (int mi = 0; mi < overlayMaps.length; mi++) {
+      if (isCancelled?.call() == true) break;
+      final map = overlayMaps[mi];
+
+      onProgress?.call(TeamConfigProgress(
+        phase: 'Packing overlay map ${mi + 1} of ${overlayMaps.length}',
+        current: mi + 1,
+        total: overlayMaps.length,
+      ));
+
+      final dir = Directory(map.dirPath);
+      if (!dir.existsSync()) continue;
+
+      int mapSizeBytes = 0;
+      final files = dir.listSync().whereType<File>().toList();
+      for (final file in files) {
+        if (isCancelled?.call() == true) break;
+        final bytes = await file.readAsBytes();
+        final entryPath = 'kmz_overlays/${map.id}/${file.uri.pathSegments.last}';
+        archive.addFile(ArchiveFile(entryPath, bytes.length, bytes));
+        mapSizeBytes += bytes.length;
+      }
+
+      overlayMapSizeBytes += mapSizeBytes;
+      overlayMapEntries.add(TeamConfigOverlayMapEntry(
+        id: map.id,
+        name: map.name,
+        tileCount: map.tileCount,
+        sizeBytes: mapSizeBytes,
+        north: map.boundsNorth,
+        south: map.boundsSouth,
+        east: map.boundsEast,
+        west: map.boundsWest,
+      ));
+    }
+
+    // --- kmz_overlays.json ---
+    if (overlayMapEntries.isNotEmpty) {
+      final overlayJson = jsonEncode({
+        'maps': overlayMapEntries.map((e) => e.toJson()).toList(),
+      });
+      archive.addFile(ArchiveFile(
+        'kmz_overlays.json',
+        utf8.encode(overlayJson).length,
+        utf8.encode(overlayJson),
+      ));
+    }
+
     // --- manifest.json ---
     final manifest = {
       'version': _formatVersion,
@@ -419,6 +529,9 @@ class TeamConfigService {
       'waypointCount': waypointEntries.length,
       'tileCount': totalTileCount,
       'tileSizeBytes': totalTileSizeBytes,
+      'includesOverlayMaps': overlayMapEntries.isNotEmpty,
+      'overlayMapCount': overlayMapEntries.length,
+      'overlayMapSizeBytes': overlayMapSizeBytes,
     };
     final manifestJson = jsonEncode(manifest);
     archive.addFile(ArchiveFile(
@@ -496,6 +609,18 @@ class TeamConfigService {
           [];
     }
 
+    List<TeamConfigOverlayMapEntry> overlayMaps = [];
+    final overlayFile = archive.findFile('kmz_overlays.json');
+    if (overlayFile != null) {
+      final parsed = jsonDecode(utf8.decode(overlayFile.content as List<int>))
+          as Map<String, dynamic>;
+      overlayMaps = (parsed['maps'] as List<dynamic>?)
+              ?.map((e) => TeamConfigOverlayMapEntry.fromJson(
+                  e as Map<String, dynamic>))
+              .toList() ??
+          [];
+    }
+
     return TeamConfigPreview(
       version: version,
       name: manifest['name'] as String?,
@@ -507,6 +632,8 @@ class TeamConfigService {
       radioSettings: radioSettings,
       tileCount: manifest['tileCount'] as int? ?? 0,
       tileSizeBytes: manifest['tileSizeBytes'] as int? ?? 0,
+      overlayMaps: overlayMaps,
+      overlayMapSizeBytes: manifest['overlayMapSizeBytes'] as int? ?? 0,
     );
   }
 
@@ -784,6 +911,87 @@ class TeamConfigService {
       }
     }
 
+    // --- Import overlay maps ---
+    int overlayMapsImported = 0;
+    int overlayMapsSkipped = 0;
+
+    List<TeamConfigOverlayMapEntry> overlayMapEntries = [];
+    final overlayMetaFile = archive.findFile('kmz_overlays.json');
+    if (overlayMetaFile != null) {
+      final parsed =
+          jsonDecode(utf8.decode(overlayMetaFile.content as List<int>))
+              as Map<String, dynamic>;
+      overlayMapEntries = (parsed['maps'] as List<dynamic>?)
+              ?.map((e) => TeamConfigOverlayMapEntry.fromJson(
+                  e as Map<String, dynamic>))
+              .toList() ??
+          [];
+    }
+
+    if (overlayMapEntries.isNotEmpty) {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final existingOverlays = await db.importedOverlayMapsDao.getAllMaps();
+
+      onProgress?.call(TeamConfigProgress(
+        phase: 'Importing overlay maps',
+        current: 0,
+        total: overlayMapEntries.length,
+      ));
+
+      for (int i = 0; i < overlayMapEntries.length; i++) {
+        if (isCancelled?.call() == true) break;
+        final entry = overlayMapEntries[i];
+
+        // Dedup: skip if same name (case-insensitive) or exact same bounds.
+        final isDuplicate = existingOverlays.any((existing) =>
+            existing.name.trim().toLowerCase() ==
+                entry.name.trim().toLowerCase() ||
+            (existing.boundsNorth == entry.north &&
+                existing.boundsSouth == entry.south &&
+                existing.boundsEast == entry.east &&
+                existing.boundsWest == entry.west));
+
+        if (isDuplicate) {
+          overlayMapsSkipped++;
+        } else {
+          // Extract tile files for this overlay map.
+          final dirPath =
+              '${docsDir.path}/imported_maps/${entry.id}';
+          await Directory(dirPath).create(recursive: true);
+
+          final prefix = 'kmz_overlays/${entry.id}/';
+          for (final zipEntry in archive.files) {
+            if (!zipEntry.isFile || !zipEntry.name.startsWith(prefix)) {
+              continue;
+            }
+            final filename = zipEntry.name.substring(prefix.length);
+            if (filename.isEmpty || filename.contains('/')) continue;
+            final outFile = File('$dirPath/$filename');
+            await outFile.writeAsBytes(zipEntry.content as List<int>);
+          }
+
+          await db.importedOverlayMapsDao.insertMap(ImportedOverlayMapsCompanion.insert(
+            id: entry.id,
+            name: entry.name,
+            dirPath: dirPath,
+            tileCount: entry.tileCount,
+            importedAt: DateTime.now().millisecondsSinceEpoch,
+            boundsNorth: entry.north,
+            boundsSouth: entry.south,
+            boundsEast: entry.east,
+            boundsWest: entry.west,
+          ));
+          overlayMapsImported++;
+        }
+
+        onProgress?.call(TeamConfigProgress(
+          phase: 'Importing overlay maps',
+          current: i + 1,
+          total: overlayMapEntries.length,
+        ));
+      }
+    }
+
     return TeamConfigImportResult(
       channelsImported: channelsImported,
       channelsSkipped: channelsSkipped,
@@ -793,10 +1001,10 @@ class TeamConfigService {
       tilesSkipped: tilesSkipped,
       tileAreasImported: tileAreasImported,
       radioSettingsApplied: radioSettingsApplied,
+      overlayMapsImported: overlayMapsImported,
+      overlayMapsSkipped: overlayMapsSkipped,
     );
   }
-
-  // --- Helpers ---
 
   String _bytesToHex(Uint8List bytes) {
     final sb = StringBuffer();
