@@ -446,18 +446,21 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
   void _updateMentionSuggestions(String text) {
     final cursor = _messageController.selection.baseOffset;
     if (cursor <= 0) {
-      if (_mentionSuggestions.isNotEmpty) setState(() => _mentionSuggestions = []);
+      if (_mentionSuggestions.isNotEmpty)
+        setState(() => _mentionSuggestions = []);
       return;
     }
     final before = text.substring(0, cursor.clamp(0, text.length));
     final atIndex = before.lastIndexOf('@');
     if (atIndex == -1) {
-      if (_mentionSuggestions.isNotEmpty) setState(() => _mentionSuggestions = []);
+      if (_mentionSuggestions.isNotEmpty)
+        setState(() => _mentionSuggestions = []);
       return;
     }
     final query = before.substring(atIndex + 1);
     if (query.isEmpty || query.contains(' ')) {
-      if (_mentionSuggestions.isNotEmpty) setState(() => _mentionSuggestions = []);
+      if (_mentionSuggestions.isNotEmpty)
+        setState(() => _mentionSuggestions = []);
       return;
     }
     final queryLower = query.toLowerCase();

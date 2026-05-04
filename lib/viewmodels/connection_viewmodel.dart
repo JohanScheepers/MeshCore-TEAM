@@ -1177,7 +1177,8 @@ class ConnectionViewModel extends ChangeNotifier {
       return;
     }
     if (!_syncStatus.isComplete) {
-      debugPrint('[ConnectionVM] forceFullSync: sync already in progress — ignoring');
+      debugPrint(
+          '[ConnectionVM] forceFullSync: sync already in progress — ignoring');
       return;
     }
     debugPrint('[ConnectionVM] 🔄 Manual full sync triggered');

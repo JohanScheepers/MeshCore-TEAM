@@ -450,7 +450,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                     children: [
                       Text(
                         '${timestamp.hour.toString().padLeft(2, '0')}:'
-                        '${timestamp.minute.toString().padLeft(2, '0')}' ,
+                        '${timestamp.minute.toString().padLeft(2, '0')}',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: (isFromMe
                                   ? theme.colorScheme.onPrimaryContainer
@@ -531,18 +531,21 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   void _updateMentionSuggestions(String text) {
     final cursor = _messageController.selection.baseOffset;
     if (cursor <= 0) {
-      if (_mentionSuggestions.isNotEmpty) setState(() => _mentionSuggestions = []);
+      if (_mentionSuggestions.isNotEmpty)
+        setState(() => _mentionSuggestions = []);
       return;
     }
     final before = text.substring(0, cursor.clamp(0, text.length));
     final atIndex = before.lastIndexOf('@');
     if (atIndex == -1) {
-      if (_mentionSuggestions.isNotEmpty) setState(() => _mentionSuggestions = []);
+      if (_mentionSuggestions.isNotEmpty)
+        setState(() => _mentionSuggestions = []);
       return;
     }
     final query = before.substring(atIndex + 1);
     if (query.isEmpty || query.contains(' ')) {
-      if (_mentionSuggestions.isNotEmpty) setState(() => _mentionSuggestions = []);
+      if (_mentionSuggestions.isNotEmpty)
+        setState(() => _mentionSuggestions = []);
       return;
     }
     final queryLower = query.toLowerCase();
