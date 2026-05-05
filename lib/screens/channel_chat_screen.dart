@@ -11,10 +11,14 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'dart:async';
+
 import '../database/database.dart';
 import '../repositories/channel_repository.dart';
+import '../repositories/contact_repository.dart';
 import '../repositories/message_repository.dart';
 import '../services/message_notification_service.dart';
+import '../widgets/chat_message_text.dart';
 
 /// Channel chat screen for group conversations
 class ChannelChatScreen extends StatefulWidget {
@@ -32,16 +36,24 @@ class ChannelChatScreen extends StatefulWidget {
 class _ChannelChatScreenState extends State<ChannelChatScreen> {
   late final MessageRepository _messageRepository;
   late final ChannelRepository _channelRepository;
+  late final ContactRepository _contactRepository;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   int _previousMessageCount = 0;
   int? _firstUnreadTimestamp;
+  List<ContactData> _allContacts = [];
+  List<ContactData> _mentionSuggestions = [];
+  StreamSubscription<List<ContactData>>? _contactsSub;
 
   @override
   void initState() {
     super.initState();
     _messageRepository = Provider.of<MessageRepository>(context, listen: false);
     _channelRepository = Provider.of<ChannelRepository>(context, listen: false);
+    _contactRepository = Provider.of<ContactRepository>(context, listen: false);
+    _contactsSub = _contactRepository.getAllContacts().listen((contacts) {
+      if (mounted) setState(() => _allContacts = contacts);
+    });
 
     // Track active channel for notification suppression
     MessageNotificationService.isMessagesScreenVisible = true;
@@ -63,6 +75,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _contactsSub?.cancel();
 
     // Mark all messages as read when navigating away
     _messageRepository.messagesDao
@@ -228,6 +241,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             ),
           ),
 
+          // @mention suggestions
+          _buildMentionSuggestions(),
+
           // Message input
           SafeArea(
             top: false,
@@ -272,6 +288,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                             _firstUnreadTimestamp = null; // Hide divider
                           });
                         }
+                        _updateMentionSuggestions(text);
                       },
                     ),
                   ),
@@ -419,8 +436,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                     ),
                     const SizedBox(height: 4),
                   ],
-                  Text(
-                    message.content,
+                  ChatMessageText(
+                    text: message.content,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: isFromMe
                           ? theme.colorScheme.onPrimaryContainer
@@ -482,12 +499,86 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     return hex.substring(0, 8); // Show first 8 chars of public key
   }
 
+  Widget _buildMentionSuggestions() {
+    if (_mentionSuggestions.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    return Material(
+      elevation: 4,
+      color: theme.colorScheme.surface,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 200),
+        child: ListView.builder(
+          padding: EdgeInsets.zero,
+          shrinkWrap: true,
+          itemCount: _mentionSuggestions.length,
+          itemBuilder: (context, index) {
+            final contact = _mentionSuggestions[index];
+            final name = contact.name ?? 'Unknown';
+            return ListTile(
+              leading: const CircleAvatar(
+                child: Icon(Icons.person, size: 18),
+              ),
+              title: Text(name),
+              dense: true,
+              onTap: () => _applyMention(name),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void _updateMentionSuggestions(String text) {
+    final cursor = _messageController.selection.baseOffset;
+    if (cursor <= 0) {
+      if (_mentionSuggestions.isNotEmpty)
+        setState(() => _mentionSuggestions = []);
+      return;
+    }
+    final before = text.substring(0, cursor.clamp(0, text.length));
+    final atIndex = before.lastIndexOf('@');
+    if (atIndex == -1) {
+      if (_mentionSuggestions.isNotEmpty)
+        setState(() => _mentionSuggestions = []);
+      return;
+    }
+    final query = before.substring(atIndex + 1);
+    if (query.isEmpty || query.contains(' ')) {
+      if (_mentionSuggestions.isNotEmpty)
+        setState(() => _mentionSuggestions = []);
+      return;
+    }
+    final queryLower = query.toLowerCase();
+    final filtered = _allContacts
+        .where((c) => (c.name ?? '').toLowerCase().contains(queryLower))
+        .toList();
+    setState(() => _mentionSuggestions = filtered);
+  }
+
+  void _applyMention(String contactName) {
+    final text = _messageController.text;
+    final cursor = _messageController.selection.baseOffset;
+    if (cursor <= 0) return;
+    final before = text.substring(0, cursor.clamp(0, text.length));
+    final atIndex = before.lastIndexOf('@');
+    if (atIndex == -1) return;
+    final after = cursor < text.length ? text.substring(cursor) : '';
+    final newText = '${text.substring(0, atIndex)}@[$contactName] $after';
+    final newCursor = atIndex + contactName.length + 4; // @[name][space]
+    _messageController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newCursor),
+    );
+    setState(() => _mentionSuggestions = []);
+  }
+
   Future<void> _sendMessage() async {
     final content = _messageController.text.trim();
     if (content.isEmpty) return;
 
     // Clear input immediately
     _messageController.clear();
+    setState(() => _mentionSuggestions = []);
 
     // Scroll to bottom
     WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -2,6 +2,7 @@
 // Licensed under CC BY-NC-SA 4.0
 
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -22,8 +23,10 @@ import 'package:meshcore_team/models/waypoint.dart' as waypoint_model;
 import 'package:meshcore_team/repositories/message_repository.dart';
 import 'package:meshcore_team/screens/direct_message_screen.dart';
 import 'package:meshcore_team/screens/manage_waypoints_screen.dart';
+import 'package:meshcore_team/screens/imported_maps_screen.dart';
 import 'package:meshcore_team/screens/offline_maps_screen.dart';
 import 'package:meshcore_team/services/forwarding_policy_service.dart';
+import 'package:meshcore_team/services/kmz_import_service.dart';
 import 'package:meshcore_team/services/map_tile_cache_service.dart';
 import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
@@ -84,6 +87,13 @@ class _MapScreenState extends State<MapScreen> {
   LatLng? _navTarget;
   String _navTargetName = '';
 
+  // Imported KMZ overlay maps
+  List<ImportedOverlayMapData> _overlayMaps = [];
+  final Map<String, List<KmzTile>> _overlayTilesCache = {};
+  StreamSubscription<List<ImportedOverlayMapData>>? _overlayMapsSub;
+  double _mapZoom =
+      15.0; // triggers rebuild when zoom changes so overlay budget is re-evaluated
+
   void _showComingSoon(String featureName) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$featureName coming soon')),
@@ -132,6 +142,125 @@ class _MapScreenState extends State<MapScreen> {
       _navTarget = null;
       _navTargetName = '';
     });
+  }
+
+  /// Builds the list of [BaseOverlayImage]s to render.
+  ///
+  /// Strategy: try levels from highest to lowest. Pick the highest level
+  /// where the viewport-culled tile count stays within [_kMaxOverlayTiles].
+  /// This always shows the sharpest available detail with no zoom thresholds.
+  static const int _kMaxOverlayTiles = 24;
+
+  List<BaseOverlayImage> _buildOverlayImages() {
+    // The MapController camera is unavailable before the first render.
+    LatLngBounds visibleBounds;
+    try {
+      visibleBounds = _mapController.camera.visibleBounds;
+    } catch (_) {
+      return const [];
+    }
+    final result = <BaseOverlayImage>[];
+    for (final m in _overlayMaps.where((m) => m.isVisible)) {
+      final allTiles = _overlayTilesCache[m.id] ?? <KmzTile>[];
+      if (allTiles.isEmpty) continue;
+
+      // Levels sorted highest-first (best detail first).
+      final sortedLevels = allTiles
+          .map((t) => t.level)
+          .where((l) => l > 0)
+          .toSet()
+          .toList()
+        ..sort((a, b) => b.compareTo(a));
+
+      // Find the highest level whose viewport-culled tile count fits the budget.
+      int targetLevel = sortedLevels.isEmpty ? -1 : sortedLevels.last;
+      for (final level in sortedLevels) {
+        final count = allTiles
+            .where((t) =>
+                t.level == level &&
+                t.north >= visibleBounds.south &&
+                t.south <= visibleBounds.north &&
+                t.east >= visibleBounds.west &&
+                t.west <= visibleBounds.east)
+            .length;
+        if (count <= _kMaxOverlayTiles) {
+          targetLevel = level;
+          break;
+        }
+      }
+
+      for (final tile in allTiles) {
+        // Level filter
+        if (tile.level > 0 && tile.level != targetLevel) continue;
+        // Viewport culling
+        if (tile.north < visibleBounds.south) continue;
+        if (tile.south > visibleBounds.north) continue;
+        if (tile.east < visibleBounds.west) continue;
+        if (tile.west > visibleBounds.east) continue;
+
+        if (tile.rotation.abs() < 0.01) {
+          result.add(OverlayImage(
+            bounds: LatLngBounds(
+              LatLng(tile.north, tile.west),
+              LatLng(tile.south, tile.east),
+            ),
+            imageProvider: FileImage(File(tile.imagePath)),
+            opacity: 1.0,
+          ));
+        } else {
+          final center = LatLng(
+            (tile.north + tile.south) / 2,
+            (tile.east + tile.west) / 2,
+          );
+          final tl = _rotateLatLng(
+              center, LatLng(tile.north, tile.west), tile.rotation);
+          final bl = _rotateLatLng(
+              center, LatLng(tile.south, tile.west), tile.rotation);
+          final br = _rotateLatLng(
+              center, LatLng(tile.south, tile.east), tile.rotation);
+          result.add(RotatedOverlayImage(
+            topLeftCorner: tl,
+            bottomLeftCorner: bl,
+            bottomRightCorner: br,
+            imageProvider: FileImage(File(tile.imagePath)),
+            opacity: 1.0,
+          ));
+        }
+      }
+    }
+    return result;
+  }
+
+  Future<void> _loadMissingOverlayTiles(
+      List<ImportedOverlayMapData> maps) async {
+    print('[KMZ] _loadMissingOverlayTiles: ${maps.length} maps in DB');
+    final kmzService = KmzImportService();
+    for (final m in maps) {
+      if (_overlayTilesCache.containsKey(m.id)) {
+        print(
+            '[KMZ]   map "${m.name}" already in cache (${_overlayTilesCache[m.id]!.length} tiles)');
+        continue;
+      }
+      print('[KMZ]   loading map "${m.name}" from ${m.dirPath}');
+      final tiles = await kmzService.loadTiles(m.dirPath);
+      print('[KMZ]   loaded ${tiles?.length ?? 0} tiles for "${m.name}"');
+      if (tiles != null && mounted) {
+        setState(() => _overlayTilesCache[m.id] = tiles);
+      }
+    }
+  }
+
+  /// Rotates [point] around [center] by [angleDeg] degrees counter-clockwise.
+  LatLng _rotateLatLng(LatLng center, LatLng point, double angleDeg) {
+    final rad = angleDeg * math.pi / 180.0;
+    final dx = point.longitude - center.longitude;
+    final dy = point.latitude - center.latitude;
+    final cosA = math.cos(rad);
+    final sinA = math.sin(rad);
+    return LatLng(
+      center.latitude + dy * cosA - dx * sinA,
+      center.longitude + dx * cosA + dy * sinA,
+    );
   }
 
   Uint8List _hexToBytes(String hex) {
@@ -1047,6 +1176,15 @@ class _MapScreenState extends State<MapScreen> {
       final settingsService = context.read<SettingsService>();
       final connectionVM = context.read<ConnectionViewModel>();
       _applyLocationPolicy(settingsService, connectionVM);
+
+      // Subscribe to imported KMZ overlay maps
+      final db = context.read<AppDatabase>();
+      _overlayMapsSub =
+          db.importedOverlayMapsDao.watchAllMaps().listen((maps) async {
+        if (!mounted) return;
+        setState(() => _overlayMaps = maps);
+        await _loadMissingOverlayTiles(maps);
+      });
     });
   }
 
@@ -1062,6 +1200,8 @@ class _MapScreenState extends State<MapScreen> {
     _contactMarkerRefreshTimer = null;
     _phoneLocationPollingTimer?.cancel();
     _phoneLocationPollingTimer = null;
+    _overlayMapsSub?.cancel();
+    _overlayMapsSub = null;
     super.dispose();
   }
 
@@ -1519,8 +1659,18 @@ class _MapScreenState extends State<MapScreen> {
           PopupMenuButton<String>(
             tooltip: 'Map type',
             initialValue: currentProviderId,
-            onSelected: (providerId) async {
-              await settingsService.setMapProvider(providerId);
+            onSelected: (value) async {
+              if (value.startsWith('overlay:')) {
+                // Toggle KMZ overlay visibility
+                final mapId = value.substring('overlay:'.length);
+                final db = context.read<AppDatabase>();
+                final m = _overlayMaps.firstWhere((m) => m.id == mapId,
+                    orElse: () => throw StateError('overlay not found'));
+                await db.importedOverlayMapsDao
+                    .updateVisibility(mapId, !m.isVisible);
+              } else {
+                await settingsService.setMapProvider(value);
+              }
             },
             itemBuilder: (context) {
               return [
@@ -1530,6 +1680,15 @@ class _MapScreenState extends State<MapScreen> {
                     checked: opt.id == currentProviderId,
                     child: Text(opt.label),
                   ),
+                if (_overlayMaps.isNotEmpty) ...[
+                  const PopupMenuDivider(),
+                  for (final m in _overlayMaps)
+                    CheckedPopupMenuItem<String>(
+                      value: 'overlay:${m.id}',
+                      checked: m.isVisible,
+                      child: Text(m.name),
+                    ),
+                ],
               ];
             },
             icon: const Icon(Icons.layers),
@@ -1569,6 +1728,13 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                   );
                   break;
+                case 'manage_imported_maps':
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const ImportedMapsScreen(),
+                    ),
+                  );
+                  break;
                 case 'manage_waypoints':
                   final result = await Navigator.of(context).push(
                     MaterialPageRoute(
@@ -1591,6 +1757,10 @@ class _MapScreenState extends State<MapScreen> {
                 PopupMenuItem<String>(
                   value: 'manage_offline_maps',
                   child: Text('Manage Offline Maps'),
+                ),
+                PopupMenuItem<String>(
+                  value: 'manage_imported_maps',
+                  child: Text('Manage Imported Maps (KMZ)'),
                 ),
                 PopupMenuItem<String>(
                   value: 'manage_waypoints',
@@ -1687,6 +1857,11 @@ class _MapScreenState extends State<MapScreen> {
                 }
               },
               onPositionChanged: (camera, hasGesture) {
+                // Trigger rebuild on zoom change so the overlay tile budget
+                // re-evaluates against the new viewport bounds.
+                if ((camera.zoom - _mapZoom).abs() > 0.05) {
+                  setState(() => _mapZoom = camera.zoom);
+                }
                 if (!hasGesture) return;
 
                 // Track-up behaves like a locked "my location" mode.
@@ -1719,6 +1894,10 @@ class _MapScreenState extends State<MapScreen> {
                 tileProvider: tileCache.tileProvider,
                 userAgentPackageName: 'com.meshcore.team',
                 maxNativeZoom: 18,
+              ),
+              // KMZ imported overlay maps — rendered above the base tile layer
+              OverlayImageLayer(
+                overlayImages: _buildOverlayImages(),
               ),
               StreamBuilder<List<ChannelData>>(
                 stream: db.select(db.channels).watch(),

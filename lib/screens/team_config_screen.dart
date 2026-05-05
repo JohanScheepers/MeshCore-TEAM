@@ -37,10 +37,12 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
   List<ChannelData> _allChannels = [];
   List<WaypointData> _allWaypoints = [];
   List<OfflineMapAreaData> _allMapAreas = [];
+  List<ImportedOverlayMapData> _allOverlayMaps = [];
 
   final Set<int> _selectedChannelHashes = {};
   final Set<String> _selectedWaypointIds = {};
   final Set<String> _selectedMapAreaIds = {};
+  final Set<String> _selectedOverlayMapIds = {};
   bool _includeRadioSettings = true;
   final TextEditingController _configNameController = TextEditingController();
 
@@ -72,12 +74,14 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
         : <ChannelData>[];
     final waypoints = await db.waypointsDao.getAllWaypoints();
     final mapAreas = await db.offlineMapAreasDao.getAllAreas();
+    final overlayMaps = await db.importedOverlayMapsDao.getAllMaps();
 
     if (!mounted) return;
     setState(() {
       _allChannels = channels;
       _allWaypoints = waypoints;
       _allMapAreas = mapAreas;
+      _allOverlayMaps = overlayMaps;
 
       // Select all private channels by default.
       _selectedChannelHashes.addAll(
@@ -87,6 +91,8 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
       _selectedWaypointIds.addAll(waypoints.map((w) => w.id));
       // Select all map areas by default.
       _selectedMapAreaIds.addAll(mapAreas.map((a) => a.id));
+      // Select all overlay maps by default.
+      _selectedOverlayMapIds.addAll(overlayMaps.map((m) => m.id));
     });
   }
 
@@ -137,7 +143,10 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
     final privateChannels = _allChannels.where((c) => !c.isPublic).toList();
     final estimatedTileSize = _allMapAreas
         .where((a) => _selectedMapAreaIds.contains(a.id))
-        .fold<int>(0, (sum, a) => sum + a.sizeBytes);
+        .fold<int>(0, (sum, a) => sum + a.sizeBytes) +
+        _allOverlayMaps
+        .where((m) => _selectedOverlayMapIds.contains(m.id))
+        .fold<int>(0, (sum, m) => sum + m.tileCount * 50000); // ~50 KB/tile estimate
     final caps = connectionVM.deviceCapabilities;
 
     final bottomInset = MediaQuery.of(context).padding.bottom;
@@ -285,6 +294,33 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
           const SizedBox(height: 8),
         ],
 
+        // Overlay Maps (KMZ)
+        if (_allOverlayMaps.isNotEmpty) ...[
+          _buildSectionCard(
+            title: 'Overlay Maps (KMZ)',
+            subtitle:
+                '${_selectedOverlayMapIds.length} of ${_allOverlayMaps.length} selected',
+            children: _allOverlayMaps.map((map) {
+              return CheckboxListTile(
+                secondary: const Icon(Icons.layers, size: 20),
+                title: Text(map.name),
+                subtitle: Text('${map.tileCount} tiles'),
+                value: _selectedOverlayMapIds.contains(map.id),
+                onChanged: (val) {
+                  setState(() {
+                    if (val == true) {
+                      _selectedOverlayMapIds.add(map.id);
+                    } else {
+                      _selectedOverlayMapIds.remove(map.id);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 8),
+        ],
+
         // Estimated size
         if (estimatedTileSize > 0)
           Padding(
@@ -303,7 +339,8 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
         FilledButton.icon(
           onPressed: _selectedChannelHashes.isEmpty &&
                   _selectedWaypointIds.isEmpty &&
-                  _selectedMapAreaIds.isEmpty
+                  _selectedMapAreaIds.isEmpty &&
+                  _selectedOverlayMapIds.isEmpty
               ? null
               : _exportConfig,
           icon: const Icon(Icons.file_download),
@@ -395,6 +432,9 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
       final selectedMapAreas = _allMapAreas
           .where((a) => _selectedMapAreaIds.contains(a.id))
           .toList();
+      final selectedOverlayMaps = _allOverlayMaps
+          .where((m) => _selectedOverlayMapIds.contains(m.id))
+          .toList();
 
       // Build radio settings from connected device capabilities.
       TeamConfigRadioSettings? radioSettings;
@@ -415,6 +455,7 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
         channels: selectedChannels,
         waypoints: selectedWaypoints,
         mapAreas: selectedMapAreas,
+        overlayMaps: selectedOverlayMaps,
         tileCache: tileCache,
         name: _configNameController.text.trim(),
         description: '',
@@ -787,6 +828,17 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
                     child: Text('• ${a.name} (${provider.label})'),
                   );
                 }),
+              ],
+              if (preview.overlayMaps.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Overlay Maps (${preview.overlayMaps.length})',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                ...preview.overlayMaps.map((m) => Padding(
+                      padding: const EdgeInsets.only(left: 12, top: 2),
+                      child: Text('• ${m.name} (${m.tileCount} tiles)'),
+                    )),
               ],
             ],
           ),

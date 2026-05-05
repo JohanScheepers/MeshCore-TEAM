@@ -16,6 +16,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'database/database.dart';
 import 'services/settings_service.dart';
 import 'services/map_tile_cache_service.dart';
+import 'services/kmz_import_service.dart';
 import 'services/message_notification_service.dart';
 import 'services/mesh_connection_service.dart';
 import 'ble/ble_connection_manager.dart';
@@ -395,6 +396,9 @@ class TeamFlutterApp extends StatelessWidget {
 
         // Offline map tile cache
         Provider<MapTileCacheService>.value(value: mapTileCacheService),
+
+        // KMZ imported map service
+        Provider<KmzImportService>(create: (_) => KmzImportService()),
 
         // Settings service provider
         ChangeNotifierProvider<SettingsService>.value(value: settingsService),

@@ -1,3 +1,53 @@
+# Release Notes — v1.1.4
+
+## KMZ Overlay Maps
+- Import Garmin-style KMZ custom map files as raster overlays displayed directly on the map.
+- KMZ tiles are extracted locally and rendered as georeferenced overlays with automatic zoom-level selection — higher-detail pyramid levels are shown when zoomed in, lower-detail levels when zoomed out, keeping tile count within budget.
+- Manage imported maps from the map settings menu: toggle visibility, delete maps.
+- Import progress is shown with a tile counter during extraction.
+
+## Overlay Maps in Team Config
+- KMZ overlay maps can now be included in a team config export.
+- Per-map checkbox selection on the Create Team Config screen.
+- On import, the full tile set is extracted and the map appears immediately in the recipient's Manage Imported Maps list.
+- Duplicate detection: maps with the same name or identical bounds are skipped on import.
+
+## Hashtag Channels
+- Create channels using hashtag syntax directly from any chat screen.
+- `@mention` suggestions appear when typing `@` — autocomplete from known contacts.
+- Hashtag channel links are rendered as tappable chips in messages.
+
+## Direct Message Routing
+- Improved DM delivery with automatic retry logic for unacknowledged messages.
+- Route discovery retries on failure before falling back to broadcast.
+
+---
+
+# Release Notes — v1.1.3
+
+## Bug Fixes
+- Fixed companion GPS enable/disable not taking effect until app restart.
+- Fixed TX power being reset to default when entering camp mode.
+
+---
+
+# Release Notes — v1.1.2
+
+## App Icons
+- Updated app icon and launch images on Android and iOS.
+
+## Bug Fixes
+- Fixed BLE write response detection for ESP32-based devices on iOS — resolves connection issues where commands were silently dropped.
+
+---
+
+# Release Notes — v1.0.3-beta3
+
+## Bug Fixes
+- Fixed out-of-memory crash when exporting large team configs. File data is no longer passed through the Flutter method channel — exports now write to a temp file and use the system file picker directly.
+
+---
+
 # Release Notes — v1.0.3-beta2
 
 ## Team Config Export / Import
@@ -29,7 +79,7 @@
 - Items with no data are shown as disabled.
 
 ## Fixes
-- Fixed out-of-memory crash when exporting or importing large configs with many map tiles. File data is no longer passed through the Flutter method channel — all transfers use temp files and direct file I/O.
+- Fixed keyboard overflow when saving a route with a long name or description (carried forward from v1.0.3).
 
 ---
 
