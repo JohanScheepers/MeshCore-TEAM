@@ -93,6 +93,7 @@ class _MapScreenState extends State<MapScreen> {
   StreamSubscription<List<ImportedOverlayMapData>>? _overlayMapsSub;
   double _mapZoom =
       15.0; // triggers rebuild when zoom changes so overlay budget is re-evaluated
+  List<BaseOverlayImage> _cachedOverlayImages = const [];
 
   void _showComingSoon(String featureName) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -245,7 +246,12 @@ class _MapScreenState extends State<MapScreen> {
       final tiles = await kmzService.loadTiles(m.dirPath);
       print('[KMZ]   loaded ${tiles?.length ?? 0} tiles for "${m.name}"');
       if (tiles != null && mounted) {
-        setState(() => _overlayTilesCache[m.id] = tiles);
+        setState(() {
+          _overlayTilesCache[m.id] = tiles;
+          try {
+            _cachedOverlayImages = _buildOverlayImages();
+          } catch (_) {}
+        });
       }
     }
   }
@@ -1182,7 +1188,12 @@ class _MapScreenState extends State<MapScreen> {
       _overlayMapsSub =
           db.importedOverlayMapsDao.watchAllMaps().listen((maps) async {
         if (!mounted) return;
-        setState(() => _overlayMaps = maps);
+        setState(() {
+          _overlayMaps = maps;
+          try {
+            _cachedOverlayImages = _buildOverlayImages();
+          } catch (_) {}
+        });
         await _loadMissingOverlayTiles(maps);
       });
     });
@@ -1857,10 +1868,15 @@ class _MapScreenState extends State<MapScreen> {
                 }
               },
               onPositionChanged: (camera, hasGesture) {
-                // Trigger rebuild on zoom change so the overlay tile budget
+                // Refresh overlay images on zoom change so the tile budget
                 // re-evaluates against the new viewport bounds.
                 if ((camera.zoom - _mapZoom).abs() > 0.05) {
-                  setState(() => _mapZoom = camera.zoom);
+                  setState(() {
+                    _mapZoom = camera.zoom;
+                    try {
+                      _cachedOverlayImages = _buildOverlayImages();
+                    } catch (_) {}
+                  });
                 }
                 if (!hasGesture) return;
 
@@ -1896,9 +1912,10 @@ class _MapScreenState extends State<MapScreen> {
                 maxNativeZoom: 18,
               ),
               // KMZ imported overlay maps — rendered above the base tile layer
-              OverlayImageLayer(
-                overlayImages: _buildOverlayImages(),
-              ),
+              if (_cachedOverlayImages.isNotEmpty)
+                OverlayImageLayer(
+                  overlayImages: _cachedOverlayImages,
+                ),
               StreamBuilder<List<ChannelData>>(
                 stream: db.select(db.channels).watch(),
                 builder: (context, channelsSnapshot) {

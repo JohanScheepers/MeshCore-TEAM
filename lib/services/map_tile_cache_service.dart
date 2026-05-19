@@ -342,7 +342,8 @@ class MapTileCacheService {
         .replaceAll('{z}', zoom.toString())
         .replaceAll('{x}', x.toString())
         .replaceAll('{y}', y.toString())
-        .replaceAll('{s}', s);
+        .replaceAll('{s}', s)
+        .replaceAll('{r}', ''); // match flutter_map retina-suffix stripping
   }
 }
 
@@ -353,7 +354,23 @@ class _CachedNetworkTileProvider extends TileProvider {
 
   @override
   ImageProvider getImage(TileCoordinates coordinates, TileLayer options) {
-    final url = getTileUrl(coordinates, options);
+    // Build the URL using the same algorithm as MapTileCacheService._buildTileUrl()
+    // so that display, download, and export all use identical cache keys.
+    final template = options.urlTemplate ?? '';
+    final subs = options.subdomains;
+    final x = coordinates.x;
+    final y = coordinates.y;
+    final z = coordinates.z;
+    final hasSubdomain = template.contains('{s}');
+    final s = (hasSubdomain && subs.isNotEmpty)
+        ? subs[(x + y) % subs.length]
+        : '';
+    final url = template
+        .replaceAll('{z}', z.toString())
+        .replaceAll('{x}', x.toString())
+        .replaceAll('{y}', y.toString())
+        .replaceAll('{s}', s)
+        .replaceAll('{r}', '');
     return CachedNetworkImageProvider(
       url,
       cacheManager: cacheManager,
