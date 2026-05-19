@@ -182,7 +182,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (_scrollController.hasClients) {
                       _scrollController.animateTo(
-                        _scrollController.position.maxScrollExtent,
+                        0.0,
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeOut,
                       );
@@ -221,11 +221,12 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                 }
 
                 return ListView.builder(
+                  reverse: true,
                   controller: _scrollController,
                   padding: const EdgeInsets.all(16),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
-                    final message = messages[index];
+                    final message = messages[messages.length - 1 - index];
                     final showUnreadDivider = _firstUnreadTimestamp != null &&
                         message.timestamp == _firstUnreadTimestamp;
 
@@ -242,7 +243,12 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           ),
 
           // @mention suggestions
-          _buildMentionSuggestions(),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeInOut,
+            alignment: Alignment.bottomCenter,
+            child: _buildMentionSuggestions(),
+          ),
 
           // Message input
           SafeArea(
@@ -277,6 +283,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                         ),
                       ),
                       maxLines: null,
+                      maxLength: 130,
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _sendMessage(),
                       onChanged: (text) {
@@ -575,6 +582,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   Future<void> _sendMessage() async {
     final content = _messageController.text.trim();
     if (content.isEmpty) return;
+    if (content.length > 130) return;
 
     // Clear input immediately
     _messageController.clear();
@@ -584,7 +592,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0.0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
