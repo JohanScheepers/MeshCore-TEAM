@@ -271,6 +271,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                         ),
                       ),
                       maxLines: null,
+                      maxLength: 130,
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _sendMessage(),
                       onChanged: (text) {
@@ -507,6 +508,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
 
     final content = _messageController.text.trim();
     if (content.isEmpty) return;
+    if (content.length > 130) return;
 
     // Clear input immediately
     _messageController.clear();
