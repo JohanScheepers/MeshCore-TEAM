@@ -21,6 +21,7 @@ class _WaypointCreateDialogState extends State<WaypointCreateDialog> {
   final TextEditingController _descriptionController = TextEditingController();
 
   WaypointType _selectedType = WaypointType.custom;
+  bool _shareWithTeam = false;
 
   @override
   void dispose() {
@@ -99,6 +100,13 @@ class _WaypointCreateDialogState extends State<WaypointCreateDialog> {
                 ),
                 maxLines: 3,
               ),
+              const SizedBox(height: 4),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Share with team when saved'),
+                value: _shareWithTeam,
+                onChanged: (v) => setState(() => _shareWithTeam = v),
+              ),
             ],
           ),
         ),
@@ -117,6 +125,7 @@ class _WaypointCreateDialogState extends State<WaypointCreateDialog> {
                       name: name,
                       description: _descriptionController.text.trim(),
                       type: _selectedType,
+                      shareWithTeam: _shareWithTeam,
                     ),
                   );
                 },
@@ -131,17 +140,24 @@ class _WaypointCreateResult {
   final String name;
   final String description;
   final WaypointType type;
+  final bool shareWithTeam;
 
   const _WaypointCreateResult({
     required this.name,
     required this.description,
     required this.type,
+    required this.shareWithTeam,
   });
 }
 
 extension WaypointCreateDialogResult on BuildContext {
-  Future<({String name, String description, WaypointType type})?>
-      showWaypointCreateDialog({
+  Future<
+      ({
+        String name,
+        String description,
+        WaypointType type,
+        bool shareWithTeam
+      })?> showWaypointCreateDialog({
     required double latitude,
     required double longitude,
   }) async {
@@ -157,7 +173,8 @@ extension WaypointCreateDialogResult on BuildContext {
     return (
       name: result.name,
       description: result.description,
-      type: result.type
+      type: result.type,
+      shareWithTeam: result.shareWithTeam,
     );
   }
 }
