@@ -559,6 +559,94 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
   /// Scanner view (when not connected)
   Widget _buildScannerView(BleConnectionManager bleManager) {
+    // Permission error: service caught a SecurityException or missing Bluetooth
+    // permission. Show a recovery banner so the user can re-grant without
+    // needing to find Settings manually.
+    final isPermissionError = bleManager.state == BleConnectionState.error &&
+        (bleManager.errorMessage?.toLowerCase().contains('permission') ??
+            false);
+
+    if (isPermissionError) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.bluetooth_disabled, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text(
+                'Nearby Devices Permission Required',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                bleManager.errorMessage ?? 'Bluetooth permission not granted.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.settings),
+                label: const Text('Open App Settings'),
+                onPressed: () => openAppSettings(),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Enable "Nearby devices" permission, then return to the app.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Bluetooth adapter disabled: native emits "Bluetooth is disabled" (Android)
+    // or "Bluetooth is not turned on" (iOS).
+    final isBleDisabled = bleManager.state == BleConnectionState.error &&
+        (() {
+          final msg = bleManager.errorMessage?.toLowerCase() ?? '';
+          return msg.contains('disabled') ||
+              msg.contains('not turned on') ||
+              msg.contains('scanner unavailable');
+        }());
+
+    if (isBleDisabled) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.bluetooth_disabled,
+                  size: 64, color: Colors.orange),
+              const SizedBox(height: 16),
+              const Text(
+                'Bluetooth is Disabled',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Turn on Bluetooth and tap Retry.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+                onPressed: _startScan,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_isScanning && _discoveredDevices.isEmpty) {
       return const Center(
         child: Column(

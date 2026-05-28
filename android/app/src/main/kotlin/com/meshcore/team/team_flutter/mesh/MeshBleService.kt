@@ -685,9 +685,30 @@ class MeshBleService : Service() {
             logW("startScanInternal ignored (already scanning)")
             return
         }
+
+        // Android 12+ (API 31+) requires BLUETOOTH_SCAN at runtime. Check before
+        // calling into the Bluetooth stack to avoid an unhandled SecurityException
+        // that would crash the service and trigger a START_STICKY restart loop.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (checkSelfPermission(android.Manifest.permission.BLUETOOTH_SCAN)
+                    != PackageManager.PERMISSION_GRANTED) {
+                logE("startScanInternal aborted: BLUETOOTH_SCAN not granted")
+                MeshBleState.setState("error", "\"Nearby devices\" permission not granted — open App Settings and enable Nearby devices, then return to the app")
+                return
+            }
+        }
+
+        // Proactively check adapter state — avoids a confusing null-scanner
+        // error and gives the user an actionable message.
+        if (bluetoothAdapter?.isEnabled != true) {
+            logE("startScanInternal aborted: Bluetooth adapter not enabled")
+            MeshBleState.setState("error", "Bluetooth is disabled — turn it on and try again")
+            return
+        }
+
         val scannerLocal = scanner ?: run {
             logE("startScanInternal failed: scanner null")
-            MeshBleState.setState("error", "BLE scanner unavailable")
+            MeshBleState.setState("error", "Bluetooth is disabled — turn it on and try again")
             return
         }
 
@@ -710,8 +731,17 @@ class MeshBleService : Service() {
         MeshBleState.setState("scanning")
 
         val callback = scanCallback
-        scannerLocal.startScan(filters, settings, callback)
-        logI("scan started")
+        try {
+            scannerLocal.startScan(filters, settings, callback)
+            logI("scan started")
+        } catch (e: SecurityException) {
+            // Belt-and-suspenders: catch any SecurityException the OS throws even
+            // after the permission check above (e.g. Beta OS regressions).
+            logE("startScan SecurityException", mapOf("error" to (e.message ?: "")))
+            isScanning = false
+            MeshBleState.setState("error", "Bluetooth scan permission denied")
+            return
+        }
 
         scanStopRunnable?.let { mainHandler.removeCallbacks(it) }
         scanStopRunnable = Runnable {
@@ -806,6 +836,17 @@ class MeshBleService : Service() {
         // Clean up any previous GATT without emitting disconnect transitions.
         cleanupGattSilent(reason = "preconnect")
 
+        // Android 12+ (API 31+) requires BLUETOOTH_CONNECT at runtime.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
+                    != PackageManager.PERMISSION_GRANTED) {
+                logE("connectInternal aborted: BLUETOOTH_CONNECT not granted")
+                MeshBleState.setState("error", "\"Nearby devices\" permission not granted — open App Settings and enable Nearby devices, then return to the app")
+                cancelConnectionTimeout(reason = "BLUETOOTH_CONNECT not granted")
+                return
+            }
+        }
+
         val adapter = bluetoothAdapter ?: run {
             logE("connectInternal failed: adapter null")
             MeshBleState.setState("error", "Bluetooth adapter unavailable")
@@ -849,10 +890,17 @@ class MeshBleService : Service() {
 
         resetConnectionTimeout(reason = "connectInternal")
 
-        gatt = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            device.connectGatt(this, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
-        } else {
-            device.connectGatt(this, false, gattCallback)
+        try {
+            gatt = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                device.connectGatt(this, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+            } else {
+                device.connectGatt(this, false, gattCallback)
+            }
+        } catch (e: SecurityException) {
+            logE("connectGatt SecurityException", mapOf("error" to (e.message ?: "")))
+            MeshBleState.setState("error", "Bluetooth connect permission denied")
+            cancelConnectionTimeout(reason = "connectGatt SecurityException")
+            return
         }
 
         logI("connectGatt invoked", mapOf("gattNull" to (gatt == null)))
