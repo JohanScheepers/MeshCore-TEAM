@@ -469,14 +469,31 @@ class _PermissionGate extends StatefulWidget {
   State<_PermissionGate> createState() => _PermissionGateState();
 }
 
-class _PermissionGateState extends State<_PermissionGate> {
+class _PermissionGateState extends State<_PermissionGate>
+    with WidgetsBindingObserver {
   bool _permissionsGranted = false;
   bool _isChecking = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkPermissions();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Re-check permissions when the user returns to the app — covers the case
+    // where they left to grant (or re-grant) permissions in Android Settings.
+    if (state == AppLifecycleState.resumed) {
+      _checkPermissions();
+    }
   }
 
   /// Check if all required permissions are already granted

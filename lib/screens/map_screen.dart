@@ -663,8 +663,13 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  Future<({String name, String description, int? colorValue})?>
-      _showRouteMetaDialog({
+  Future<
+      ({
+        String name,
+        String description,
+        int? colorValue,
+        bool shareWithTeam
+      })?> _showRouteMetaDialog({
     required String initialName,
     required String initialDescription,
     required int? initialColorValue,
@@ -673,9 +678,15 @@ class _MapScreenState extends State<MapScreen> {
     final nameCtrl = TextEditingController(text: initialName);
     final descCtrl = TextEditingController(text: initialDescription);
     int? selectedColor = initialColorValue ?? kRouteColorPresets.first;
+    bool shareWithTeam = false;
 
-    final result =
-        await showDialog<({String name, String description, int? colorValue})>(
+    final result = await showDialog<
+        ({
+          String name,
+          String description,
+          int? colorValue,
+          bool shareWithTeam
+        })>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
@@ -747,6 +758,16 @@ class _MapScreenState extends State<MapScreen> {
                           ),
                       ],
                     ),
+                    if (!isEdit) ...[
+                      const SizedBox(height: 4),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Share with team when saved'),
+                        value: shareWithTeam,
+                        onChanged: (v) =>
+                            setInnerState(() => shareWithTeam = v),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -762,6 +783,7 @@ class _MapScreenState extends State<MapScreen> {
                             name: nameCtrl.text.trim(),
                             description: descCtrl.text.trim(),
                             colorValue: selectedColor,
+                            shareWithTeam: shareWithTeam,
                           );
                           Navigator.of(dialogContext).pop(res);
                         }
@@ -797,6 +819,7 @@ class _MapScreenState extends State<MapScreen> {
     // BuildContext use after an async gap (dependents.isEmpty).
     final db = context.read<AppDatabase>();
     final connectionVM = context.read<ConnectionViewModel>();
+    final messageRepo = context.read<MessageRepository>();
 
     final meta = await _showRouteMetaDialog(
       initialName: _routeDraftName,
@@ -829,9 +852,10 @@ class _MapScreenState extends State<MapScreen> {
         ),
       );
     } else {
+      final newRouteId = const Uuid().v4();
       await db.waypointsDao.insertWaypoint(
         waypoint_model.Waypoint(
-          id: const Uuid().v4(),
+          id: newRouteId,
           meshId: null,
           name: meta.name,
           description: encodedDescription,
@@ -845,6 +869,12 @@ class _MapScreenState extends State<MapScreen> {
           isNew: false,
         ).toCompanion(),
       );
+      if (meta.shareWithTeam) {
+        final saved = await db.waypointsDao.getWaypointById(newRouteId);
+        if (saved != null) {
+          await messageRepo.sendWaypointToMesh(saved);
+        }
+      }
     }
 
     _cancelRouteEditMode();
@@ -866,6 +896,7 @@ class _MapScreenState extends State<MapScreen> {
 
     final connectionVM = context.read<ConnectionViewModel>();
     final db = context.read<AppDatabase>();
+    final messageRepo = context.read<MessageRepository>();
 
     // Match TEAM behavior: creator is tracked by the node/device name that the
     // firmware prepends to sent channel messages.
@@ -913,6 +944,12 @@ class _MapScreenState extends State<MapScreen> {
       }
 
       await db.waypointsDao.insertWaypoint(wp.toCompanion());
+      if (createResult.shareWithTeam) {
+        final saved = await db.waypointsDao.getWaypointById(wp.id);
+        if (saved != null) {
+          await messageRepo.sendWaypointToMesh(saved);
+        }
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
