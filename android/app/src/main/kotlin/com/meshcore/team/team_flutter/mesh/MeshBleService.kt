@@ -21,6 +21,7 @@ import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.content.pm.ServiceInfo
 import android.content.pm.PackageManager
@@ -271,6 +272,7 @@ class MeshBleService : Service() {
     private var notificationTickRunnable: Runnable? = null
     private var lastNotificationText: String? = null
     private var lastNotificationPresent: Boolean? = null
+    private var lastStartForegroundMs: Long = 0L
 
     // Only run as a foreground service (persistent notification) once connected.
     private var isForegroundActive: Boolean = false
@@ -387,6 +389,8 @@ class MeshBleService : Service() {
     private var telemetryWakeLock: PowerManager.WakeLock? = null
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var prefs: SharedPreferences
+    private lateinit var flutterPrefs: SharedPreferences
 
     override fun onCreate() {
         super.onCreate()
@@ -394,6 +398,8 @@ class MeshBleService : Service() {
         bluetoothAdapter = (getSystemService(BLUETOOTH_SERVICE) as android.bluetooth.BluetoothManager).adapter
         scanner = bluetoothAdapter?.bluetoothLeScanner
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        prefs = getSharedPreferences(prefsName, MODE_PRIVATE)
+        flutterPrefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
 
         logI(
             "adapter/scanner init",
@@ -407,7 +413,6 @@ class MeshBleService : Service() {
         ensureNotificationChannel()
 
         // Attempt restore
-        val prefs = getSharedPreferences(prefsName, MODE_PRIVATE)
         autoReconnect = prefs.getBoolean(keyAutoReconnect, false)
         targetAddress = prefs.getString(keyLastAddress, null)
         logI(
@@ -458,7 +463,6 @@ class MeshBleService : Service() {
 
                 // Also disable auto-reconnect persistence to avoid resurrecting the
                 // foreground notification after an explicit stop.
-                val prefs = getSharedPreferences(prefsName, MODE_PRIVATE)
                 prefs.edit().putBoolean(keyAutoReconnect, false).apply()
                 autoReconnect = false
                 reconnectAttempt = 0
@@ -479,7 +483,6 @@ class MeshBleService : Service() {
                 logI("actionUserStop")
 
                 // Disable reconnect now and across restarts
-                val prefs = getSharedPreferences(prefsName, MODE_PRIVATE)
                 prefs.edit().putBoolean(keyAutoReconnect, false).remove(keyLastAddress).apply()
                 autoReconnect = false
                 targetAddress = null
@@ -520,7 +523,6 @@ class MeshBleService : Service() {
             actionDisconnect -> {
                 logI("actionDisconnect")
                 // Treat explicit disconnect as manual: disable auto-reconnect
-                val prefs = getSharedPreferences(prefsName, MODE_PRIVATE)
                 prefs.edit().putBoolean(keyAutoReconnect, false).apply()
                 autoReconnect = false
                 reconnectAttempt = 0
@@ -825,7 +827,6 @@ class MeshBleService : Service() {
         MeshBleState.deviceName = null
 
         if (!fromRestore) {
-            val prefs = getSharedPreferences(prefsName, MODE_PRIVATE)
             prefs.edit()
                 .putString(keyLastAddress, address)
                 .putBoolean(keyAutoReconnect, true)
@@ -1442,17 +1443,16 @@ class MeshBleService : Service() {
     }
 
     private fun trackingNotificationLine(): String? {
-        val prefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
-        val telemetryEnabled = prefs.getBoolean("flutter.telemetry_enabled", false)
+        val telemetryEnabled = flutterPrefs.getBoolean("flutter.telemetry_enabled", false)
         if (!telemetryEnabled) return null
 
-        val companionKey = prefs.getString("flutter.current_companion_public_key", null)
+        val companionKey = flutterPrefs.getString("flutter.current_companion_public_key", null)
         val perCompanionName = if (!companionKey.isNullOrBlank()) {
-            prefs.getString("flutter.telemetry_channel_name_$companionKey", null)
+            flutterPrefs.getString("flutter.telemetry_channel_name_$companionKey", null)
         } else {
             null
         }
-        val channelName = perCompanionName ?: prefs.getString("flutter.telemetry_channel_name", null)
+        val channelName = perCompanionName ?: flutterPrefs.getString("flutter.telemetry_channel_name", null)
 
         val normalizedName = channelName?.trim()?.takeIf { it.isNotEmpty() }
         if (normalizedName != null) {
@@ -1460,11 +1460,11 @@ class MeshBleService : Service() {
         }
 
         val perCompanionHash = if (!companionKey.isNullOrBlank()) {
-            prefs.getString("flutter.telemetry_channel_hash_$companionKey", null)
+            flutterPrefs.getString("flutter.telemetry_channel_hash_$companionKey", null)
         } else {
             null
         }
-        val hash = perCompanionHash ?: prefs.getString("flutter.telemetry_channel_hash", null)
+        val hash = perCompanionHash ?: flutterPrefs.getString("flutter.telemetry_channel_hash", null)
         val normalizedHash = hash?.trim()?.takeIf { it.isNotEmpty() } ?: return null
 
         return "Tracking enabled on channel:$normalizedHash"
@@ -1505,6 +1505,7 @@ class MeshBleService : Service() {
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
                 },
             )
+            lastStartForegroundMs = android.os.SystemClock.elapsedRealtime()
             logI(
                 "startForeground(refreshed)",
                 mapOf(
@@ -1530,6 +1531,9 @@ class MeshBleService : Service() {
 
     private fun isForegroundNotificationPresent(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+        // Skip the Binder IPC if we asserted the notification recently. After
+        // this window expires we do one real check, catching any user dismissal.
+        if (android.os.SystemClock.elapsedRealtime() - lastStartForegroundMs < 10_000L) return true
         return try {
             val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             manager.activeNotifications.any { it.id == notificationId }

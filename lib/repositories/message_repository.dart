@@ -179,6 +179,9 @@ class MessageRepository {
   /// - App responds with SYNC_NEXT_MESSAGE to retrieve each message
   /// - Continues until RESP_NO_MORE_MESSAGES received
   /// - Direct messages (code 16) are also pushed directly
+  void beginNotificationSync() => _notificationService.beginSync();
+  Future<void> endNotificationSync() => _notificationService.endSync();
+
   void startPushListener() {
     if (_isListeningForPushes) {
       debugPrint('[MessageSync] Already listening for push notifications');
