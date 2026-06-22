@@ -29,14 +29,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
   bool _identityDialogShowing = false;
 
+  Stream<_UnreadCounts>? _unreadCountsStream;
+
   static const MethodChannel _appLifecycleChannel =
       MethodChannel('com.meshcore.team/app_lifecycle');
 
   final List<Widget> _screens = [
-    const ConnectionScreen(),
-    const ContactsScreen(),
-    const ChannelsScreen(),
-    const MapScreen(),
+    const RepaintBoundary(child: ConnectionScreen()),
+    const RepaintBoundary(child: ContactsScreen()),
+    const RepaintBoundary(child: ChannelsScreen()),
+    const RepaintBoundary(child: MapScreen()),
   ];
 
   @override
@@ -71,13 +73,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
   @override
   Widget build(BuildContext context) {
-    final connectionVM = context.watch<ConnectionViewModel>();
-    final channelRepository = context.watch<ChannelRepository>();
-    final contactRepository = context.watch<ContactRepository>();
-    final isConnected = connectionVM.isConnected;
-    final navLocked = connectionVM.identityConfirmationRequired;
+    final isConnected = context.select<ConnectionViewModel, bool>(
+        (vm) => vm.isConnected);
+    final navLocked = context.select<ConnectionViewModel, bool>(
+        (vm) => vm.identityConfirmationRequired);
+    final syncPhase = context.select<ConnectionViewModel, SyncPhase>(
+        (vm) => vm.syncStatus.phase);
     final shouldShowIdentityDialog =
-        navLocked && connectionVM.syncStatus.phase == SyncPhase.complete;
+        navLocked && syncPhase == SyncPhase.complete;
 
     if (navLocked && _currentIndex != 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -92,6 +95,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       _identityDialogShowing = true;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
+        final connectionVM = context.read<ConnectionViewModel>();
         await _showIdentityDialog(context, connectionVM);
         if (!mounted) return;
         _identityDialogShowing = false;
@@ -116,7 +120,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
           children: _screens,
         ),
         bottomNavigationBar: StreamBuilder<_UnreadCounts>(
-          stream: _getUnreadCounts(channelRepository, contactRepository),
+          stream: _unreadCountsStream ??= _getUnreadCounts(
+            context.read<ChannelRepository>(),
+            context.read<ContactRepository>(),
+          ),
           builder: (context, snapshot) {
             final counts = snapshot.data ?? const _UnreadCounts(0, 0);
             final contactsUnread = counts.contacts;
