@@ -438,8 +438,6 @@ class ChannelListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPublic = channel.isPublic;
-    final createdText = _formatCreatedAt(channel.createdAt);
-
     // Determine if this channel is the active telemetry channel.
     final settings = context.watch<SettingsService>().settings;
     final telemetryHashHex = settings.telemetryChannelHash;
@@ -502,7 +500,6 @@ class ChannelListTile extends StatelessWidget {
           children: [
             Text('Hash: ${channel.hash.toRadixString(16)}'),
             Text('Index: ${channel.channelIndex}'),
-            Text('Created: $createdText'),
             Text('Type: ${isPublic ? 'Public' : 'Private'}'),
             if (channel.muteNotifications) const Text('🔕 Notifications muted'),
             if (isTelemetryChannel)
@@ -625,19 +622,4 @@ class ChannelListTile extends StatelessWidget {
     );
   }
 
-  String _formatCreatedAt(int timestamp) {
-    final created = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    final now = DateTime.now();
-    final difference = now.difference(created);
-
-    if (difference.inDays < 1) {
-      return 'Today';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inDays < 30) {
-      return '${(difference.inDays / 7).floor()}w ago';
-    } else {
-      return '${(difference.inDays / 30).floor()}mo ago';
-    }
-  }
 }
