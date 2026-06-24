@@ -226,15 +226,27 @@ class MessageRepository {
 
             final companionKey =
                 _settingsService.settings.currentCompanionPublicKey;
+            final since = (companionKey != null && companionKey.isNotEmpty)
+                ? _settingsService.getContactLastmod(companionKey)
+                : 0;
+
             final countBefore = (companionKey == null || companionKey.isEmpty)
                 ? await _contactsDao.getContactCount()
                 : await _contactsDao.getContactCountByCompanion(companionKey);
 
-            final result = await _contactRepository.syncContactsComplete();
+            final result =
+                await _contactRepository.syncContactsComplete(since: since);
 
             if (!result.success) {
               debugPrint('[🔍DISC] ❌ Contact sync failed or timed out');
               return;
+            }
+
+            if (result.mostRecentLastmod > 0 &&
+                companionKey != null &&
+                companionKey.isNotEmpty) {
+              await _settingsService.setContactLastmod(
+                  companionKey, result.mostRecentLastmod);
             }
 
             final countAfter = (companionKey == null || companionKey.isEmpty)
@@ -262,7 +274,20 @@ class MessageRepository {
         unawaited(() async {
           try {
             await Future<void>.delayed(const Duration(milliseconds: 500));
-            await _contactRepository.syncContactsComplete();
+            final companionKey =
+                _settingsService.settings.currentCompanionPublicKey;
+            final since = (companionKey != null && companionKey.isNotEmpty)
+                ? _settingsService.getContactLastmod(companionKey)
+                : 0;
+            final result =
+                await _contactRepository.syncContactsComplete(since: since);
+            if (result.success &&
+                result.mostRecentLastmod > 0 &&
+                companionKey != null &&
+                companionKey.isNotEmpty) {
+              await _settingsService.setContactLastmod(
+                  companionKey, result.mostRecentLastmod);
+            }
           } catch (e) {
             debugPrint('[🔍DISC] ⚠️ New advert contact sync failed: $e');
           }
