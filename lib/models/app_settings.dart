@@ -50,6 +50,9 @@ class AppSettings {
   // Service state
   final bool serviceWasRunning;
 
+  // Android: show over lock screen and keep screen on
+  final bool keepScreenOnLock;
+
   const AppSettings({
     this.appTheme = AppThemeMode.system,
     this.locationSource = LocationSource.phone,
@@ -79,6 +82,7 @@ class AppSettings {
     this.backgroundLocationEnabled = false,
     this.batteryOptimizationRequested = false,
     this.serviceWasRunning = false,
+    this.keepScreenOnLock = false,
   });
 
   AppSettings copyWith({
@@ -110,6 +114,7 @@ class AppSettings {
     bool? serviceWasRunning,
     bool? backgroundLocationEnabled,
     bool? batteryOptimizationRequested,
+    bool? keepScreenOnLock,
   }) {
     return AppSettings(
       appTheme: appTheme ?? this.appTheme,
@@ -150,6 +155,7 @@ class AppSettings {
       batteryOptimizationRequested:
           batteryOptimizationRequested ?? this.batteryOptimizationRequested,
       serviceWasRunning: serviceWasRunning ?? this.serviceWasRunning,
+      keepScreenOnLock: keepScreenOnLock ?? this.keepScreenOnLock,
     );
   }
 }

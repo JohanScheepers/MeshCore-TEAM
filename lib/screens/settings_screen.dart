@@ -4,6 +4,7 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:meshcore_team/database/database.dart';
@@ -12,6 +13,9 @@ import 'package:meshcore_team/repositories/channel_repository.dart';
 import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
 import 'package:meshcore_team/widgets/night_clock.dart';
+
+const MethodChannel _appLifecycleChannel =
+    MethodChannel('com.meshcore.team/app_lifecycle');
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -158,9 +162,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
+          if (Platform.isAndroid) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Text(
+                'Android',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              child: Column(
+                children: [
+                  Card(
+                    child: ListTile(
+                      onTap: () => _toggleKeepScreenOnLock(settings),
+                      leading: Icon(settings.settings.keepScreenOnLock
+                          ? Icons.screen_lock_portrait
+                          : Icons.screen_lock_portrait_outlined),
+                      title: const Text('Keep Screen On / Show Over Lock',
+                          style: TextStyle(fontWeight: FontWeight.w500)),
+                      subtitle: Text(settings.settings.keepScreenOnLock
+                          ? 'Enabled — screen stays on and shows over lock screen'
+                          : 'Disabled'),
+                      trailing: const Icon(Icons.chevron_right),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  Future<void> _toggleKeepScreenOnLock(SettingsService settingsService) async {
+    final enabled = !settingsService.settings.keepScreenOnLock;
+    await settingsService.setKeepScreenOnLock(enabled);
+    try {
+      await _appLifecycleChannel
+          .invokeMethod('setShowOverLockScreen', {'enabled': enabled});
+    } catch (e) {
+      debugPrint('[KeepScreenOnLock] platform channel error: $e');
+    }
   }
 
   Future<void> _setLocationSource(SettingsService settingsService, String source) async {

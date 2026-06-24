@@ -44,6 +44,7 @@ class SettingsService extends ChangeNotifier {
   static const String _keyBatteryOptimizationRequested =
       'battery_optimization_requested';
   static const String _keyServiceWasRunning = 'service_was_running';
+  static const String _keyKeepScreenOnLock = 'keep_screen_on_lock';
   static const String _keyContactLastmod = 'contact_lastmod';
   static const String _keyAppTheme = 'app_theme';
 
@@ -166,6 +167,7 @@ class SettingsService extends ChangeNotifier {
       batteryOptimizationRequested:
           _prefs.getBool(_keyBatteryOptimizationRequested) ?? false,
       serviceWasRunning: _prefs.getBool(_keyServiceWasRunning) ?? false,
+      keepScreenOnLock: _prefs.getBool(_keyKeepScreenOnLock) ?? false,
     );
   }
 
@@ -415,6 +417,12 @@ class SettingsService extends ChangeNotifier {
   Future<void> setBatteryOptimizationRequested(bool requested) async {
     await _prefs.setBool(_keyBatteryOptimizationRequested, requested);
     _settings = _settings.copyWith(batteryOptimizationRequested: requested);
+    notifyListeners();
+  }
+
+  Future<void> setKeepScreenOnLock(bool enabled) async {
+    await _prefs.setBool(_keyKeepScreenOnLock, enabled);
+    _settings = _settings.copyWith(keepScreenOnLock: enabled);
     notifyListeners();
   }
 
