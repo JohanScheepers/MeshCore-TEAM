@@ -39,14 +39,13 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
   int? _firstUnreadTimestamp;
   List<ContactData> _allContacts = [];
   List<ContactData> _mentionSuggestions = [];
-  StreamSubscription<List<ContactData>>? _contactsSub;
 
   @override
   void initState() {
     super.initState();
     _messageRepository = Provider.of<MessageRepository>(context, listen: false);
     _contactRepository = Provider.of<ContactRepository>(context, listen: false);
-    _contactsSub = _contactRepository.getAllContacts().listen((contacts) {
+    _contactRepository.getAllContacts().first.then((contacts) {
       if (mounted) setState(() => _allContacts = contacts);
     });
 
@@ -70,7 +69,6 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
-    _contactsSub?.cancel();
 
     // Mark all messages as read when navigating away
     _messageRepository.messagesDao

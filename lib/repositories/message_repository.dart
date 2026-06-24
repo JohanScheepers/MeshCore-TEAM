@@ -227,9 +227,8 @@ class MessageRepository {
             final companionKey =
                 _settingsService.settings.currentCompanionPublicKey;
             final countBefore = (companionKey == null || companionKey.isEmpty)
-                ? (await _contactsDao.getAllContacts()).length
-                : (await _contactsDao.getContactsByCompanion(companionKey))
-                    .length;
+                ? await _contactsDao.getContactCount()
+                : await _contactsDao.getContactCountByCompanion(companionKey);
 
             final result = await _contactRepository.syncContactsComplete();
 
@@ -239,9 +238,8 @@ class MessageRepository {
             }
 
             final countAfter = (companionKey == null || companionKey.isEmpty)
-                ? (await _contactsDao.getAllContacts()).length
-                : (await _contactsDao.getContactsByCompanion(companionKey))
-                    .length;
+                ? await _contactsDao.getContactCount()
+                : await _contactsDao.getContactCountByCompanion(companionKey);
 
             if (countAfter > countBefore) {
               debugPrint(

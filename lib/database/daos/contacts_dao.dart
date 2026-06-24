@@ -30,6 +30,20 @@ class ContactsDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  Future<int> getContactCount() async {
+    final query = selectOnly(contacts)..addColumns([contacts.hash.count()]);
+    final result = await query.getSingle();
+    return result.read(contacts.hash.count()) ?? 0;
+  }
+
+  Future<int> getContactCountByCompanion(String companionKey) async {
+    final query = selectOnly(contacts)
+      ..addColumns([contacts.hash.count()])
+      ..where(contacts.companionDeviceKey.equals(companionKey));
+    final result = await query.getSingle();
+    return result.read(contacts.hash.count()) ?? 0;
+  }
+
   /// Get contacts for a specific companion device
   Future<List<ContactData>> getContactsByCompanion(String companionKey) {
     return (select(contacts)
