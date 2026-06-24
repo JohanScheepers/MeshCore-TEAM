@@ -333,8 +333,8 @@ class ContactsDao extends DatabaseAccessor<AppDatabase>
       if (!controller.isClosed) controller.add(null);
     });
 
-    // Listen to messages changes
-    final messagesSub = db.messagesDao.watchAllMessages().listen((_) {
+    // Listen to messages changes (count only — avoids full table scan across isolate boundary)
+    final messagesSub = db.messagesDao.watchMessageCount().listen((_) {
       if (!controller.isClosed) controller.add(null);
     });
 
@@ -408,8 +408,8 @@ class ContactsDao extends DatabaseAccessor<AppDatabase>
       if (!controller.isClosed) controller.add(null);
     });
 
-    // Listen to messages changes
-    final messagesSub = db.messagesDao.watchAllMessages().listen((_) {
+    // Listen to messages changes (count only — avoids full table scan across isolate boundary)
+    final messagesSub = db.messagesDao.watchMessageCount().listen((_) {
       if (!controller.isClosed) controller.add(null);
     });
 

@@ -202,8 +202,8 @@ class ChannelsDao extends DatabaseAccessor<AppDatabase>
       if (!controller.isClosed) controller.add(null);
     });
 
-    // Listen to messages changes
-    final messagesSub = db.messagesDao.watchAllMessages().listen((_) {
+    // Listen to messages changes (count only — avoids full table scan across isolate boundary)
+    final messagesSub = db.messagesDao.watchMessageCount().listen((_) {
       if (!controller.isClosed) controller.add(null);
     });
 
@@ -252,8 +252,8 @@ class ChannelsDao extends DatabaseAccessor<AppDatabase>
       if (!controller.isClosed) controller.add(null);
     });
 
-    // Listen to messages changes (messages are already filtered by companion)
-    final messagesSub = db.messagesDao.watchAllMessages().listen((_) {
+    // Listen to messages changes (count only — avoids full table scan across isolate boundary)
+    final messagesSub = db.messagesDao.watchMessageCount().listen((_) {
       if (!controller.isClosed) controller.add(null);
     });
 

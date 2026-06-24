@@ -280,8 +280,7 @@ class BleConnectionManager extends ChangeNotifier {
           _pendingConnect?.complete(false);
           _pendingConnect = null;
 
-          debugPrint(
-              '[BleManager] connect timeout -> disconnect()\n${StackTrace.current}');
+          debugPrint('[BleManager] connect timeout -> disconnect()');
           disconnect();
           return false;
         },
@@ -442,7 +441,6 @@ class BleConnectionManager extends ChangeNotifier {
   /// Disconnect from device
   Future<void> disconnect() async {
     debugPrint('🔌 Disconnecting...');
-    debugPrint('[BleManager] disconnect() callsite\n${StackTrace.current}');
     _pendingDisconnect?.complete();
     _pendingDisconnect = Completer<void>();
     _setState(BleConnectionState.disconnecting);
