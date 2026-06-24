@@ -490,10 +490,16 @@ class TeamFlutterApp extends StatelessWidget {
               AppThemeMode.nighttime => ThemeMode.dark,
               _ => ThemeMode.system,
             },
-            home: const _MouseBackHandler(
-              child: DeepLinkListener(
-                child: _PermissionGate(),
-              ),
+            builder: (context, child) => Listener(
+              onPointerDown: (event) {
+                if (event.buttons & kBackMouseButton != 0) {
+                  navigatorKey.currentState?.maybePop();
+                }
+              },
+              child: child!,
+            ),
+            home: const DeepLinkListener(
+              child: _PermissionGate(),
             ),
           );
         },
@@ -502,23 +508,6 @@ class TeamFlutterApp extends StatelessWidget {
   }
 }
 
-class _MouseBackHandler extends StatelessWidget {
-  final Widget child;
-
-  const _MouseBackHandler({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Listener(
-      onPointerDown: (event) {
-        if (event.buttons & kBackMouseButton != 0) {
-          Navigator.maybePop(context);
-        }
-      },
-      child: child,
-    );
-  }
-}
 
 ThemeData _nighttimeTheme() {
   final base = ColorScheme.fromSeed(
