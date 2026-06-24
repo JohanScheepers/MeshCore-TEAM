@@ -31,7 +31,28 @@ class _ChatMessageTextState extends State<ChatMessageText> {
   /// Matches #hashtag (alphanumeric, underscore, hyphen) and @mention (non-whitespace).
   static final _tokenPattern = RegExp(r'(#[a-zA-Z0-9_-]+|@\[[^\]]+\])');
 
+  // Recognizers and matches are built once and reused across rebuilds.
+  // Rebuilt only in didUpdateWidget when widget.text changes, which never
+  // happens for received messages.
   final List<TapGestureRecognizer> _recognizers = [];
+  late List<RegExpMatch> _matches;
+
+  @override
+  void initState() {
+    super.initState();
+    _matches = _tokenPattern.allMatches(widget.text).toList();
+    _buildRecognizers();
+  }
+
+  @override
+  void didUpdateWidget(ChatMessageText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text) {
+      _clearRecognizers();
+      _matches = _tokenPattern.allMatches(widget.text).toList();
+      _buildRecognizers();
+    }
+  }
 
   @override
   void dispose() {
@@ -46,17 +67,25 @@ class _ChatMessageTextState extends State<ChatMessageText> {
     _recognizers.clear();
   }
 
+  void _buildRecognizers() {
+    for (final match in _matches) {
+      final token = match.group(0)!;
+      if (token.startsWith('#')) {
+        _recognizers.add(TapGestureRecognizer()
+          ..onTap = () => _onHashtagTapped(context, token));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Rebuild recognizers on every build so they capture the latest context.
-    _clearRecognizers();
-
     final theme = Theme.of(context);
     final baseStyle = widget.style;
     final spans = <InlineSpan>[];
 
     int lastEnd = 0;
-    for (final match in _tokenPattern.allMatches(widget.text)) {
+    int recIdx = 0;
+    for (final match in _matches) {
       if (match.start > lastEnd) {
         spans.add(TextSpan(
           text: widget.text.substring(lastEnd, match.start),
@@ -66,9 +95,6 @@ class _ChatMessageTextState extends State<ChatMessageText> {
 
       final token = match.group(0)!;
       if (token.startsWith('#')) {
-        final rec = TapGestureRecognizer()
-          ..onTap = () => _onHashtagTapped(context, token);
-        _recognizers.add(rec);
         spans.add(TextSpan(
           text: token,
           style: baseStyle?.copyWith(
@@ -77,7 +103,7 @@ class _ChatMessageTextState extends State<ChatMessageText> {
             decoration: TextDecoration.underline,
             decorationColor: theme.colorScheme.primary,
           ),
-          recognizer: rec,
+          recognizer: _recognizers[recIdx++],
         ));
       } else {
         // @mention — visual highlight only (format TBD by firmware)

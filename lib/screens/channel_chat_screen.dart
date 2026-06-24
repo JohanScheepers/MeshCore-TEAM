@@ -42,12 +42,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   late final ContactRepository _contactRepository;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  int _previousMessageCount = 0;
   int? _firstUnreadTimestamp;
   List<ContactData> _allContacts = [];
   List<ContactData> _mentionSuggestions = [];
   StreamSubscription<int>? _contactCountSub;
+  StreamSubscription<List<MessageData>>? _messagesSub;
   late final Stream<List<MessageData>> _messagesStream;
+  List<MessageData> _messages = const [];
+  bool _messagesLoaded = false;
 
   @override
   void initState() {
@@ -57,6 +59,25 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     _contactRepository = Provider.of<ContactRepository>(context, listen: false);
     _messagesStream =
         _messageRepository.watchMessagesByChannel(widget.channel.hash);
+    _messagesSub = _messagesStream.listen((messages) {
+      if (!mounted) return;
+      final prevCount = _messages.length;
+      setState(() {
+        _messages = messages;
+        _messagesLoaded = true;
+      });
+      if (messages.length > prevCount) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              0.0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
+    });
     _contactCountSub = _contactRepository.watchContactCount().listen((_) {
       _contactRepository.getAllContacts().first.then((contacts) {
         if (mounted) setState(() => _allContacts = contacts);
@@ -83,6 +104,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _messagesSub?.cancel();
     _contactCountSub?.cancel();
 
     // Mark all messages as read when navigating away
@@ -148,107 +170,56 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         children: [
           // Messages list
           Expanded(
-            child: StreamBuilder<List<MessageData>>(
-              stream: _messagesStream,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: theme.colorScheme.error,
-                          size: 48,
+            child: !_messagesLoaded
+                ? const Center(child: CircularProgressIndicator())
+                : _messages.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.forum_outlined,
+                              color: theme.colorScheme.outline,
+                              size: 64,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No messages in this channel',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: theme.colorScheme.outline,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Be the first to start the conversation',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.outline,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Error loading messages',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: theme.colorScheme.error,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          snapshot.error.toString(),
-                          style: theme.textTheme.bodySmall,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
+                      )
+                    : ListView.builder(
+                        reverse: true,
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _messages.length,
+                        itemBuilder: (context, index) {
+                          final message =
+                              _messages[_messages.length - 1 - index];
+                          final showUnreadDivider =
+                              _firstUnreadTimestamp != null &&
+                                  message.timestamp == _firstUnreadTimestamp;
 
-                final messages = snapshot.data ?? [];
-
-                // Auto-scroll to bottom when new messages arrive
-                if (messages.length > _previousMessageCount) {
-                  _previousMessageCount = messages.length;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (_scrollController.hasClients) {
-                      _scrollController.animateTo(
-                        0.0,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOut,
-                      );
-                    }
-                  });
-                }
-
-                if (messages.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.forum_outlined,
-                          color: theme.colorScheme.outline,
-                          size: 64,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No messages in this channel',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: theme.colorScheme.outline,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Be the first to start the conversation',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.outline,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  reverse: true,
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final message = messages[messages.length - 1 - index];
-                    final showUnreadDivider = _firstUnreadTimestamp != null &&
-                        message.timestamp == _firstUnreadTimestamp;
-
-                    return Column(
-                      children: [
-                        if (showUnreadDivider) _buildUnreadDivider(theme),
-                        _buildMessageBubble(message, theme),
-                      ],
-                    );
-                  },
-                );
-              },
-            ),
+                          return Column(
+                            children: [
+                              if (showUnreadDivider) _buildUnreadDivider(theme),
+                              _buildMessageBubble(message, theme),
+                            ],
+                          );
+                        },
+                      ),
           ),
 
           // @mention suggestions

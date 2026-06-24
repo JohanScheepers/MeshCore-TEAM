@@ -5,6 +5,7 @@
 // This file is part of TEAM-Flutter.
 // Non-commercial use only. See LICENSE file for details.
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -489,12 +490,32 @@ class TeamFlutterApp extends StatelessWidget {
               AppThemeMode.nighttime => ThemeMode.dark,
               _ => ThemeMode.system,
             },
-            home: const DeepLinkListener(
-              child: _PermissionGate(),
+            home: const _MouseBackHandler(
+              child: DeepLinkListener(
+                child: _PermissionGate(),
+              ),
             ),
           );
         },
       ),
+    );
+  }
+}
+
+class _MouseBackHandler extends StatelessWidget {
+  final Widget child;
+
+  const _MouseBackHandler({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (event) {
+        if (event.buttons & kBackMouseButton != 0) {
+          Navigator.maybePop(context);
+        }
+      },
+      child: child,
     );
   }
 }
