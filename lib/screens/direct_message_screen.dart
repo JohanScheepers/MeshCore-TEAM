@@ -40,12 +40,15 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
   List<ContactData> _allContacts = [];
   List<ContactData> _mentionSuggestions = [];
   StreamSubscription<int>? _contactCountSub;
+  late final Stream<List<MessageData>> _messagesStream;
 
   @override
   void initState() {
     super.initState();
     _messageRepository = Provider.of<MessageRepository>(context, listen: false);
     _contactRepository = Provider.of<ContactRepository>(context, listen: false);
+    _messagesStream =
+        _messageRepository.watchPrivateMessages(widget.contact.hash);
     _contactCountSub = _contactRepository.watchContactCount().listen((_) {
       _contactRepository.getAllContacts().first.then((contacts) {
         if (mounted) setState(() => _allContacts = contacts);
@@ -126,8 +129,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
           // Messages list
           Expanded(
             child: StreamBuilder<List<MessageData>>(
-              stream:
-                  _messageRepository.watchPrivateMessages(widget.contact.hash),
+              stream: _messagesStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());

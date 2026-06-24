@@ -47,6 +47,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   List<ContactData> _allContacts = [];
   List<ContactData> _mentionSuggestions = [];
   StreamSubscription<int>? _contactCountSub;
+  late final Stream<List<MessageData>> _messagesStream;
 
   @override
   void initState() {
@@ -54,6 +55,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     _messageRepository = Provider.of<MessageRepository>(context, listen: false);
     _channelRepository = Provider.of<ChannelRepository>(context, listen: false);
     _contactRepository = Provider.of<ContactRepository>(context, listen: false);
+    _messagesStream =
+        _messageRepository.watchMessagesByChannel(widget.channel.hash);
     _contactCountSub = _contactRepository.watchContactCount().listen((_) {
       _contactRepository.getAllContacts().first.then((contacts) {
         if (mounted) setState(() => _allContacts = contacts);
@@ -146,8 +149,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           // Messages list
           Expanded(
             child: StreamBuilder<List<MessageData>>(
-              stream: _messageRepository
-                  .watchMessagesByChannel(widget.channel.hash),
+              stream: _messagesStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
