@@ -44,6 +44,11 @@ class ContactsDao extends DatabaseAccessor<AppDatabase>
     return result.read(contacts.hash.count()) ?? 0;
   }
 
+  Stream<int> watchContactCount() {
+    final query = selectOnly(contacts)..addColumns([contacts.hash.count()]);
+    return query.watchSingle().map((row) => row.read(contacts.hash.count()) ?? 0);
+  }
+
   /// Get contacts for a specific companion device
   Future<List<ContactData>> getContactsByCompanion(String companionKey) {
     return (select(contacts)

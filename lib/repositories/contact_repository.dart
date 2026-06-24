@@ -428,6 +428,21 @@ class ContactRepository {
     });
   }
 
+  Stream<int> watchContactCount() {
+    return _settingsService.currentCompanionPublicKeyStream
+        .switchMap((companionKey) {
+      if (companionKey != null && companionKey.isNotEmpty) {
+        final query = _contactsDao.selectOnly(_contactsDao.contacts)
+          ..addColumns([_contactsDao.contacts.hash.count()])
+          ..where(_contactsDao.contacts.companionDeviceKey.equals(companionKey));
+        return query.watchSingle().map(
+            (row) => row.read(_contactsDao.contacts.hash.count()) ?? 0);
+      } else {
+        return Stream.value(0);
+      }
+    });
+  }
+
   /// Watch contacts with unread counts, filtered by current companion
   /// Auto-switches when currentCompanionPublicKey changes
   /// Returns contacts for the currently connected companion device only

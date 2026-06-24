@@ -39,14 +39,17 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
   int? _firstUnreadTimestamp;
   List<ContactData> _allContacts = [];
   List<ContactData> _mentionSuggestions = [];
+  StreamSubscription<int>? _contactCountSub;
 
   @override
   void initState() {
     super.initState();
     _messageRepository = Provider.of<MessageRepository>(context, listen: false);
     _contactRepository = Provider.of<ContactRepository>(context, listen: false);
-    _contactRepository.getAllContacts().first.then((contacts) {
-      if (mounted) setState(() => _allContacts = contacts);
+    _contactCountSub = _contactRepository.watchContactCount().listen((_) {
+      _contactRepository.getAllContacts().first.then((contacts) {
+        if (mounted) setState(() => _allContacts = contacts);
+      });
     });
 
     // Track active chat for notification suppression
@@ -69,6 +72,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _contactCountSub?.cancel();
 
     // Mark all messages as read when navigating away
     _messageRepository.messagesDao
