@@ -15,6 +15,7 @@ import '../database/database.dart';
 import '../repositories/contact_repository.dart';
 import '../repositories/message_repository.dart';
 import '../services/message_notification_service.dart';
+import '../utils/message_time_format.dart';
 import '../widgets/chat_message_text.dart';
 
 /// Direct message chat screen for one-on-one conversations
@@ -341,8 +342,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${timestamp.hour.toString().padLeft(2, '0')}:'
-                        '${timestamp.minute.toString().padLeft(2, '0')}',
+                        formatMessageTime(timestamp),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: (isFromMe
                                   ? theme.colorScheme.onPrimaryContainer

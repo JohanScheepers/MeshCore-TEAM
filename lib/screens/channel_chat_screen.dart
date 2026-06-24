@@ -22,6 +22,7 @@ import '../widgets/chat_message_text.dart';
 import '../models/app_settings.dart';
 import '../services/settings_service.dart';
 import '../theme/night_theme.dart';
+import '../utils/message_time_format.dart';
 
 /// Channel chat screen for group conversations
 class ChannelChatScreen extends StatefulWidget {
@@ -462,8 +463,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${timestamp.hour.toString().padLeft(2, '0')}:'
-                        '${timestamp.minute.toString().padLeft(2, '0')}',
+                        formatMessageTime(timestamp),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: (isFromMe
                                   ? theme.colorScheme.onPrimaryContainer
