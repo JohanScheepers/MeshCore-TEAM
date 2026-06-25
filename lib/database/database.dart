@@ -70,7 +70,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -132,6 +132,12 @@ class AppDatabase extends _$AppDatabase {
           if (from <= 7 && to >= 8) {
             await m.createTable(importedOverlayMaps);
             print('[Migration] Created imported_overlay_maps table');
+          }
+
+          // Migration from schema version 8 to 9: Add isFavorite to contacts
+          if (from <= 8 && to >= 9) {
+            await m.addColumn(contacts, contacts.isFavorite);
+            print('[Migration] Added isFavorite to contacts table');
           }
         },
       );

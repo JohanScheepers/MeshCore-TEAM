@@ -14,10 +14,88 @@ import 'package:meshcore_team/widgets/status_bar_actions.dart';
 import 'package:meshcore_team/widgets/night_clock.dart';
 import 'direct_message_screen.dart';
 
+enum _ContactFilter { endNodes, repeaters, hasLocation, noLocation, favorites }
+
+enum _SortOrder { lastSeen, name, favoritesFirst }
+
 /// Contacts Screen
 /// Displays list of synced contacts from companion device
-class ContactsScreen extends StatelessWidget {
+class ContactsScreen extends StatefulWidget {
   const ContactsScreen({super.key});
+
+  @override
+  State<ContactsScreen> createState() => _ContactsScreenState();
+}
+
+class _ContactsScreenState extends State<ContactsScreen> {
+  Set<_ContactFilter> _filter = {};
+  _SortOrder _sort = _SortOrder.lastSeen;
+
+  List<ContactWithUnread> _applyFilterAndSort(List<ContactWithUnread> all) {
+    // Type chips (End Nodes, Repeaters) are OR'd; Favorites is AND'd on top.
+    final hasType = _filter.contains(_ContactFilter.endNodes) ||
+        _filter.contains(_ContactFilter.repeaters);
+
+    final typeFiltered = hasType
+        ? all.where((c) {
+            if (_filter.contains(_ContactFilter.endNodes) && !c.contact.isRepeater) return true;
+            if (_filter.contains(_ContactFilter.repeaters) && c.contact.isRepeater) return true;
+            return false;
+          }).toList()
+        : all;
+
+    final hasLoc = _filter.contains(_ContactFilter.hasLocation);
+    final noLoc = _filter.contains(_ContactFilter.noLocation);
+    final locFiltered = (hasLoc || noLoc) && !(hasLoc && noLoc)
+        ? typeFiltered.where((c) {
+            final loc = c.contact.latitude != null;
+            return hasLoc ? loc : !loc;
+          }).toList()
+        : typeFiltered;
+
+    final filtered = _filter.contains(_ContactFilter.favorites)
+        ? locFiltered.where((c) => c.contact.isFavorite).toList()
+        : locFiltered;
+
+    if (_sort == _SortOrder.lastSeen) return filtered;
+
+    final sorted = [...filtered];
+    if (_sort == _SortOrder.name) {
+      sorted.sort((a, b) {
+        final aName = (a.contact.name ?? '').toLowerCase();
+        final bName = (b.contact.name ?? '').toLowerCase();
+        return aName.compareTo(bName);
+      });
+    } else if (_sort == _SortOrder.favoritesFirst) {
+      sorted.sort((a, b) {
+        if (a.contact.isFavorite == b.contact.isFavorite) return 0;
+        return a.contact.isFavorite ? -1 : 1;
+      });
+    }
+    return sorted;
+  }
+
+  void _cycleSortOrder() {
+    setState(() {
+      _sort = switch (_sort) {
+        _SortOrder.lastSeen => _SortOrder.name,
+        _SortOrder.name => _SortOrder.favoritesFirst,
+        _SortOrder.favoritesFirst => _SortOrder.lastSeen,
+      };
+    });
+  }
+
+  IconData _sortIcon() => switch (_sort) {
+    _SortOrder.lastSeen => Icons.access_time,
+    _SortOrder.name => Icons.sort_by_alpha,
+    _SortOrder.favoritesFirst => Icons.star,
+  };
+
+  String _sortTooltip(AppLocalizations l10n) => switch (_sort) {
+    _SortOrder.lastSeen => l10n.sortByLastSeen,
+    _SortOrder.name => l10n.sortByName,
+    _SortOrder.favoritesFirst => l10n.sortByFavorites,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -29,67 +107,162 @@ class ContactsScreen extends StatelessWidget {
         centerTitle: false,
         title: NightTitle(title: l10n.contacts),
         actions: [
+          IconButton(
+            icon: Icon(_sortIcon()),
+            tooltip: _sortTooltip(l10n),
+            onPressed: _cycleSortOrder,
+          ),
+          const SizedBox(
+            height: 24,
+            child: VerticalDivider(width: 16, thickness: 1),
+          ),
           const StatusBarActions(),
         ],
       ),
-      // Repository handles companion filtering automatically
-      body: StreamBuilder<List<ContactWithUnread>>(
-        stream: contactRepository.watchContactsWithUnread(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
+      body: Column(
+        children: [
+          _buildFilterBar(l10n),
+          Expanded(
+            child: StreamBuilder<List<ContactWithUnread>>(
+              stream: contactRepository.watchContactsWithUnread(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(l10n.genericError(snapshot.error.toString())),
-                ],
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error, size: 64, color: Colors.red),
+                        const SizedBox(height: 16),
+                        Text(l10n.genericError(snapshot.error.toString())),
+                      ],
+                    ),
+                  );
+                }
+
+                final all = snapshot.data ?? [];
+                final contacts = _applyFilterAndSort(all);
+
+                if (all.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.people_outline, size: 64, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text(
+                          l10n.noContacts,
+                          style: const TextStyle(fontSize: 18, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.connectToDeviceToSeeContacts,
+                          style: const TextStyle(color: Colors.grey),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                if (contacts.isEmpty) {
+                  return Center(
+                    child: Text(
+                      l10n.noContactsMatchFilter,
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: contacts.length,
+                  itemBuilder: (context, index) {
+                    final contactWithUnread = contacts[index];
+                    return ContactListTile(
+                      contact: contactWithUnread.contact,
+                      unreadCount: contactWithUnread.unreadCount,
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterBar(AppLocalizations l10n) {
+    final anyActive = _filter.isNotEmpty;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SegmentedButton<_ContactFilter>(
+        multiSelectionEnabled: true,
+        emptySelectionAllowed: true,
+        showSelectedIcon: false,
+        segments: [
+          ButtonSegment(
+            value: _ContactFilter.endNodes,
+            icon: const Icon(Icons.person, size: 16),
+            tooltip: l10n.filterEndNodes,
+          ),
+          ButtonSegment(
+            value: _ContactFilter.repeaters,
+            icon: const Icon(Icons.device_hub, size: 16),
+            tooltip: l10n.filterRepeaters,
+          ),
+          ButtonSegment(
+            value: _ContactFilter.hasLocation,
+            icon: const Icon(Icons.location_on, size: 16),
+            tooltip: l10n.filterHasLocation,
+          ),
+          ButtonSegment(
+            value: _ContactFilter.noLocation,
+            icon: const Icon(Icons.location_off, size: 16),
+            tooltip: l10n.filterNoLocation,
+          ),
+          ButtonSegment(
+            value: _ContactFilter.favorites,
+            icon: const Icon(Icons.star, size: 16),
+          ),
+        ],
+        selected: _filter,
+        onSelectionChanged: (s) => setState(() => _filter = s),
+        style: const ButtonStyle(
+          visualDensity: VisualDensity.compact,
+        ),
+      ),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: anyActive ? () => setState(() => _filter = {}) : null,
+              child: Container(
+                height: 32,
+                width: 32,
+                decoration: BoxDecoration(
+                  color: anyActive
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  Icons.filter_alt_off,
+                  size: 18,
+                  color: anyActive
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Theme.of(context).colorScheme.outlineVariant,
+                ),
               ),
-            );
-          }
-
-          final contactsWithUnread = snapshot.data ?? [];
-
-          if (contactsWithUnread.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.people_outline, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text(
-                    l10n.noContacts,
-                    style: const TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    l10n.connectToDeviceToSeeContacts,
-                    style: const TextStyle(color: Colors.grey),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            itemCount: contactsWithUnread.length,
-            itemBuilder: (context, index) {
-              final contactWithUnread = contactsWithUnread[index];
-              return ContactListTile(
-                contact: contactWithUnread.contact,
-                unreadCount: contactWithUnread.unreadCount,
-              );
-            },
-          );
-        },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -108,6 +281,7 @@ class ContactListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final contactRepository = context.read<ContactRepository>();
     final hasLocation = contact.latitude != null && contact.longitude != null;
     final lastSeenText = _formatLastSeen(contact.lastSeen);
     final isNighttime = context.watch<SettingsService>().settings.appTheme ==
@@ -132,6 +306,24 @@ class ContactListTile extends StatelessWidget {
                 style: TextStyle(
                   color: isNighttime ? NightColors.onSurface : Colors.white,
                   fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: isNighttime
+                      ? NightColors.onSurfaceVariant
+                      : Colors.blueGrey,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  contact.isRepeater ? Icons.device_hub : Icons.person,
+                  size: 13,
+                  color: isNighttime ? NightColors.surface : Colors.white,
                 ),
               ),
             ),
@@ -198,18 +390,37 @@ class ContactListTile extends StatelessWidget {
               ),
             Text(l10n.lastSeen(lastSeenText)),
             if (hasLocation)
-              Text(
-                  l10n.locationCoordinates(contact.latitude!.toStringAsFixed(4), contact.longitude!.toStringAsFixed(4))),
+              Text(l10n.locationCoordinates(
+                  contact.latitude!.toStringAsFixed(4),
+                  contact.longitude!.toStringAsFixed(4))),
             if (contact.companionBatteryMilliVolts != null)
-              Text(
-                  l10n.batteryVoltage((contact.companionBatteryMilliVolts! / 1000).toStringAsFixed(2))),
+              Text(l10n.batteryVoltage(
+                  (contact.companionBatteryMilliVolts! / 1000)
+                      .toStringAsFixed(2))),
           ],
         ),
-        trailing: hasLocation
-            ? Icon(Icons.location_on,
-                color: isNighttime ? NightColors.primary : Colors.blue)
-            : Icon(Icons.location_off,
-                color: isNighttime ? NightColors.dimmer : Colors.grey),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () => contactRepository.setFavorite(
+                  contact.publicKey, !contact.isFavorite),
+              child: Icon(
+                contact.isFavorite ? Icons.star : Icons.star_border,
+                color: contact.isFavorite
+                    ? (isNighttime ? NightColors.primary : Colors.amber)
+                    : (isNighttime ? NightColors.dimmer : Colors.grey),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 4),
+            hasLocation
+                ? Icon(Icons.location_on,
+                    color: isNighttime ? NightColors.primary : Colors.blue)
+                : Icon(Icons.location_off,
+                    color: isNighttime ? NightColors.dimmer : Colors.grey),
+          ],
+        ),
         onTap: () {
           if (contact.isRepeater) {
             ScaffoldMessenger.of(context).showSnackBar(

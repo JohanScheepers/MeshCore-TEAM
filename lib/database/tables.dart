@@ -37,6 +37,8 @@ class Contacts extends Table {
       false))(); // Remote device is in autonomous mode (no phone attached)
   TextColumn get companionDeviceKey => text()
       .nullable()(); // Which companion this contact belongs to (hex string)
+  BoolColumn get isFavorite =>
+      boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {publicKey};
