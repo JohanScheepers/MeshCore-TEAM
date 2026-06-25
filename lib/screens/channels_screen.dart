@@ -451,7 +451,6 @@ class ChannelListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPublic = channel.isPublic;
-    final createdText = _formatCreatedAt(channel.createdAt);
     final isNighttime = context.watch<SettingsService>().settings.appTheme ==
         AppThemeMode.nighttime;
 
