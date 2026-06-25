@@ -5,6 +5,7 @@
 // This file is part of TEAM-Flutter.
 // Non-commercial use only. See LICENSE file for details.
 
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -15,7 +16,6 @@ import 'dart:async';
 
 import '../database/database.dart';
 import '../repositories/channel_repository.dart';
-import '../repositories/contact_repository.dart';
 import '../repositories/message_repository.dart';
 import '../services/message_notification_service.dart';
 import '../widgets/chat_message_text.dart';
@@ -41,13 +41,11 @@ class ChannelChatScreen extends StatefulWidget {
 class _ChannelChatScreenState extends State<ChannelChatScreen> {
   late final MessageRepository _messageRepository;
   late final ChannelRepository _channelRepository;
-  late final ContactRepository _contactRepository;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _inputFocusNode = FocusNode();
   int? _firstUnreadTimestamp;
-  List<ContactData> _allContacts = [];
-  List<ContactData> _mentionSuggestions = [];
-  StreamSubscription<int>? _contactCountSub;
+  List<String> _mentionSuggestions = [];
   StreamSubscription<List<MessageData>>? _messagesSub;
   late final Stream<List<MessageData>> _messagesStream;
   List<MessageData> _messages = const [];
@@ -58,7 +56,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     super.initState();
     _messageRepository = Provider.of<MessageRepository>(context, listen: false);
     _channelRepository = Provider.of<ChannelRepository>(context, listen: false);
-    _contactRepository = Provider.of<ContactRepository>(context, listen: false);
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _inputFocusNode.requestFocus();
+      });
+    }
     _messagesStream =
         _messageRepository.watchMessagesByChannel(widget.channel.hash);
     _messagesSub = _messagesStream.listen((messages) {
@@ -79,11 +81,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           }
         });
       }
-    });
-    _contactCountSub = _contactRepository.watchContactCount().listen((_) {
-      _contactRepository.getAllContacts().first.then((contacts) {
-        if (mounted) setState(() => _allContacts = contacts);
-      });
     });
 
     // Track active channel for notification suppression
@@ -106,8 +103,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _inputFocusNode.dispose();
     _messagesSub?.cancel();
-    _contactCountSub?.cancel();
 
     // Only write if there are unread messages to avoid unnecessary DB cascade
     if (_messages.any((m) => !m.isRead)) {
@@ -260,6 +257,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                       children: [
                         TextField(
                           controller: _messageController,
+                          focusNode: _inputFocusNode,
                           decoration: InputDecoration(
                             hintText:
                                 'Type a message to ${widget.channel.name}...',
@@ -430,7 +428,10 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         children: [
           if (!isFromMe) const SizedBox(width: 0), // Align left for received
           Flexible(
-            child: Container(
+            child: GestureDetector(
+              onLongPress: isFromMe ? null : () => _seedReply(senderName),
+              onSecondaryTap: isFromMe ? null : () => _seedReply(senderName),
+              child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               margin: EdgeInsets.only(
                 left: isFromMe ? 48 : 0,
@@ -495,10 +496,23 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                 ],
               ),
             ),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  void _seedReply(String senderName) {
+    final prefix = '@[$senderName] ';
+    final current = _messageController.text;
+    if (current.startsWith(prefix)) return;
+    final newText = current.isEmpty ? prefix : '$prefix$current';
+    _messageController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newText.length),
+    );
+    _inputFocusNode.requestFocus();
   }
 
   IconData _getStatusIcon(String status) {
@@ -533,8 +547,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           shrinkWrap: true,
           itemCount: _mentionSuggestions.length,
           itemBuilder: (context, index) {
-            final contact = _mentionSuggestions[index];
-            final name = contact.name ?? 'Unknown';
+            final name = _mentionSuggestions[index];
             return ListTile(
               leading: const CircleAvatar(
                 child: Icon(Icons.person, size: 18),
@@ -547,6 +560,15 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         ),
       ),
     );
+  }
+
+  List<String> get _channelSenderNames {
+    return _messages
+        .where((m) => !(m.isSentByMe ?? false))
+        .map((m) => m.senderName ?? _getSenderName(m.senderId))
+        .where((name) => name.isNotEmpty && name != 'Unknown')
+        .toSet()
+        .toList();
   }
 
   void _updateMentionSuggestions(String text) {
@@ -564,15 +586,16 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       return;
     }
     final query = before.substring(atIndex + 1);
-    if (query.isEmpty || query.contains(' ')) {
+    if (query.contains(' ')) {
       if (_mentionSuggestions.isNotEmpty)
         setState(() => _mentionSuggestions = []);
       return;
     }
     final queryLower = query.toLowerCase();
-    final filtered = _allContacts
-        .where((c) => (c.name ?? '').toLowerCase().contains(queryLower))
-        .toList();
+    final names = _channelSenderNames;
+    final filtered = query.isEmpty
+        ? names
+        : names.where((n) => n.toLowerCase().contains(queryLower)).toList();
     setState(() => _mentionSuggestions = filtered);
   }
 
@@ -591,6 +614,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       selection: TextSelection.collapsed(offset: newCursor),
     );
     setState(() => _mentionSuggestions = []);
+    if (!Platform.isAndroid && !Platform.isIOS) _inputFocusNode.requestFocus();
   }
 
   Future<void> _sendMessage() async {
@@ -601,6 +625,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     // Clear input immediately
     _messageController.clear();
     setState(() => _mentionSuggestions = []);
+    if (!Platform.isAndroid && !Platform.isIOS) _inputFocusNode.requestFocus();
 
     // Scroll to bottom
     WidgetsBinding.instance.addPostFrameCallback((_) {
