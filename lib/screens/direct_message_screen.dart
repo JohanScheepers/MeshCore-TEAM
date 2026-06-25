@@ -17,6 +17,7 @@ import '../repositories/message_repository.dart';
 import '../services/message_notification_service.dart';
 import '../utils/message_time_format.dart';
 import '../widgets/chat_message_text.dart';
+import '../widgets/status_bar_actions.dart';
 
 /// Direct message chat screen for one-on-one conversations
 class DirectMessageScreen extends StatefulWidget {
@@ -134,6 +135,9 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
           ],
         ),
         elevation: 0,
+        actions: const [
+          StatusBarActions(),
+        ],
       ),
       body: Column(
         children: [

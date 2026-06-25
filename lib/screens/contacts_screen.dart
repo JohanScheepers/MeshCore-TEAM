@@ -9,9 +9,7 @@ import 'package:meshcore_team/repositories/contact_repository.dart';
 import 'package:meshcore_team/models/app_settings.dart';
 import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/theme/night_theme.dart';
-import 'package:meshcore_team/widgets/app_menu_button.dart';
-import 'package:meshcore_team/widgets/bt_status_icon.dart';
-import 'package:meshcore_team/widgets/network_status_icons.dart';
+import 'package:meshcore_team/widgets/status_bar_actions.dart';
 import 'package:meshcore_team/widgets/night_clock.dart';
 import 'direct_message_screen.dart';
 
@@ -29,9 +27,7 @@ class ContactsScreen extends StatelessWidget {
         centerTitle: false,
         title: NightTitle(title: 'Contacts'),
         actions: [
-          const NetworkStatusIcons(),
-          const BtStatusIcon(),
-          const AppMenuButton(),
+          const StatusBarActions(),
         ],
       ),
       // Repository handles companion filtering automatically

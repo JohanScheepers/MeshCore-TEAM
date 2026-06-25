@@ -19,6 +19,7 @@ import '../repositories/contact_repository.dart';
 import '../repositories/message_repository.dart';
 import '../services/message_notification_service.dart';
 import '../widgets/chat_message_text.dart';
+import '../widgets/status_bar_actions.dart';
 import '../models/app_settings.dart';
 import '../services/settings_service.dart';
 import '../theme/night_theme.dart';
@@ -167,6 +168,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               );
             },
           ),
+          const SizedBox(
+            height: 24,
+            child: VerticalDivider(width: 16, thickness: 1),
+          ),
+          const StatusBarActions(),
         ],
       ),
       body: Column(
