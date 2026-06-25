@@ -435,8 +435,10 @@ class ContactRepository {
         final query = _contactsDao.selectOnly(_contactsDao.contacts)
           ..addColumns([_contactsDao.contacts.hash.count()])
           ..where(_contactsDao.contacts.companionDeviceKey.equals(companionKey));
-        return query.watchSingle().map(
-            (row) => row.read(_contactsDao.contacts.hash.count()) ?? 0);
+        return query
+            .watchSingle()
+            .map((row) => row.read(_contactsDao.contacts.hash.count()) ?? 0)
+            .distinct();
       } else {
         return Stream.value(0);
       }

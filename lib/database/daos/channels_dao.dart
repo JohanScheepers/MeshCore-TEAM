@@ -7,6 +7,7 @@
 
 import 'dart:async';
 import 'package:drift/drift.dart';
+import 'package:rxdart/rxdart.dart';
 import '../database.dart';
 import '../tables.dart';
 import '../../models/unread_models.dart';
@@ -191,48 +192,42 @@ class ChannelsDao extends DatabaseAccessor<AppDatabase>
     return channelsWithUnread;
   }
 
+  Future<List<ChannelWithUnread>> _buildChannelsWithUnread(
+      List<ChannelData> channelsList) async {
+    final channelsWithUnread = <ChannelWithUnread>[];
+    for (final channel in channelsList) {
+      final unreadCount =
+          await db.messagesDao.getUnreadCountByChannel(channel.hash);
+      channelsWithUnread
+          .add(ChannelWithUnread(channel: channel, unreadCount: unreadCount));
+    }
+    channelsWithUnread.sort((a, b) {
+      if (a.unreadCount != b.unreadCount) {
+        return b.unreadCount.compareTo(a.unreadCount);
+      }
+      return a.channel.channelIndex.compareTo(b.channel.channelIndex);
+    });
+    return channelsWithUnread;
+  }
+
   /// Watch all channels with unread counts (stream)
   /// Reacts to changes in both channels and messages tables
   Stream<List<ChannelWithUnread>> watchAllChannelsWithUnread() async* {
-    // Manually merge streams using StreamController
-    final controller = StreamController<void>();
+    // Yield current state immediately — no debounce for first emit
+    yield await _buildChannelsWithUnread(await getAllChannels());
 
-    // Listen to channels changes
+    final controller = StreamController<void>();
     final channelsSub = watchAllChannels().listen((_) {
       if (!controller.isClosed) controller.add(null);
     });
-
-    // Listen to messages changes (count only — avoids full table scan across isolate boundary)
     final messagesSub = db.messagesDao.watchMessageCount().listen((_) {
       if (!controller.isClosed) controller.add(null);
     });
 
-    // Emit initial value
-    controller.add(null);
-
     try {
-      await for (final _ in controller.stream) {
-        final channelsList = await getAllChannels();
-        final channelsWithUnread = <ChannelWithUnread>[];
-
-        for (final channel in channelsList) {
-          final unreadCount =
-              await db.messagesDao.getUnreadCountByChannel(channel.hash);
-          channelsWithUnread.add(ChannelWithUnread(
-            channel: channel,
-            unreadCount: unreadCount,
-          ));
-        }
-
-        // Sort by unread count (descending), then by channel index (ascending)
-        channelsWithUnread.sort((a, b) {
-          if (a.unreadCount != b.unreadCount) {
-            return b.unreadCount.compareTo(a.unreadCount);
-          }
-          return a.channel.channelIndex.compareTo(b.channel.channelIndex);
-        });
-
-        yield channelsWithUnread;
+      await for (final _ in controller.stream
+          .debounceTime(const Duration(milliseconds: 500))) {
+        yield await _buildChannelsWithUnread(await getAllChannels());
       }
     } finally {
       await channelsSub.cancel();
@@ -244,45 +239,23 @@ class ChannelsDao extends DatabaseAccessor<AppDatabase>
   /// Watch channels with unread counts for a specific companion device
   Stream<List<ChannelWithUnread>> watchChannelsWithUnreadByCompanion(
       String companionKey) async* {
-    // Manually merge streams using StreamController
-    final controller = StreamController<void>();
+    // Yield current state immediately — no debounce for first emit
+    yield await _buildChannelsWithUnread(
+        await getChannelsByCompanion(companionKey));
 
-    // Listen to channels changes for this companion
+    final controller = StreamController<void>();
     final channelsSub = watchChannelsByCompanion(companionKey).listen((_) {
       if (!controller.isClosed) controller.add(null);
     });
-
-    // Listen to messages changes (count only — avoids full table scan across isolate boundary)
     final messagesSub = db.messagesDao.watchMessageCount().listen((_) {
       if (!controller.isClosed) controller.add(null);
     });
 
-    // Emit initial value
-    controller.add(null);
-
     try {
-      await for (final _ in controller.stream) {
-        final channelsList = await getChannelsByCompanion(companionKey);
-        final channelsWithUnread = <ChannelWithUnread>[];
-
-        for (final channel in channelsList) {
-          final unreadCount =
-              await db.messagesDao.getUnreadCountByChannel(channel.hash);
-          channelsWithUnread.add(ChannelWithUnread(
-            channel: channel,
-            unreadCount: unreadCount,
-          ));
-        }
-
-        // Sort by unread count (descending), then by channel index (ascending)
-        channelsWithUnread.sort((a, b) {
-          if (a.unreadCount != b.unreadCount) {
-            return b.unreadCount.compareTo(a.unreadCount);
-          }
-          return a.channel.channelIndex.compareTo(b.channel.channelIndex);
-        });
-
-        yield channelsWithUnread;
+      await for (final _ in controller.stream
+          .debounceTime(const Duration(milliseconds: 500))) {
+        yield await _buildChannelsWithUnread(
+            await getChannelsByCompanion(companionKey));
       }
     } finally {
       await channelsSub.cancel();
