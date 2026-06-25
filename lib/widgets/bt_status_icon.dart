@@ -7,12 +7,14 @@ import 'package:meshcore_team/models/app_settings.dart';
 import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/theme/night_theme.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
+import '../l10n/app_localizations.dart';
 
 class BtStatusIcon extends StatelessWidget {
   const BtStatusIcon({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isConnected = context.watch<ConnectionViewModel>().isConnected;
     final isNighttime = context.watch<SettingsService>().settings.appTheme ==
         AppThemeMode.nighttime;
@@ -24,7 +26,7 @@ class BtStatusIcon extends StatelessWidget {
     return Opacity(
       opacity: 0.7,
       child: Tooltip(
-        message: isConnected ? 'Connected' : 'Not connected',
+        message: isConnected ? 'Connected' : l10n.notConnected,
         child: Icon(
           isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
           color: color,

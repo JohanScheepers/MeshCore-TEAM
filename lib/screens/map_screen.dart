@@ -36,6 +36,8 @@ import 'package:meshcore_team/widgets/offline_map_download_dialog.dart';
 import 'package:meshcore_team/widgets/waypoint_create_dialog.dart';
 import 'package:meshcore_team/widgets/waypoint_edit_dialog.dart';
 
+import '../l10n/app_localizations.dart';
+
 /// Map Screen
 /// Displays map with user location
 /// Future: Will show contact locations based on team logic
@@ -99,8 +101,9 @@ class _MapScreenState extends State<MapScreen> {
   List<BaseOverlayImage> _cachedOverlayImages = const [];
 
   void _showComingSoon(String featureName) {
+    final l10n = AppLocalizations.of(context)!;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$featureName coming soon')),
+      SnackBar(content: Text(l10n.featureComingSoon(featureName))),
     );
   }
 
@@ -295,10 +298,11 @@ class _MapScreenState extends State<MapScreen> {
     final hopCount = state.lastPathLen;
     final lastHeard = _formatRelativeTime(state.lastSeen);
 
+    final l10n = AppLocalizations.of(context)!;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$name ($idShort) • hops:$hopCount • heard:$lastHeard'),
+        content: Text(l10n.contactInfo(name, idShort, hopCount.toString(), lastHeard)),
       ),
     );
   }
@@ -323,6 +327,7 @@ class _MapScreenState extends State<MapScreen> {
     await showDialog<void>(
       context: context,
       builder: (context) {
+        final l10n = AppLocalizations.of(context)!;
         return AlertDialog(
           title: Text(name),
           content: FutureBuilder<ContactData?>(
@@ -347,22 +352,22 @@ class _MapScreenState extends State<MapScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Hop count: ${state.lastPathLen}'),
+                  Text(l10n.hopCountLabel(state.lastPathLen.toString())),
                   const SizedBox(height: 6),
-                  Text('Last heard: $lastHeard'),
+                  Text(l10n.lastHeard(lastHeard)),
                   const SizedBox(height: 10),
                   Text('Lat: ${lat?.toStringAsFixed(6) ?? 'Unknown'}'),
                   const SizedBox(height: 6),
                   Text('Lon: ${lon?.toStringAsFixed(6) ?? 'Unknown'}'),
                   const SizedBox(height: 10),
-                  const Text('Battery'),
+                  Text(l10n.battery),
                   const SizedBox(height: 6),
-                  Text('Companion: ${formatBatteryMv(companionBattMv)}'),
+                  Text(l10n.companionBattery(formatBatteryMv(companionBattMv))),
                   const SizedBox(height: 6),
                   if (isAutonomous)
-                    const Text('Phone: Autonomous (no phone)')
+                    Text(l10n.phoneAutonomousNoPhone)
                   else
-                    Text('Phone: ${formatBatteryMv(phoneBattMv)}'),
+                    Text(l10n.phoneBattery(formatBatteryMv(phoneBattMv))),
                 ],
               );
             },
@@ -370,7 +375,7 @@ class _MapScreenState extends State<MapScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
+              child: Text(l10n.close),
             ),
             TextButton(
               onPressed: () {
@@ -408,7 +413,7 @@ class _MapScreenState extends State<MapScreen> {
                     name,
                   );
                 },
-                child: const Text('Navigate'),
+                child: Text(l10n.navigate),
               ),
             TextButton(
               onPressed: () async {
@@ -426,7 +431,7 @@ class _MapScreenState extends State<MapScreen> {
                 );
                 if (context.mounted) Navigator.of(context).pop();
               },
-              child: const Text('Remove from group'),
+              child: Text(l10n.removeFromGroup),
             ),
             FilledButton(
               onPressed: () async {
@@ -442,7 +447,7 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 );
               },
-              child: const Text('Direct message'),
+              child: Text(l10n.directMessage),
             ),
           ],
         );
@@ -458,6 +463,7 @@ class _MapScreenState extends State<MapScreen> {
     showModalBottomSheet<void>(
       context: context,
       builder: (sheetContext) {
+        final l10n = AppLocalizations.of(sheetContext)!;
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -473,7 +479,7 @@ class _MapScreenState extends State<MapScreen> {
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.message_outlined),
-                title: const Text('Direct message'),
+                title: Text(l10n.directMessage),
                 onTap: () async {
                   Navigator.of(sheetContext).pop();
                   try {
@@ -492,7 +498,7 @@ class _MapScreenState extends State<MapScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.center_focus_strong_outlined),
-                title: const Text('Center on map'),
+                title: Text(l10n.centerOnMap),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   setState(() => _isGroupStatusOpen = false);
@@ -504,7 +510,7 @@ class _MapScreenState extends State<MapScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.navigation_outlined),
-                title: const Text('Navigate to'),
+                title: Text(l10n.navigateTo),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _startNavigation(
@@ -516,7 +522,7 @@ class _MapScreenState extends State<MapScreen> {
               ListTile(
                 leading:
                     Icon(Icons.person_remove_outlined, color: Colors.red[700]),
-                title: Text('Remove from group',
+                title: Text(l10n.removeFromGroup,
                     style: TextStyle(color: Colors.red[700])),
                 onTap: () async {
                   Navigator.of(sheetContext).pop();
@@ -545,20 +551,23 @@ class _MapScreenState extends State<MapScreen> {
   Future<bool> _confirm(String title, String message) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
+      builder: (context) {
+        final l10n = AppLocalizations.of(context)!;
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.ok),
+            ),
+          ],
+        );
+      },
     );
     return result ?? false;
   }
@@ -584,29 +593,32 @@ class _MapScreenState extends State<MapScreen> {
   void _showAddWaypointOrRouteMenu() {
     showModalBottomSheet<void>(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.add_location_alt),
-              title: const Text('Create Waypoint'),
-              onTap: () {
-                Navigator.of(context).pop();
-                _startWaypointPickMode();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.route),
-              title: const Text('Create Route'),
-              onTap: () {
-                Navigator.of(context).pop();
-                _startRouteCreateMode();
-              },
-            ),
-          ],
-        ),
-      ),
+      builder: (context) {
+        final l10n = AppLocalizations.of(context)!;
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.add_location_alt),
+                title: Text(l10n.createWaypoint),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _startWaypointPickMode();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.route),
+                title: Text(l10n.createRoute),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _startRouteCreateMode();
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -692,6 +704,7 @@ class _MapScreenState extends State<MapScreen> {
         })>(
       context: context,
       builder: (dialogContext) {
+        final l10n = AppLocalizations.of(dialogContext)!;
         return StatefulBuilder(
           builder: (dialogContext, setInnerState) {
             final canSave = nameCtrl.text.trim().isNotEmpty;
@@ -706,14 +719,14 @@ class _MapScreenState extends State<MapScreen> {
                     TextField(
                       controller: nameCtrl,
                       decoration:
-                          const InputDecoration(labelText: 'Route Name'),
+                          InputDecoration(labelText: l10n.routeName),
                       onChanged: (_) => setInnerState(() {}),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: descCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Description (Optional)',
+                      decoration: InputDecoration(
+                        labelText: l10n.descriptionOptional,
                       ),
                       maxLines: 3,
                     ),
@@ -765,7 +778,7 @@ class _MapScreenState extends State<MapScreen> {
                       const SizedBox(height: 4),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Share with team when saved'),
+                        title: Text(l10n.shareWithTeamWhenSaved),
                         value: shareWithTeam,
                         onChanged: (v) =>
                             setInnerState(() => shareWithTeam = v),
@@ -777,7 +790,7 @@ class _MapScreenState extends State<MapScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: Text(l10n.cancel),
                 ),
                 TextButton(
                   onPressed: canSave
@@ -812,8 +825,9 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _saveRouteDraft() async {
     if (_routeDraftPoints.length < 2) {
+      final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add at least 2 points for a route')),
+        SnackBar(content: Text(l10n.addAtLeast2PointsForRoute)),
       );
       return;
     }
@@ -940,7 +954,7 @@ class _MapScreenState extends State<MapScreen> {
         if (nameMatch || dist <= duplicateLocationMeters) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Waypoint already exists')),
+            SnackBar(content: Text(AppLocalizations.of(context)!.waypointAlreadyExists)),
           );
           return;
         }
@@ -956,7 +970,7 @@ class _MapScreenState extends State<MapScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add waypoint: $e')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.failedToAddWaypoint(e.toString()))),
       );
     }
   }
@@ -974,6 +988,7 @@ class _MapScreenState extends State<MapScreen> {
       context: context,
       showDragHandle: true,
       builder: (context) {
+        final l10n = AppLocalizations.of(context)!;
         final type =
             waypoint_model.WaypointType.fromString(waypoint.waypointType);
 
@@ -1009,7 +1024,7 @@ class _MapScreenState extends State<MapScreen> {
                       children: [
                         ListTile(
                           leading: const Icon(Icons.navigation),
-                          title: const Text('Navigate to'),
+                          title: Text(l10n.navigateTo),
                           onTap: () {
                             Navigator.of(context).pop();
                             _startNavigation(
@@ -1020,7 +1035,7 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                         ListTile(
                           leading: const Icon(Icons.share),
-                          title: const Text('Share via Mesh'),
+                          title: Text(l10n.shareViaMesh),
                           onTap: () async {
                             Navigator.of(context).pop();
 
@@ -1041,7 +1056,7 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                         ListTile(
                           leading: const Icon(Icons.check_circle),
-                          title: const Text('Select Multiple'),
+                          title: Text(l10n.selectMultiple),
                           onTap: () {
                             Navigator.of(context).pop();
                             setState(() {
@@ -1056,7 +1071,7 @@ class _MapScreenState extends State<MapScreen> {
                             title: Text(
                               type == waypoint_model.WaypointType.route
                                   ? 'Edit Route Points'
-                                  : 'Edit',
+                                  : l10n.edit,
                             ),
                             onTap: () async {
                               Navigator.of(context).pop();
@@ -1085,7 +1100,7 @@ class _MapScreenState extends State<MapScreen> {
                           ),
                         ListTile(
                           leading: const Icon(Icons.delete),
-                          title: const Text('Delete'),
+                          title: Text(l10n.delete),
                           onTap: () async {
                             Navigator.of(context).pop();
                             final ok = await _confirm(
@@ -1147,7 +1162,7 @@ class _MapScreenState extends State<MapScreen> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Deleted ${ids.length} waypoint(s)')),
+      SnackBar(content: Text(AppLocalizations.of(context)!.deletedWaypoints(ids.length))),
     );
 
     _exitWaypointMultiSelectMode();
@@ -1548,6 +1563,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final settingsService = context.watch<SettingsService>();
     final isNighttime = settingsService.settings.appTheme == AppThemeMode.nighttime;
     final connectionVM = context.watch<ConnectionViewModel>();
@@ -1600,7 +1616,7 @@ class _MapScreenState extends State<MapScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Map'),
+            Text(l10n.map),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1714,27 +1730,27 @@ class _MapScreenState extends State<MapScreen> {
               return [
                 PopupMenuItem<String>(
                   value: 'download_map_area',
-                  child: Text('Download Map Area'),
+                  child: Text(l10n.downloadMapArea),
                 ),
                 PopupMenuItem<String>(
                   value: 'manage_offline_maps',
-                  child: Text('Manage Offline Maps'),
+                  child: Text(l10n.manageOfflineMaps),
                 ),
                 PopupMenuItem<String>(
                   value: 'manage_imported_maps',
-                  child: Text('Manage Imported Maps (KMZ)'),
+                  child: Text(l10n.manageImportedMapsKmz),
                 ),
                 PopupMenuItem<String>(
                   value: 'manage_waypoints',
-                  child: Text('Manage Waypoints & Routes'),
+                  child: Text(l10n.manageWaypointsAndRoutes),
                 ),
                 const PopupMenuDivider(),
                 PopupMenuItem<String>(
                   value: 'toggle_tracked_user_names',
                   child: Row(
                     children: [
-                      const Expanded(
-                        child: Text('Show Tracked User Names'),
+                      Expanded(
+                        child: Text(l10n.showTrackedUserNames),
                       ),
                       Icon(
                         showTrackedUserNames
@@ -1749,8 +1765,8 @@ class _MapScreenState extends State<MapScreen> {
                   value: 'toggle_waypoint_names',
                   child: Row(
                     children: [
-                      const Expanded(
-                        child: Text('Show Waypoint & Route Names'),
+                      Expanded(
+                        child: Text(l10n.showWaypointAndRouteNames),
                       ),
                       Icon(
                         showWaypointNames
@@ -1765,8 +1781,8 @@ class _MapScreenState extends State<MapScreen> {
                   value: 'toggle_contact_paths',
                   child: Row(
                     children: [
-                      const Expanded(
-                        child: Text('Show Contact Paths'),
+                      Expanded(
+                        child: Text(l10n.showContactPaths),
                       ),
                       Icon(
                         _contactPathsVisible.isNotEmpty ||
@@ -2492,16 +2508,16 @@ class _MapScreenState extends State<MapScreen> {
 
           // Loading indicator
           if (_isLoadingLocation)
-            const Center(
+            Center(
               child: Card(
                 child: Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 8),
-                      Text('Getting location...'),
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 8),
+                      Text(l10n.gettingLocation),
                     ],
                   ),
                 ),
@@ -2931,6 +2947,7 @@ class _GroupStatusPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -2944,10 +2961,10 @@ class _GroupStatusPanel extends StatelessWidget {
               children: [
                 const Icon(Icons.group, size: 18),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Group Status',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    l10n.groupStatus,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
                 InkWell(
@@ -2969,6 +2986,7 @@ class _GroupStatusPanel extends StatelessWidget {
   }
 
   Widget _buildContactList(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final settings = settingsService.settings;
     final dimColor = Theme.of(context).colorScheme.outline;
     final dimStyle = TextStyle(color: dimColor, fontSize: 12);
@@ -2976,7 +2994,7 @@ class _GroupStatusPanel extends StatelessWidget {
     if (!settings.telemetryEnabled) {
       return Padding(
         padding: const EdgeInsets.all(12),
-        child: Text('Location sharing is off', style: dimStyle),
+        child: Text(l10n.locationSharingIsOff, style: dimStyle),
       );
     }
 
@@ -2984,7 +3002,7 @@ class _GroupStatusPanel extends StatelessWidget {
     if (companionKey == null || companionKey.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(12),
-        child: Text('Not connected', style: dimStyle),
+        child: Text(l10n.notConnected, style: dimStyle),
       );
     }
 
@@ -3003,7 +3021,7 @@ class _GroupStatusPanel extends StatelessWidget {
     if (selectedHashHex == null || selectedHashHex.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(12),
-        child: Text('No telemetry channel set', style: dimStyle),
+        child: Text(l10n.noTelemetryChannelSet, style: dimStyle),
       );
     }
 
@@ -3011,7 +3029,7 @@ class _GroupStatusPanel extends StatelessWidget {
     if (selectedHash == null) {
       return Padding(
         padding: const EdgeInsets.all(12),
-        child: Text('Invalid telemetry channel', style: dimStyle),
+        child: Text(l10n.invalidTelemetryChannel, style: dimStyle),
       );
     }
 
@@ -3031,7 +3049,7 @@ class _GroupStatusPanel extends StatelessWidget {
         if (selectedChannel == null || selectedChannel.isPublic) {
           return Padding(
             padding: const EdgeInsets.all(12),
-            child: Text('No group channel active', style: dimStyle),
+            child: Text(l10n.noGroupChannelActive, style: dimStyle),
           );
         }
 
@@ -3061,7 +3079,7 @@ class _GroupStatusPanel extends StatelessWidget {
             if (visible.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.all(12),
-                child: Text('No members on map', style: dimStyle),
+                child: Text(l10n.noMembersOnMap, style: dimStyle),
               );
             }
 

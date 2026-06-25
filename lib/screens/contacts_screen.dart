@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:meshcore_team/database/database.dart';
+import '../l10n/app_localizations.dart';
 import 'package:meshcore_team/models/unread_models.dart';
 import 'package:meshcore_team/repositories/contact_repository.dart';
 import 'package:meshcore_team/models/app_settings.dart';
@@ -20,12 +21,13 @@ class ContactsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final contactRepository = context.watch<ContactRepository>();
 
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
-        title: NightTitle(title: 'Contacts'),
+        title: NightTitle(title: l10n.contacts),
         actions: [
           const StatusBarActions(),
         ],
@@ -47,7 +49,7 @@ class ContactsScreen extends StatelessWidget {
                 children: [
                   const Icon(Icons.error, size: 64, color: Colors.red),
                   const SizedBox(height: 16),
-                  Text('Error: ${snapshot.error}'),
+                  Text(l10n.genericError(snapshot.error.toString())),
                 ],
               ),
             );
@@ -105,6 +107,7 @@ class ContactListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final hasLocation = contact.latitude != null && contact.longitude != null;
     final lastSeenText = _formatLastSeen(contact.lastSeen);
     final isNighttime = context.watch<SettingsService>().settings.appTheme ==
@@ -187,13 +190,13 @@ class ContactListTile extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Hash: ${contact.hash.toRadixString(16)}'),
+            Text(l10n.channelHash(contact.hash.toRadixString(16))),
             if (contact.isRepeater)
               const Text(
                 'Repeater',
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
-            Text('Last seen: $lastSeenText'),
+            Text(l10n.lastSeen(lastSeenText)),
             if (hasLocation)
               Text(
                   'Location: ${contact.latitude!.toStringAsFixed(4)}, ${contact.longitude!.toStringAsFixed(4)}'),
@@ -210,8 +213,8 @@ class ContactListTile extends StatelessWidget {
         onTap: () {
           if (contact.isRepeater) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Direct messages are disabled for repeaters'),
+              SnackBar(
+                content: Text(l10n.directMessagesDisabledForRepeaters),
               ),
             );
             return;

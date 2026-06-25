@@ -4,6 +4,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:meshcore_team/models/app_settings.dart';
 import 'package:meshcore_team/models/sync_status.dart';
@@ -105,6 +106,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final navLocked = context.select<ConnectionViewModel, bool>(
         (vm) => vm.identityConfirmationRequired);
     final syncPhase = context.select<ConnectionViewModel, SyncPhase>(
@@ -161,7 +163,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                   _contactsUnread,
                   isNighttime,
                 ),
-                label: 'Contacts',
+                label: l10n.contacts,
               ),
               BottomNavigationBarItem(
                 icon: _buildBadgedIcon(
@@ -169,11 +171,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                   _channelsUnread,
                   isNighttime,
                 ),
-                label: 'Channels',
+                label: l10n.channels,
               ),
-              const BottomNavigationBarItem(
+              BottomNavigationBarItem(
                 icon: Icon(Icons.map),
-                label: 'Map',
+                label: l10n.map,
               ),
             ],
           );
@@ -202,6 +204,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       context: context,
       barrierDismissible: false,
       builder: (context) {
+        final l10n = AppLocalizations.of(context)!;
         String? errorText;
         bool isSaving = false;
 
@@ -210,7 +213,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
           child: StatefulBuilder(
             builder: (context, setState) {
               return AlertDialog(
-                title: const Text('Set Identity'),
+                title: Text(l10n.setIdentity),
                 content: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -223,7 +226,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                       maxLength: 31,
                       enabled: !isSaving,
                       decoration: InputDecoration(
-                        labelText: 'Name',
+                        labelText: l10n.name,
                         errorText: errorText,
                       ),
                     ),
@@ -262,7 +265,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                               });
                             }
                           },
-                    child: Text(isSaving ? 'Saving...' : 'Save'),
+                    child: Text(isSaving ? 'Saving...' : l10n.save),
                   ),
                 ],
               );

@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:meshcore_team/database/database.dart';
 import 'package:meshcore_team/models/unread_models.dart';
@@ -22,16 +23,17 @@ class ChannelsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final channelRepository = context.watch<ChannelRepository>();
 
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
-        title: NightTitle(title: 'Channels'),
+        title: NightTitle(title: l10n.channels),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            tooltip: 'Add channel',
+            tooltip: l10n.addChannelLower,
             onPressed: () => _showAddMenu(context, channelRepository),
           ),
           const SizedBox(
@@ -57,7 +59,7 @@ class ChannelsScreen extends StatelessWidget {
                 children: [
                   const Icon(Icons.error, size: 64, color: Colors.red),
                   const SizedBox(height: 16),
-                  Text('Error: ${snapshot.error}'),
+                  Text(l10n.genericError(snapshot.error.toString())),
                 ],
               ),
             );
@@ -108,13 +110,14 @@ class ChannelsScreen extends StatelessWidget {
     await showModalBottomSheet<void>(
       context: context,
       builder: (ctx) {
+        final sheetL10n = AppLocalizations.of(ctx)!;
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
                 leading: const Icon(Icons.lock_outline),
-                title: const Text('Create Private Channel'),
+                title: Text(sheetL10n.createPrivateChannel),
                 onTap: () {
                   Navigator.of(ctx).pop();
                   _showCreateChannelDialog(context, channelRepository);
@@ -122,8 +125,8 @@ class ChannelsScreen extends StatelessWidget {
               ),
               ListTile(
                 leading: const Icon(Icons.tag),
-                title: const Text('Join Hashtag Channel'),
-                subtitle: const Text('Derive key from #name — no QR needed'),
+                title: Text(sheetL10n.joinHashtagChannel),
+                subtitle: Text(sheetL10n.deriveKeyFromName),
                 onTap: () {
                   Navigator.of(ctx).pop();
                   _showJoinHashtagChannelDialog(context, channelRepository);
@@ -131,7 +134,7 @@ class ChannelsScreen extends StatelessWidget {
               ),
               ListTile(
                 leading: const Icon(Icons.qr_code_scanner),
-                title: const Text('Add via Link / QR Code'),
+                title: Text(sheetL10n.addViaLinkQr),
                 onTap: () {
                   Navigator.of(ctx).pop();
                   _showImportChannelDialog(context, channelRepository);
@@ -167,7 +170,7 @@ class ChannelsScreen extends StatelessWidget {
                 }
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Created: ${created.name}')),
+                    SnackBar(content: Text(AppLocalizations.of(context)!.channelCreated(created.name))),
                   );
                 }
               } catch (e) {
@@ -185,7 +188,7 @@ class ChannelsScreen extends StatelessWidget {
             }
 
             return AlertDialog(
-              title: const Text('Create Private Channel'),
+              title: Text(AppLocalizations.of(dialogContext)!.createPrivateChannel),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -193,8 +196,8 @@ class ChannelsScreen extends StatelessWidget {
                     controller: controller,
                     autofocus: true,
                     enabled: !isCreating,
-                    decoration: const InputDecoration(
-                      labelText: 'Channel name',
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(dialogContext)!.channelName,
                     ),
                     onSubmitted: (_) => create(),
                   ),
@@ -209,11 +212,11 @@ class ChannelsScreen extends StatelessWidget {
                   onPressed: isCreating
                       ? null
                       : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: Text(AppLocalizations.of(dialogContext)!.cancel),
                 ),
                 FilledButton(
                   onPressed: isCreating ? null : create,
-                  child: const Text('Create'),
+                  child: Text(AppLocalizations.of(dialogContext)!.create),
                 ),
               ],
             );
@@ -246,7 +249,7 @@ class ChannelsScreen extends StatelessWidget {
                 if (dialogContext.mounted) Navigator.of(dialogContext).pop();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Joined: ${joined.name}')),
+                    SnackBar(content: Text(AppLocalizations.of(context)!.channelJoined(joined.name))),
                   );
                 }
               } catch (e) {
@@ -264,7 +267,7 @@ class ChannelsScreen extends StatelessWidget {
             }
 
             return AlertDialog(
-              title: const Text('Join Hashtag Channel'),
+              title: Text(AppLocalizations.of(dialogContext)!.joinHashtagChannel),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -272,9 +275,9 @@ class ChannelsScreen extends StatelessWidget {
                     controller: controller,
                     autofocus: true,
                     enabled: !isJoining,
-                    decoration: const InputDecoration(
-                      labelText: 'Channel name',
-                      hintText: '#public',
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(dialogContext)!.channelName,
+                      hintText: AppLocalizations.of(dialogContext)!.publicChannelName,
                       helperText:
                           'Anyone who types the same name joins the same channel',
                     ),
@@ -290,11 +293,11 @@ class ChannelsScreen extends StatelessWidget {
                 TextButton(
                   onPressed:
                       isJoining ? null : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: Text(AppLocalizations.of(dialogContext)!.cancel),
                 ),
                 FilledButton(
                   onPressed: isJoining ? null : join,
-                  child: const Text('Join'),
+                  child: Text(AppLocalizations.of(dialogContext)!.join),
                 ),
               ],
             );
@@ -318,7 +321,7 @@ class ChannelsScreen extends StatelessWidget {
       if (imported == null) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invalid channel link / key')),
+            SnackBar(content: Text(AppLocalizations.of(context)!.invalidChannelLinkKey)),
           );
         }
         return;
@@ -327,7 +330,7 @@ class ChannelsScreen extends StatelessWidget {
       if (dialogContext.mounted) Navigator.of(dialogContext).pop();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Added: ${imported.name}')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.channelAdded(imported.name))),
         );
       }
     }
@@ -338,24 +341,24 @@ class ChannelsScreen extends StatelessWidget {
         return StatefulBuilder(
           builder: (dialogContext, setState) {
             return AlertDialog(
-              title: const Text('Add Channel'),
+              title: Text(AppLocalizations.of(dialogContext)!.addChannel),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextField(
                       controller: nameOrUrlController,
-                      decoration: const InputDecoration(
-                        labelText: 'Name or Link',
-                        hintText: 'meshcore://channel/add?...',
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(dialogContext)!.nameOrLink,
+                        hintText: AppLocalizations.of(dialogContext)!.meshcoreChannelAddPlaceholder,
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: keyOrUrlController,
-                      decoration: const InputDecoration(
-                        labelText: 'Secret or Link',
-                        hintText: '32 hex chars or base64',
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(dialogContext)!.secretOrLink,
+                        hintText: AppLocalizations.of(dialogContext)!.hexCharsOrBase64,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -367,9 +370,8 @@ class ChannelsScreen extends StatelessWidget {
                           if (!status.isGranted) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content:
-                                        Text('Camera permission required')),
+                                SnackBar(
+                                    content: Text(AppLocalizations.of(context)!.cameraPermissionRequired)),
                               );
                             }
                             return;
@@ -377,8 +379,8 @@ class ChannelsScreen extends StatelessWidget {
 
                           final scanned = await Navigator.of(context).push(
                             MaterialPageRoute<String>(
-                              builder: (_) => const QrScanScreen(
-                                title: 'Scan Channel QR',
+                              builder: (_) => QrScanScreen(
+                                title: AppLocalizations.of(context)!.scanChannelQr,
                               ),
                             ),
                           );
@@ -397,7 +399,7 @@ class ChannelsScreen extends StatelessWidget {
                           setState(() {});
                         },
                         icon: const Icon(Icons.qr_code_scanner),
-                        label: const Text('Scan QR Code'),
+                        label: Text(AppLocalizations.of(dialogContext)!.scanQrCode),
                       ),
                     ),
                   ],
@@ -406,7 +408,7 @@ class ChannelsScreen extends StatelessWidget {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: Text(AppLocalizations.of(dialogContext)!.cancel),
                 ),
                 FilledButton(
                   onPressed: () async {
@@ -420,7 +422,7 @@ class ChannelsScreen extends StatelessWidget {
                       }
                     }
                   },
-                  child: const Text('Add'),
+                  child: Text(AppLocalizations.of(dialogContext)!.add),
                 ),
               ],
             );
@@ -446,6 +448,7 @@ class ChannelListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isPublic = channel.isPublic;
     final isNighttime = context.watch<SettingsService>().settings.appTheme ==
         AppThemeMode.nighttime;
@@ -513,10 +516,10 @@ class ChannelListTile extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Hash: ${channel.hash.toRadixString(16)}'),
-            Text('Index: ${channel.channelIndex}'),
-            Text('Type: ${isPublic ? 'Public' : 'Private'}'),
-            if (channel.muteNotifications) const Text('🔕 Notifications muted'),
+            Text(l10n.channelHash(channel.hash.toRadixString(16))),
+            Text(l10n.channelIndex(channel.channelIndex.toString())),
+            Text(isPublic ? l10n.channelTypePublic : l10n.channelTypePrivate),
+            if (channel.muteNotifications) Text(l10n.notificationsMuted),
             if (isTelemetryChannel)
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -525,7 +528,7 @@ class ChannelListTile extends StatelessWidget {
                       size: 14,
                       color: isNighttime ? NightColors.primary : Colors.blue),
                   const SizedBox(width: 2),
-                  const Text('Location sharing on'),
+                  Text(l10n.locationSharingOn),
                 ],
               )
             else if (!settings.telemetryEnabled &&
@@ -539,7 +542,7 @@ class ChannelListTile extends StatelessWidget {
                           ? NightColors.dimmer
                           : Colors.grey),
                   const SizedBox(width: 2),
-                  const Text('Location sharing off'),
+                  Text(l10n.locationSharingOff),
                 ],
               ),
           ],
@@ -566,7 +569,7 @@ class ChannelListTile extends StatelessWidget {
             if (!isPublic) ...[
               const SizedBox(width: 8),
               PopupMenuButton<String>(
-                tooltip: 'Channel actions',
+                tooltip: l10n.channelActions,
                 onSelected: (value) async {
                   if (value != 'delete') return;
 
@@ -590,8 +593,7 @@ class ChannelListTile extends StatelessWidget {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                      content:
-                                          Text('Deleted: ${channel.name}')),
+                                      content: Text(AppLocalizations.of(context)!.channelDeleted(channel.name))),
                                 );
                               }
                             } catch (e) {
@@ -607,7 +609,7 @@ class ChannelListTile extends StatelessWidget {
                           }
 
                           return AlertDialog(
-                            title: const Text('Delete Channel?'),
+                            title: Text(AppLocalizations.of(dialogContext)!.deleteChannel),
                             content: Text(
                               'Delete "${channel.name}" from the companion and this phone?\n\nThis cannot be undone.',
                             ),
@@ -616,7 +618,7 @@ class ChannelListTile extends StatelessWidget {
                                 onPressed: isDeleting
                                     ? null
                                     : () => Navigator.of(dialogContext).pop(),
-                                child: const Text('Cancel'),
+                                child: Text(AppLocalizations.of(dialogContext)!.cancel),
                               ),
                               FilledButton(
                                 onPressed: isDeleting ? null : doDelete,
@@ -628,7 +630,7 @@ class ChannelListTile extends StatelessWidget {
                                           strokeWidth: 2,
                                         ),
                                       )
-                                    : const Text('Delete'),
+                                    : Text(AppLocalizations.of(dialogContext)!.delete),
                               ),
                             ],
                           );
@@ -637,10 +639,10 @@ class ChannelListTile extends StatelessWidget {
                     },
                   );
                 },
-                itemBuilder: (context) => const [
+                itemBuilder: (context) => [
                   PopupMenuItem<String>(
                     value: 'delete',
-                    child: Text('Delete'),
+                    child: Text(AppLocalizations.of(context)!.delete),
                   ),
                 ],
               ),

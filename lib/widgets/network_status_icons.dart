@@ -8,6 +8,7 @@ import 'package:meshcore_team/services/forwarding_policy_service.dart';
 import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/theme/night_theme.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
+import '../l10n/app_localizations.dart';
 
 /// Location sharing and forwarding status icons shown on all main screens.
 class NetworkStatusIcons extends StatelessWidget {
@@ -15,6 +16,7 @@ class NetworkStatusIcons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsService>().settings;
     final isConnected = context.watch<ConnectionViewModel>().isConnected;
     final forwardingPolicy = context.watch<ForwardingPolicyService>();
@@ -32,7 +34,7 @@ class NetworkStatusIcons extends StatelessWidget {
         ? 'Sharing location'
         : telemetryConfigured
             ? 'Location sharing enabled (not connected)'
-            : 'Location sharing off';
+            : l10n.locationSharingOff;
 
     final forwardingTooltip = forwardingActive && campModeEnabled
         ? 'Camp mode - forwarding active ($activeHops hop${activeHops == 1 ? '' : 's'})'

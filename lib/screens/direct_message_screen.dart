@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../database/database.dart';
+import '../l10n/app_localizations.dart';
 import '../repositories/message_repository.dart';
 import '../services/message_notification_service.dart';
 import '../utils/message_time_format.dart';
@@ -118,6 +119,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final recipientKey = _bytesToHex(widget.contact.publicKey);
     final isRepeater = widget.contact.isRepeater;
@@ -129,7 +131,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
           children: [
             Text(widget.contact.name ?? 'Unknown Contact'),
             Text(
-              'Direct Message',
+              l10n.directMessage,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -282,7 +284,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                           focusNode: _inputFocusNode,
                           enabled: !isRepeater,
                           decoration: InputDecoration(
-                            hintText: 'Type a message...',
+                            hintText: l10n.typeAMessage,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24),
                               borderSide: BorderSide.none,
@@ -501,8 +503,8 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
     if (widget.contact.isRepeater) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Direct messages are disabled for repeaters'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.directMessagesDisabledForRepeaters),
           ),
         );
       }
@@ -544,8 +546,8 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
         // Show error snackbar
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to send message'),
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.failedToSendMessage),
               backgroundColor: Colors.red,
             ),
           );
@@ -556,7 +558,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(AppLocalizations.of(context)!.genericError(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -573,14 +575,14 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.copy),
-              title: const Text('Copy message text'),
+              title: Text(AppLocalizations.of(context)!.copyMessageText),
               onTap: () {
                 Clipboard.setData(ClipboardData(text: message.content));
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Copied'),
-                    duration: Duration(seconds: 1),
+                  SnackBar(
+                    content: Text(AppLocalizations.of(context)!.copied),
+                    duration: const Duration(seconds: 1),
                   ),
                 );
               },

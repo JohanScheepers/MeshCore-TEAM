@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:meshcore_team/screens/connection_screen.dart';
 import 'package:meshcore_team/screens/settings_screen.dart';
+import '../l10n/app_localizations.dart';
 
 /// Shared hamburger menu button used in the AppBar of Contacts, Channels,
 /// and Map screens. Add menu items here to have them appear on all three.
@@ -23,6 +24,7 @@ class AppMenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return PopupMenuButton<String>(
       icon: const Icon(Icons.menu),
       onSelected: (value) {
@@ -38,28 +40,28 @@ class AppMenuButton extends StatelessWidget {
           _showAbout(context);
         }
       },
-      itemBuilder: (context) => const [
+      itemBuilder: (context) => [
         PopupMenuItem(
           value: 'connection',
           child: ListTile(
-            leading: Icon(Icons.bluetooth),
-            title: Text('Connection'),
+            leading: const Icon(Icons.bluetooth),
+            title: Text(l10n.connection),
             contentPadding: EdgeInsets.zero,
           ),
         ),
         PopupMenuItem(
           value: 'app_settings',
           child: ListTile(
-            leading: Icon(Icons.settings),
-            title: Text('App Settings'),
+            leading: const Icon(Icons.settings),
+            title: Text(l10n.appSettings),
             contentPadding: EdgeInsets.zero,
           ),
         ),
         PopupMenuItem(
           value: 'about',
           child: ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('About'),
+            leading: const Icon(Icons.info_outline),
+            title: Text(l10n.about),
             contentPadding: EdgeInsets.zero,
           ),
         ),

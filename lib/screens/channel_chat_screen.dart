@@ -15,6 +15,7 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:async';
 
 import '../database/database.dart';
+import '../l10n/app_localizations.dart';
 import '../repositories/channel_repository.dart';
 import '../repositories/message_repository.dart';
 import '../services/message_notification_service.dart';
@@ -128,6 +129,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final isNighttime = context.watch<SettingsService>().settings.appTheme ==
         AppThemeMode.nighttime;
@@ -151,7 +153,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           if (!widget.channel.isPublic)
             IconButton(
               icon: const Icon(Icons.share),
-              tooltip: 'Share channel',
+              tooltip: l10n.shareChannelLower,
               onPressed: () => _showShareChannelDialog(context),
             ),
           IconButton(
@@ -162,11 +164,12 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                   : (widget.channel.isPublic ? Colors.green : Colors.orange),
             ),
             onPressed: () {
+              final l = AppLocalizations.of(context)!;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    'Channel Index: ${widget.channel.channelIndex}\n'
-                    'Hash: ${widget.channel.hash.toRadixString(16).padLeft(2, '0')}',
+                    '${l.channelIndex(widget.channel.channelIndex.toString())}\n'
+                    '${l.channelHash(widget.channel.hash.toRadixString(16).padLeft(2, '0'))}',
                   ),
                 ),
               );
@@ -388,8 +391,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     await showDialog<void>(
       context: context,
       builder: (ctx) {
+        final l = AppLocalizations.of(context)!;
         return AlertDialog(
-          title: const Text('Share Channel'),
+          title: Text(l.shareChannel),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -416,19 +420,19 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                 await Clipboard.setData(ClipboardData(text: link));
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Link copied')),
+                    SnackBar(content: Text(AppLocalizations.of(context)!.linkCopied)),
                   );
                 }
               },
-              child: const Text('Copy'),
+              child: Text(l.copy),
             ),
             TextButton(
               onPressed: () => Share.share(link),
-              child: const Text('Share'),
+              child: Text(l.share),
             ),
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Done'),
+              child: Text(l.done),
             ),
           ],
         );
@@ -583,14 +587,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.copy),
-              title: const Text('Copy message text'),
+              title: Text(AppLocalizations.of(context)!.copyMessageText),
               onTap: () {
                 Clipboard.setData(ClipboardData(text: message.content));
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Copied'),
-                    duration: Duration(seconds: 1),
+                  SnackBar(
+                    content: Text(AppLocalizations.of(context)!.copied),
+                    duration: const Duration(seconds: 1),
                   ),
                 );
               },
@@ -598,7 +602,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             if (!isFromMe)
               ListTile(
                 leading: const Icon(Icons.reply),
-                title: const Text('Reply'),
+                title: Text(AppLocalizations.of(context)!.reply),
                 onTap: () {
                   Navigator.pop(ctx);
                   _seedReply(senderName);
@@ -773,8 +777,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         // Show error snackbar
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to send message'),
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.failedToSendMessage),
               backgroundColor: Colors.red,
             ),
           );
@@ -785,7 +789,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(AppLocalizations.of(context)!.genericError(e.toString())),
             backgroundColor: Colors.red,
           ),
         );

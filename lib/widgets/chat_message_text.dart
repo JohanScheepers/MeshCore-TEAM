@@ -5,6 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/app_localizations.dart';
 import '../repositories/channel_repository.dart';
 
 /// Renders a chat message with tappable [#hashtag] links and styled [@mention]s.
@@ -131,6 +132,7 @@ class _ChatMessageTextState extends State<ChatMessageText> {
 
   Future<void> _onHashtagTapped(BuildContext context, String tag) async {
     final channelRepository = context.read<ChannelRepository>();
+    final l10n = AppLocalizations.of(context)!;
     bool isJoining = false;
 
     await showDialog<void>(
@@ -147,7 +149,7 @@ class _ChatMessageTextState extends State<ChatMessageText> {
                 if (dialogContext.mounted) Navigator.of(dialogContext).pop();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Joined: ${joined.name}')),
+                    SnackBar(content: Text(l10n.channelJoined(joined.name))),
                   );
                 }
               } catch (e) {
@@ -163,7 +165,7 @@ class _ChatMessageTextState extends State<ChatMessageText> {
             }
 
             return AlertDialog(
-              title: Text('Join $tag?'),
+              title: Text(l10n.joinChannelConfirmation(tag)),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -182,11 +184,11 @@ class _ChatMessageTextState extends State<ChatMessageText> {
                   onPressed: isJoining
                       ? null
                       : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: Text(l10n.cancel),
                 ),
                 FilledButton(
                   onPressed: isJoining ? null : join,
-                  child: const Text('Join'),
+                  child: Text(l10n.join),
                 ),
               ],
             );

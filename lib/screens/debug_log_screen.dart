@@ -9,6 +9,8 @@ import 'package:share_plus/share_plus.dart';
 
 import 'package:meshcore_team/services/debug_log_service.dart';
 
+import '../l10n/app_localizations.dart';
+
 class DebugLogScreen extends StatefulWidget {
   const DebugLogScreen({super.key});
 
@@ -48,12 +50,13 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final logService = DebugLogService.instance;
     final filtered = logService.filtered(_activeFilters);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Debug Logs (${filtered.length})'),
+        title: Text(l10n.debugLogsTitleWithCount(filtered.length)),
         actions: [
           IconButton(
             icon: Icon(
@@ -64,12 +67,12 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.share),
-            tooltip: 'Export logs',
+            tooltip: l10n.exportLogs,
             onPressed: () => _exportLogs(logService),
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            tooltip: 'Clear logs',
+            tooltip: l10n.clearLogs,
             onPressed: () {
               logService.clear();
             },
@@ -82,7 +85,7 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
           const Divider(height: 1),
           Expanded(
             child: filtered.isEmpty
-                ? const Center(child: Text('No log entries'))
+                ? Center(child: Text(l10n.noLogEntries))
                 : ListView.builder(
                     controller: _scrollController,
                     itemCount: filtered.length,
@@ -169,7 +172,7 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
     if (text.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No logs to export')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.noLogsToExport)),
       );
       return;
     }
@@ -191,7 +194,7 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Export failed: $e')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.exportFailedError(e.toString()))),
       );
     }
   }

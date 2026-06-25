@@ -9,6 +9,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -77,11 +78,11 @@ class _ImportedMapsScreenState extends State<ImportedMapsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: Text(AppLocalizations.of(context)!.delete),
           ),
         ],
       ),
@@ -147,12 +148,12 @@ class _ImportedMapsScreenState extends State<ImportedMapsScreen> {
     } on FormatException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Import failed: ${e.message}')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.importFailedError(e.message))),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Import failed: $e')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.importFailedError(e.toString()))),
       );
     } finally {
       if (mounted) setState(() => _isBusy = false);
@@ -175,7 +176,7 @@ class _ImportedMapsScreenState extends State<ImportedMapsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $e')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.deleteFailed(e.toString()))),
       );
     } finally {
       if (mounted) setState(() => _isBusy = false);
@@ -189,14 +190,15 @@ class _ImportedMapsScreenState extends State<ImportedMapsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final db = context.read<AppDatabase>();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Imported Maps (KMZ)'),
+        title: Text(l10n.importedMapsKmz),
         actions: [
           IconButton(
-            tooltip: 'Import KMZ file',
+            tooltip: l10n.importKmzFile,
             onPressed: _isBusy ? null : _importKmz,
             icon: const Icon(Icons.add),
           ),
@@ -234,7 +236,7 @@ class _ImportedMapsScreenState extends State<ImportedMapsScreen> {
                     FilledButton.icon(
                       onPressed: _isBusy ? null : _importKmz,
                       icon: const Icon(Icons.file_open),
-                      label: const Text('Import KMZ'),
+                      label: Text(l10n.importKmz),
                     ),
                   ],
                 ),
@@ -275,7 +277,7 @@ class _ImportedMapsScreenState extends State<ImportedMapsScreen> {
                       ),
                     ),
                     Tooltip(
-                      message: 'Delete',
+                      message: l10n.delete,
                       child: IconButton(
                         onPressed: _isBusy ? null : () => _deleteMap(m),
                         icon: const Icon(Icons.delete),

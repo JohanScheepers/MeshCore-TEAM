@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:meshcore_team/models/route_payload.dart';
 import 'package:meshcore_team/models/waypoint.dart';
+import '../l10n/app_localizations.dart';
 
 class WaypointEditDialog extends StatefulWidget {
   final String initialName;
@@ -49,11 +50,12 @@ class _WaypointEditDialogState extends State<WaypointEditDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final name = _nameController.text.trim();
 
     return AlertDialog(
       scrollable: true,
-      title: const Text('Edit Waypoint'),
+      title: Text(l10n.editWaypoint),
       content: SizedBox(
         width: 420,
         child: SingleChildScrollView(
@@ -62,16 +64,16 @@ class _WaypointEditDialogState extends State<WaypointEditDialog> {
             children: [
               TextField(
                 controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Waypoint Name',
+                decoration: InputDecoration(
+                  labelText: l10n.waypointName,
                 ),
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<WaypointType>(
                 value: _selectedType,
-                decoration: const InputDecoration(
-                  labelText: 'Waypoint Type',
+                decoration: InputDecoration(
+                  labelText: l10n.waypointType,
                 ),
                 items: [
                   for (final type in WaypointType.values)
@@ -90,8 +92,8 @@ class _WaypointEditDialogState extends State<WaypointEditDialog> {
               const SizedBox(height: 12),
               TextField(
                 controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Description (Optional)',
+                decoration: InputDecoration(
+                  labelText: l10n.descriptionOptional,
                 ),
                 maxLines: 3,
               ),
@@ -146,7 +148,7 @@ class _WaypointEditDialogState extends State<WaypointEditDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(l10n.cancel),
         ),
         TextButton(
           onPressed: name.isEmpty
@@ -163,7 +165,7 @@ class _WaypointEditDialogState extends State<WaypointEditDialog> {
                     ),
                   );
                 },
-          child: const Text('Save'),
+          child: Text(l10n.save),
         ),
       ],
     );

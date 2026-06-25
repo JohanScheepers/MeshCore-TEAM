@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import 'package:meshcore_team/database/database.dart';
 import 'package:meshcore_team/models/map_tile_providers.dart';
 import 'package:meshcore_team/services/map_tile_cache_service.dart';
+import '../l10n/app_localizations.dart';
 
 class OfflineMapsScreen extends StatefulWidget {
   const OfflineMapsScreen({super.key});
@@ -60,11 +61,11 @@ class _OfflineMapsScreenState extends State<OfflineMapsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('OK'),
+            child: Text(AppLocalizations.of(context)!.ok),
           ),
         ],
       ),
@@ -100,7 +101,7 @@ class _OfflineMapsScreenState extends State<OfflineMapsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $e')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.deleteFailed(e.toString()))),
       );
     } finally {
       if (!mounted) return;
@@ -141,7 +142,7 @@ class _OfflineMapsScreenState extends State<OfflineMapsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Clear all failed: $e')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.clearAllFailed(e.toString()))),
       );
     } finally {
       if (!mounted) return;
@@ -153,11 +154,12 @@ class _OfflineMapsScreenState extends State<OfflineMapsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final db = context.read<AppDatabase>();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Offline Maps'),
+        title: Text(l10n.offlineMaps),
       ),
       body: StreamBuilder<List<OfflineMapAreaData>>(
         stream: db.offlineMapAreasDao.watchAllAreas(),
@@ -171,10 +173,10 @@ class _OfflineMapsScreenState extends State<OfflineMapsScreen> {
                 builder: (context, totalSnapshot) {
                   final totalBytes = totalSnapshot.data ?? 0;
                   return ListTile(
-                    title: const Text('Storage'),
+                    title: Text(l10n.storage),
                     subtitle: Text(_formatBytes(totalBytes)),
                     trailing: IconButton(
-                      tooltip: 'Clear all',
+                      tooltip: l10n.clearAll,
                       onPressed: _isBusy ? null : () => _clearAll(areas),
                       icon: const Icon(Icons.delete_sweep),
                     ),
@@ -184,8 +186,8 @@ class _OfflineMapsScreenState extends State<OfflineMapsScreen> {
               const Divider(height: 1),
               Expanded(
                 child: areas.isEmpty
-                    ? const Center(
-                        child: Text('No offline maps downloaded'),
+                    ? Center(
+                        child: Text(l10n.noOfflineMapsDownloaded),
                       )
                     : ListView.separated(
                         itemCount: areas.length,
@@ -201,7 +203,7 @@ class _OfflineMapsScreenState extends State<OfflineMapsScreen> {
                             subtitle: Text(subtitle),
                             isThreeLine: true,
                             trailing: IconButton(
-                              tooltip: 'Delete',
+                              tooltip: l10n.delete,
                               onPressed:
                                   _isBusy ? null : () => _deleteArea(area),
                               icon: const Icon(Icons.delete),

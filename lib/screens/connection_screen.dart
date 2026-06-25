@@ -28,6 +28,7 @@ import 'package:meshcore_team/models/map_tile_providers.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../l10n/app_localizations.dart';
 
 
 /// Connection Screen
@@ -118,6 +119,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final bleManager = context.watch<BleConnectionManager>();
     final connectionVM = context.watch<ConnectionViewModel>();
 
@@ -129,14 +131,14 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
-        title: const Text('Connection'),
+        title: Text(l10n.connection),
         actions: [
           if (kDebugMode || isBetaBuild)
             IconButton(
               padding: EdgeInsets.zero,
               visualDensity: VisualDensity.compact,
               icon: const Icon(Icons.article_outlined),
-              tooltip: 'Debug Logs',
+              tooltip: l10n.debugLogs,
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => const DebugLogScreen(),
@@ -147,7 +149,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
             PopupMenuButton<String>(
               padding: EdgeInsets.zero,
               icon: const Icon(Icons.settings),
-              tooltip: 'Team Config',
+              tooltip: l10n.teamConfig,
               onSelected: (value) {
                 if (value == 'share_offline') {
                   Navigator.of(context).push(
@@ -170,12 +172,12 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ),
                 );
               },
-              itemBuilder: (_) => const [
+              itemBuilder: (_) => [
                 PopupMenuItem(
                   value: 'export',
                   child: ListTile(
-                    leading: Icon(Icons.file_download),
-                    title: Text('Create Team Config'),
+                    leading: const Icon(Icons.file_download),
+                    title: Text(l10n.createTeamConfig),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                   ),
@@ -183,8 +185,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 PopupMenuItem(
                   value: 'import',
                   child: ListTile(
-                    leading: Icon(Icons.file_upload),
-                    title: Text('Import Team Config'),
+                    leading: const Icon(Icons.file_upload),
+                    title: Text(l10n.importTeamConfig),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                   ),
@@ -192,8 +194,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 PopupMenuItem(
                   value: 'share_offline',
                   child: ListTile(
-                    leading: Icon(Icons.wifi_tethering),
-                    title: Text('Share Config Offline'),
+                    leading: const Icon(Icons.wifi_tethering),
+                    title: Text(l10n.shareConfigOffline),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                   ),
@@ -202,9 +204,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 PopupMenuItem(
                   value: 'wipe_data',
                   child: ListTile(
-                    leading: Icon(Icons.delete_forever, color: Colors.red),
-                    title: Text('Wipe Local Data',
-                        style: TextStyle(color: Colors.red)),
+                    leading: const Icon(Icons.delete_forever, color: Colors.red),
+                    title: Text(l10n.wipeLocalData,
+                        style: const TextStyle(color: Colors.red)),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                   ),
@@ -269,16 +271,17 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final l10n = AppLocalizations.of(context)!;
             final nothingSelected =
                 !wipeChannels && !wipeWaypoints && !wipeMaps;
 
             return AlertDialog(
-              title: const Row(
+              title: Row(
                 children: [
-                  Icon(Icons.warning_amber_rounded,
+                  const Icon(Icons.warning_amber_rounded,
                       color: Colors.red, size: 28),
-                  SizedBox(width: 8),
-                  Text('Wipe Local Data'),
+                  const SizedBox(width: 8),
+                  Text(l10n.wipeLocalData),
                 ],
               ),
               content: Column(
@@ -286,7 +289,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Select which data to permanently delete:',
+                    l10n.wipePermanentDeleteWarning,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 12),
@@ -296,9 +299,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                         ? null
                         : (v) =>
                             setDialogState(() => wipeChannels = v ?? false),
-                    title: Text('Channels (${privateChannels.length} private)'),
+                    title: Text(l10n.channelsWithPrivateCount(privateChannels.length)),
                     subtitle:
-                        const Text('Clears from firmware and local database'),
+                        Text(l10n.clearsFromFirmwareAndLocalDatabase),
                     secondary: const Icon(Icons.radio),
                     dense: true,
                     enabled: privateChannels.isNotEmpty && !isWiping,
@@ -309,7 +312,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                         ? null
                         : (v) =>
                             setDialogState(() => wipeWaypoints = v ?? false),
-                    title: Text('Waypoints & Routes (${waypoints.length})'),
+                    title: Text(l10n.waypointsAndRoutesWithCount(waypoints.length)),
                     secondary: const Icon(Icons.place),
                     dense: true,
                     enabled: waypoints.isNotEmpty && !isWiping,
@@ -319,9 +322,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     onChanged: isWiping
                         ? null
                         : (v) => setDialogState(() => wipeMaps = v ?? false),
-                    title: Text('Offline Maps (${mapAreas.length} areas)'),
+                    title: Text(l10n.offlineMapsWithCount(mapAreas.length)),
                     subtitle:
-                        const Text('Removes downloaded tiles and metadata'),
+                        Text(l10n.removesDownloadedTilesAndMetadata),
                     secondary: const Icon(Icons.map),
                     dense: true,
                     enabled: mapAreas.isNotEmpty && !isWiping,
@@ -330,7 +333,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     const SizedBox(height: 16),
                     const LinearProgressIndicator(),
                     const SizedBox(height: 8),
-                    const Text('Wiping data...'),
+                    Text(l10n.wipingData),
                   ],
                 ],
               ),
@@ -338,7 +341,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 TextButton(
                   onPressed:
                       isWiping ? null : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: Text(l10n.cancel),
                 ),
                 FilledButton.icon(
                   onPressed: (nothingSelected || isWiping)
@@ -347,26 +350,29 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           // Second confirmation
                           final confirm = await showDialog<bool>(
                             context: dialogContext,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text('Are you sure?'),
-                              content: Text(
-                                'This will permanently delete the selected data. '
-                                '${wipeChannels ? 'Channels will be cleared from the connected companion firmware. ' : ''}'
-                                'This cannot be undone.',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(false),
-                                  child: const Text('Cancel'),
+                            builder: (ctx) {
+                              final innerL10n = AppLocalizations.of(ctx)!;
+                              return AlertDialog(
+                                title: Text(innerL10n.areYouSure),
+                                content: Text(
+                                  '${innerL10n.wipePermanentDeleteWarning} '
+                                  '${wipeChannels ? 'Channels will be cleared from the connected companion firmware. ' : ''}'
+                                  'This cannot be undone.',
                                 ),
-                                FilledButton(
-                                  style: FilledButton.styleFrom(
-                                      backgroundColor: Colors.red),
-                                  onPressed: () => Navigator.of(ctx).pop(true),
-                                  child: const Text('Wipe'),
-                                ),
-                              ],
-                            ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(ctx).pop(false),
+                                    child: Text(innerL10n.cancel),
+                                  ),
+                                  FilledButton(
+                                    style: FilledButton.styleFrom(
+                                        backgroundColor: Colors.red),
+                                    onPressed: () => Navigator.of(ctx).pop(true),
+                                    child: Text(innerL10n.wipe),
+                                  ),
+                                ],
+                              );
+                            },
                           );
                           if (confirm != true) return;
 
@@ -407,19 +413,19 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                             if (!dialogContext.mounted) return;
                             Navigator.of(dialogContext).pop();
                             ScaffoldMessenger.of(this.context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Data wiped successfully')),
+                              SnackBar(
+                                  content: Text(AppLocalizations.of(this.context)!.dataWipedSuccessfully)),
                             );
                           } catch (e) {
                             setDialogState(() => isWiping = false);
                             if (!dialogContext.mounted) return;
                             ScaffoldMessenger.of(this.context).showSnackBar(
-                              SnackBar(content: Text('Wipe failed: $e')),
+                              SnackBar(content: Text(AppLocalizations.of(this.context)!.wipeFailed(e.toString()))),
                             );
                           }
                         },
                   icon: const Icon(Icons.delete_forever),
-                  label: const Text('Wipe Selected'),
+                  label: Text(l10n.wipeSelected),
                   style: FilledButton.styleFrom(backgroundColor: Colors.red),
                 ),
               ],
@@ -432,6 +438,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
   /// Connection status indicator
   Widget _buildConnectionStatusIndicator(BleConnectionManager bleManager) {
+    final l10n = AppLocalizations.of(context)!;
     final isNighttime = context.read<SettingsService>().settings.appTheme ==
         AppThemeMode.nighttime;
 
@@ -463,7 +470,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       default:
         statusColor = isNighttime ? NightColors.statusDisconnected : Colors.grey;
         statusIcon = Icons.bluetooth_disabled;
-        statusText = 'Disconnected';
+        statusText = l10n.notConnected;
     }
 
     return Padding(
@@ -549,6 +556,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
   /// Scanner view (when not connected)
   Widget _buildScannerView(BleConnectionManager bleManager) {
+    final l10n = AppLocalizations.of(context)!;
     // Permission error: service caught a SecurityException or missing Bluetooth
     // permission. Show a recovery banner so the user can re-grant without
     // needing to find Settings manually.
@@ -565,9 +573,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
             children: [
               const Icon(Icons.bluetooth_disabled, size: 64, color: Colors.red),
               const SizedBox(height: 16),
-              const Text(
-                'Nearby Devices Permission Required',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                l10n.permissionRequired,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
@@ -579,7 +587,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 icon: const Icon(Icons.settings),
-                label: const Text('Open App Settings'),
+                label: Text(l10n.openAppSettings),
                 onPressed: () => openAppSettings(),
               ),
               const SizedBox(height: 12),
@@ -628,7 +636,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
+                label: Text(l10n.retry),
                 onPressed: _startScan,
               ),
             ],
@@ -638,13 +646,13 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     }
 
     if (_isScanning && _discoveredDevices.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Scanning for MeshCore devices...'),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(l10n.scanningForDevices),
           ],
         ),
       );
@@ -658,7 +666,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
           children: [
             Icon(Icons.bluetooth_searching, size: 64, color: emptyColor),
             const SizedBox(height: 16),
-            const Text('No devices found'),
+            Text(l10n.noDevicesFound),
             const SizedBox(height: 8),
             Text(
               'Tap the scan button to search for MeshCore companion radios',
@@ -688,6 +696,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   /// Connected view
   Widget _buildConnectedView(
       BleConnectionManager bleManager, ConnectionViewModel connectionVM) {
+    final l10n = AppLocalizations.of(context)!;
     final settingsService = context.watch<SettingsService>();
     final channelRepository = context.watch<ChannelRepository>();
 
@@ -719,7 +728,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               child: Column(
                 children: [
                   _buildSettingsCard(
-                    title: 'Device Name',
+                    title: l10n.deviceName,
                     subtitle: connectionVM.deviceName.isNotEmpty
                         ? connectionVM.deviceName
                         : 'Not set',
@@ -728,7 +737,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ),
                   const SizedBox(height: 8),
                   _buildSettingsCard(
-                    title: 'Radio Settings',
+                    title: l10n.radioSettings,
                     subtitle: _radioSettingsSubtitle(connectionVM),
                     leading: Icons.settings,
                     onTap: connectionVM.deviceCapabilities == null
@@ -741,8 +750,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   if (kDebugMode || isBetaBuild) ...[
                     const SizedBox(height: 8),
                     _buildSettingsCard(
-                      title: 'Forwarding Debug',
-                      subtitle: 'Inspect active forwarding mode and topology',
+                      title: l10n.forwardingDebug,
+                      subtitle: l10n.inspectForwardingMode,
                       leading: Icons.bug_report,
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
@@ -814,13 +823,14 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
+            final l10n = AppLocalizations.of(context)!;
             return AlertDialog(
-              title: const Text('Device Name'),
+              title: Text(l10n.deviceName),
               content: TextField(
                 controller: controller,
                 enabled: !isSaving,
-                decoration: const InputDecoration(
-                  hintText: 'Enter device name',
+                decoration: InputDecoration(
+                  hintText: l10n.enterDeviceName,
                 ),
                 maxLength: 31,
               ),
@@ -831,7 +841,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                       : () {
                           Navigator.of(context).pop();
                         },
-                  child: const Text('Cancel'),
+                  child: Text(l10n.cancel),
                 ),
                 ElevatedButton(
                   onPressed: isSaving
@@ -852,8 +862,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                               isSaving = false;
                             });
                             ScaffoldMessenger.of(this.context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Failed to set device name'),
+                              SnackBar(
+                                content: Text(AppLocalizations.of(this.context)!.failedToSetDeviceName),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -865,7 +875,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           width: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Save'),
+                      : Text(l10n.save),
                 ),
               ],
             );
@@ -966,8 +976,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 applyPresetIfNeeded(selectedPreset);
               }
 
+              final l10n = AppLocalizations.of(context)!;
               return AlertDialog(
-                title: const Text('Radio Settings'),
+                title: Text(l10n.radioSettings),
                 content: ConstrainedBox(
                   constraints: BoxConstraints(
                     maxHeight: MediaQuery.of(context).size.height * 0.72,
@@ -1012,7 +1023,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           ],
                           SwitchListTile.adaptive(
                             contentPadding: EdgeInsets.zero,
-                            title: const Text('Camp Mode'),
+                            title: Text(l10n.campMode),
                             subtitle: const Text(
                                 'Locks radio to camp-compatible presets and enables firmware repeat mode'),
                             value: campModeEnabled,
@@ -1032,7 +1043,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           if (campModeEnabled && supportsForwarding)
                             SwitchListTile.adaptive(
                               contentPadding: EdgeInsets.zero,
-                              title: const Text('Smart Forwarding'),
+                              title: Text(l10n.smartForwarding),
                               subtitle: const Text(
                                 'Use app-managed smart forwarding while camp mode is active',
                               ),
@@ -1049,7 +1060,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                             const SizedBox(height: 8),
                             SwitchListTile.adaptive(
                               contentPadding: EdgeInsets.zero,
-                              title: const Text('Autonomous Mode'),
+                              title: Text(l10n.autonomousMode),
                               subtitle: const Text(
                                 'Configures firmware autonomous tracking. Uses values from Location Tracking settings.',
                               ),
@@ -1096,8 +1107,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           ThemedDropdown<String>(
                             value: normalizedSelectedPreset(),
                             isExpanded: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Preset Configuration',
+                            decoration: InputDecoration(
+                              labelText: l10n.presetConfiguration,
                             ),
                             items: [
                               for (final preset in activePresets())
@@ -1124,8 +1135,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           TextField(
                             controller: frequencyController,
                             enabled: !isApplying && !campModeEnabled,
-                            decoration: const InputDecoration(
-                              labelText: 'Frequency (MHz)',
+                            decoration: InputDecoration(
+                              labelText: l10n.frequencyMhz,
                               helperText: '300-2500 MHz',
                             ),
                             keyboardType: const TextInputType.numberWithOptions(
@@ -1141,7 +1152,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           ThemedDropdown<double>(
                             value: bandwidthKHz,
                             decoration:
-                                const InputDecoration(labelText: 'Bandwidth'),
+                                InputDecoration(labelText: l10n.bandwidth),
                             items: _bandwidthOptionsKHz
                                 .map(
                                   (bw) => DropdownMenuItem<double>(
@@ -1163,8 +1174,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           const SizedBox(height: 12),
                           ThemedDropdown<int>(
                             value: spreadingFactor,
-                            decoration: const InputDecoration(
-                                labelText: 'Spreading Factor'),
+                            decoration: InputDecoration(
+                                labelText: l10n.spreadingFactor),
                             items: List.generate(
                               8,
                               (i) => DropdownMenuItem<int>(
@@ -1186,7 +1197,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           ThemedDropdown<int>(
                             value: codingRate,
                             decoration:
-                                const InputDecoration(labelText: 'Coding Rate'),
+                                InputDecoration(labelText: l10n.codingRate),
                             items: List.generate(
                               4,
                               (i) => DropdownMenuItem<int>(
@@ -1235,7 +1246,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   TextButton(
                     onPressed:
                         isApplying ? null : () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
+                    child: Text(l10n.cancel),
                   ),
                   ElevatedButton(
                     onPressed: isApplying
@@ -1416,7 +1427,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                             width: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('Apply'),
+                        : Text(l10n.apply),
                   ),
                 ],
               );
@@ -1498,6 +1509,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
   Widget _buildConnectedDeviceTile(
       BleConnectionManager bleManager, ConnectionViewModel connectionVM) {
+    final l10n = AppLocalizations.of(context)!;
     final address = bleManager.deviceAddress ?? '';
     final caps = connectionVM.deviceCapabilities;
     final voltage = connectionVM.companionBatteryVoltage;
@@ -1558,7 +1570,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                               size: 12, color: Colors.orange.shade700),
                           const SizedBox(width: 4),
                           Text(
-                            'Autonomous mode active',
+                            l10n.autonomousMode,
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.orange.shade700,
@@ -1585,18 +1597,18 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                         final success = await bleManager.sendFrame(command);
                         if (success && mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Advert sent successfully'),
-                              duration: Duration(seconds: 2),
+                            SnackBar(
+                              content: Text(AppLocalizations.of(context)!.advertSentSuccessfully),
+                              duration: const Duration(seconds: 2),
                             ),
                           );
                           debugPrint('✅ Advert sent successfully');
                         } else if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Failed to send advert'),
+                            SnackBar(
+                              content: Text(AppLocalizations.of(context)!.failedToSendAdvert),
                               backgroundColor: Colors.red,
-                              duration: Duration(seconds: 2),
+                              duration: const Duration(seconds: 2),
                             ),
                           );
                           debugPrint('❌ Failed to send advert');
@@ -1606,7 +1618,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Error: $e'),
+                              content: Text(AppLocalizations.of(context)!.genericError(e.toString())),
                               backgroundColor: Colors.red,
                               duration: const Duration(seconds: 2),
                             ),
