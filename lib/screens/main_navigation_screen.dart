@@ -5,12 +5,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:meshcore_team/models/app_settings.dart';
 import 'package:meshcore_team/models/sync_status.dart';
+import 'package:meshcore_team/theme/night_theme.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
 import 'package:meshcore_team/services/message_notification_service.dart';
+import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/repositories/channel_repository.dart';
 import 'package:meshcore_team/repositories/contact_repository.dart';
-import 'connection_screen.dart';
 import 'contacts_screen.dart';
 import 'channels_screen.dart';
 import 'map_screen.dart';
@@ -35,10 +37,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       MethodChannel('com.meshcore.team/app_lifecycle');
 
   final List<Widget> _screens = [
-    const RepaintBoundary(child: ConnectionScreen()),
-    const RepaintBoundary(child: ContactsScreen()),
-    const RepaintBoundary(child: ChannelsScreen()),
-    const RepaintBoundary(child: MapScreen()),
+    const ContactsScreen(),
+    const ChannelsScreen(),
+    const MapScreen(),
   ];
 
   @override
@@ -73,23 +74,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isConnected = context.select<ConnectionViewModel, bool>(
-        (vm) => vm.isConnected);
     final navLocked = context.select<ConnectionViewModel, bool>(
         (vm) => vm.identityConfirmationRequired);
     final syncPhase = context.select<ConnectionViewModel, SyncPhase>(
         (vm) => vm.syncStatus.phase);
+    final isNighttime = context.watch<SettingsService>().settings.appTheme ==
+        AppThemeMode.nighttime;
+    if (_currentIndex >= _screens.length) _currentIndex = 0;
     final shouldShowIdentityDialog =
         navLocked && syncPhase == SyncPhase.complete;
-
-    if (navLocked && _currentIndex != 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        setState(() {
-          _currentIndex = 0;
-        });
-      });
-    }
 
     if (shouldShowIdentityDialog && !_identityDialogShowing) {
       _identityDialogShowing = true;
@@ -141,20 +134,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                     },
               items: [
                 BottomNavigationBarItem(
-                  icon: Icon(
-                    Icons.bluetooth,
-                    color: isConnected ? Colors.green : Colors.red,
-                  ),
-                  activeIcon: Icon(
-                    Icons.bluetooth,
-                    color: isConnected ? Colors.green : Colors.red,
-                  ),
-                  label: 'Connection',
-                ),
-                BottomNavigationBarItem(
                   icon: _buildBadgedIcon(
                     Icons.people,
                     contactsUnread,
+                    isNighttime,
                   ),
                   label: 'Contacts',
                 ),
@@ -162,6 +145,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                   icon: _buildBadgedIcon(
                     Icons.chat_bubble,
                     channelsUnread,
+                    isNighttime,
                   ),
                   label: 'Channels',
                 ),
@@ -170,8 +154,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                   label: 'Map',
                 ),
               ],
-              selectedItemColor: Colors.blue,
-              unselectedItemColor: Colors.grey,
             );
 
             if (!navLocked) return nav;
@@ -271,7 +253,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   }
 
   /// Build icon with unread badge
-  Widget _buildBadgedIcon(IconData icon, int unreadCount) {
+  Widget _buildBadgedIcon(IconData icon, int unreadCount, bool isNighttime) {
     if (unreadCount == 0) {
       return Icon(icon);
     }
@@ -285,8 +267,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
           top: -6,
           child: Container(
             padding: const EdgeInsets.all(2),
-            decoration: const BoxDecoration(
-              color: Colors.red,
+            decoration: BoxDecoration(
+              color: isNighttime ? NightColors.primary : Colors.red,
               shape: BoxShape.circle,
             ),
             constraints: const BoxConstraints(
@@ -295,8 +277,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
             ),
             child: Text(
               unreadCount > 9 ? '9+' : unreadCount.toString(),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: isNighttime ? NightColors.onSurface : Colors.white,
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
@@ -366,7 +348,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     }
   }
 }
-
 /// Simple data class for unread counts
 class _UnreadCounts {
   final int contacts;

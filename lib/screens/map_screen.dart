@@ -25,11 +25,15 @@ import 'package:meshcore_team/screens/direct_message_screen.dart';
 import 'package:meshcore_team/screens/manage_waypoints_screen.dart';
 import 'package:meshcore_team/screens/imported_maps_screen.dart';
 import 'package:meshcore_team/screens/offline_maps_screen.dart';
-import 'package:meshcore_team/services/forwarding_policy_service.dart';
 import 'package:meshcore_team/services/kmz_import_service.dart';
 import 'package:meshcore_team/services/map_tile_cache_service.dart';
 import 'package:meshcore_team/services/settings_service.dart';
+import 'package:meshcore_team/theme/night_theme.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
+import 'package:meshcore_team/widgets/app_menu_button.dart';
+import 'package:meshcore_team/widgets/bt_status_icon.dart';
+import 'package:meshcore_team/widgets/network_status_icons.dart';
+import 'package:meshcore_team/widgets/night_clock.dart';
 import 'package:meshcore_team/widgets/offline_map_download_dialog.dart';
 import 'package:meshcore_team/widgets/waypoint_create_dialog.dart';
 import 'package:meshcore_team/widgets/waypoint_edit_dialog.dart';
@@ -1277,9 +1281,7 @@ class _MapScreenState extends State<MapScreen> {
             : null,
       );
     }, onError: (Object error) {
-      setState(() {
-        _locationError = 'Location stream error: $error';
-      });
+      debugPrint('[Map] Location stream error: $error');
     });
 
     // Periodic polling as a safety net: guarantees at least one update every
@@ -1535,8 +1537,8 @@ class _MapScreenState extends State<MapScreen> {
         _mapController.move(_userLocation!, 15.0);
       }
     } catch (e) {
+      debugPrint('[Map] Failed to get location: $e');
       setState(() {
-        _locationError = 'Failed to get location: $e';
         _isLoadingLocation = false;
       });
     }
@@ -1545,8 +1547,8 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final settingsService = context.watch<SettingsService>();
+    final isNighttime = settingsService.settings.appTheme == AppThemeMode.nighttime;
     final connectionVM = context.watch<ConnectionViewModel>();
-    final forwardingPolicy = context.watch<ForwardingPolicyService>();
     final tileCache = context.read<MapTileCacheService>();
     final db = context.read<AppDatabase>();
     final tileConfig = tileProviderForId(settingsService.settings.mapProvider);
@@ -1558,11 +1560,6 @@ class _MapScreenState extends State<MapScreen> {
     final showWaypointNames = settingsService.settings.mapShowWaypointNames;
     final showContactPaths = settingsService.settings.mapShowContactPaths;
 
-    final telemetryConfigured = settingsService.settings.telemetryEnabled &&
-        (settingsService.settings.telemetryChannelHash?.isNotEmpty ?? false);
-    final telemetryActive = telemetryConfigured && connectionVM.isConnected;
-    final campModeEnabled = settingsService.settings.campModeEnabled;
-
     final wantsCompanion =
         settingsService.settings.locationSource == LocationSource.companion;
     final companionFixTime = connectionVM.companionGpsFixTime;
@@ -1573,11 +1570,7 @@ class _MapScreenState extends State<MapScreen> {
     final usingCompanionGps =
         wantsCompanion && connectionVM.isConnected && hasRecentCompanionFix;
 
-    final gpsSourceLine = usingCompanionGps
-        ? 'Companion GPS'
-        : wantsCompanion
-            ? 'Phone GPS (fallback)'
-            : 'Phone GPS';
+    final hasPhoneFix = _userLocation != null;
 
     // Keep local state in sync with persisted settings and connection state.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1600,112 +1593,28 @@ class _MapScreenState extends State<MapScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
+        centerTitle: false,
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
+            const Text('Map'),
+            Row(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Map'),
-                Text(
-                  gpsSourceLine,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.white70,
-                    height: 1.1,
-                  ),
+                _buildGpsSourceRow(
+                  usingCompanionGps: usingCompanionGps,
+                  hasPhoneFix: hasPhoneFix,
+                  isNighttime: isNighttime,
                 ),
+                if (isNighttime) ...[
+                  const SizedBox(width: 10),
+                  const NightClock(),
+                ],
               ],
             ),
-            const Spacer(),
-            Tooltip(
-              message: telemetryActive
-                  ? 'Sharing location'
-                  : telemetryConfigured
-                      ? 'Location sharing enabled (not connected)'
-                      : 'Location sharing off',
-              child: Icon(
-                Icons.sensors,
-                size: 22,
-                color: telemetryActive ? Colors.green : Colors.red,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Builder(builder: (context) {
-              final activeHops = forwardingPolicy.lastAppliedMaxHops;
-              final forwardingActive = activeHops != null && activeHops > 0;
-              final tooltipMsg = forwardingActive && campModeEnabled
-                  ? 'Camp mode – forwarding active ($activeHops hop${activeHops == 1 ? '' : 's'})'
-                  : forwardingActive
-                      ? 'Policy engine: forwarding active ($activeHops hop${activeHops == 1 ? '' : 's'})'
-                      : campModeEnabled
-                          ? 'Forwarding mode: camp'
-                          : 'Forwarding mode: full mesh';
-              final iconColor = forwardingActive
-                  ? Colors.lightGreenAccent
-                  : campModeEnabled
-                      ? Colors.lightGreenAccent
-                      : Colors.lightGreenAccent;
-              final label = campModeEnabled
-                  ? (forwardingActive ? 'C$activeHops' : 'C')
-                  : forwardingActive
-                      ? '$activeHops'
-                      : null;
-              final showDouble = forwardingActive || campModeEnabled;
-              return Tooltip(
-                message: tooltipMsg,
-                child: showDouble
-                    ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 22,
-                            height: 18,
-                            child: Stack(
-                              children: [
-                                Positioned(
-                                  left: 0,
-                                  child: Icon(
-                                    Icons.check,
-                                    size: 18,
-                                    color: iconColor,
-                                  ),
-                                ),
-                                Positioned(
-                                  left: 5,
-                                  child: Icon(
-                                    Icons.check,
-                                    size: 18,
-                                    color: iconColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (label != null) ...[
-                            const SizedBox(width: 2),
-                            Text(
-                              label,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: iconColor,
-                              ),
-                            ),
-                          ],
-                        ],
-                      )
-                    : const Icon(
-                        Icons.check,
-                        size: 20,
-                        color: Colors.lightGreenAccent,
-                      ),
-              );
-            }),
           ],
         ),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
         actions: [
           PopupMenuButton<String>(
             tooltip: 'Map type',
@@ -1870,11 +1779,19 @@ class _MapScreenState extends State<MapScreen> {
               ];
             },
           ),
+          const SizedBox(
+            height: 24,
+            child: VerticalDivider(width: 16, thickness: 1),
+          ),
+          const NetworkStatusIcons(),
+          const BtStatusIcon(),
+          const AppMenuButton(),
         ],
       ),
       body: Stack(
         children: [
-          FlutterMap(
+          Positioned.fill(
+            child: FlutterMap(
             mapController: _mapController,
             options: MapOptions(
               initialCenter: _userLocation ??
@@ -1882,6 +1799,9 @@ class _MapScreenState extends State<MapScreen> {
               initialZoom: 15.0,
               minZoom: 3.0,
               maxZoom: 18.0,
+              backgroundColor: (currentProviderId == MapProvider.noMap || isNighttime)
+                  ? Colors.black
+                  : const Color(0xFFE0E0E0),
               interactionOptions: InteractionOptions(
                 flags: _isHeadingUp
                     ? (InteractiveFlag.all &
@@ -1944,13 +1864,20 @@ class _MapScreenState extends State<MapScreen> {
               },
             ),
             children: [
-              TileLayer(
-                urlTemplate: tileConfig.urlTemplate,
-                subdomains: tileConfig.subdomains,
-                tileProvider: tileCache.tileProvider,
-                userAgentPackageName: 'com.meshcore.team',
-                maxNativeZoom: 18,
-              ),
+              if (currentProviderId != MapProvider.noMap)
+                Builder(builder: (_) {
+                  final tile = TileLayer(
+                    urlTemplate: tileConfig.urlTemplate,
+                    subdomains: tileConfig.subdomains,
+                    tileProvider: tileCache.tileProvider,
+                    userAgentPackageName: 'com.meshcore.team',
+                    maxNativeZoom: 18,
+                  );
+                  return isNighttime
+                      ? ColorFiltered(
+                          colorFilter: kNightMapTileFilter, child: tile)
+                      : tile;
+                }),
               // KMZ imported overlay maps — rendered above the base tile layer
               if (_cachedOverlayImages.isNotEmpty)
                 OverlayImageLayer(
@@ -2478,6 +2405,7 @@ class _MapScreenState extends State<MapScreen> {
                 ),
             ],
           ),
+          ), // Positioned.fill wrapping FlutterMap
 
           if (_isRouteEditMode)
             Positioned(
@@ -2584,21 +2512,24 @@ class _MapScreenState extends State<MapScreen> {
               left: 16,
               right: 16,
               child: Card(
-                color: Colors.red[100],
+                color: isNighttime ? NightColors.surfaceHigh : Colors.red[100],
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
-                      const Icon(Icons.error, color: Colors.red),
+                      Icon(Icons.error,
+                          color: isNighttime ? NightColors.primary : Colors.red),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           _locationError!,
-                          style: const TextStyle(color: Colors.red),
+                          style: TextStyle(
+                              color: isNighttime ? NightColors.onSurface : Colors.red),
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close, color: Colors.red),
+                        icon: Icon(Icons.close,
+                            color: isNighttime ? NightColors.primary : Colors.red),
                         onPressed: () {
                           setState(() {
                             _locationError = null;
@@ -2627,8 +2558,9 @@ class _MapScreenState extends State<MapScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.navigation,
-                          size: 14, color: Colors.blue),
+                      Icon(Icons.navigation,
+                          size: 14,
+                          color: isNighttime ? NightColors.primary : Colors.blue),
                       const SizedBox(width: 6),
                       Text(
                         () {
@@ -2837,11 +2769,45 @@ class _MapScreenState extends State<MapScreen> {
       ),
     );
   }
+
+  Widget _buildGpsSourceRow({
+    required bool usingCompanionGps,
+    required bool hasPhoneFix,
+    required bool isNighttime,
+  }) {
+    final color = isNighttime ? NightColors.onSurfaceVariant : Colors.white70;
+    const size = 13.0;
+
+    if (usingCompanionGps) {
+      return Icon(Icons.location_on, size: size, color: color);
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Icon(
+          hasPhoneFix ? Icons.location_on : Icons.location_off,
+          size: size,
+          color: color,
+        ),
+        const SizedBox(width: 2),
+        Icon(Icons.smartphone, size: size, color: color),
+      ],
+    );
+  }
 }
 
-Color _contactStatusColor(int lastSeenMs, int pathLen) {
+Color _contactStatusColor(int lastSeenMs, int pathLen, {bool isNighttime = false}) {
   final nowMs = DateTime.now().millisecondsSinceEpoch;
   final minutesSince = (nowMs - lastSeenMs) / 60000.0;
+  if (isNighttime) {
+    if (minutesSince >= 10) return NightColors.connectOutOfRange;
+    if (minutesSince >= 5) return NightColors.connectOffline;
+    if (pathLen == 0) return NightColors.connectJustSeen;
+    if (pathLen <= 3) return NightColors.connectRecent;
+    return NightColors.connectStale;
+  }
   if (minutesSince >= 10) return Colors.grey;
   if (minutesSince >= 5) return Colors.red;
   if (pathLen == 0) return Colors.green;
@@ -2868,12 +2834,12 @@ class _ContactMarker extends StatelessWidget {
     this.onDoubleTap,
   });
 
-  Color _borderColorForStatus() => _contactStatusColor(lastSeenMs, pathLen);
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color = _borderColorForStatus();
+    final isNighttime = context.watch<SettingsService>().settings.appTheme ==
+        AppThemeMode.nighttime;
+    final color = _contactStatusColor(lastSeenMs, pathLen, isNighttime: isNighttime);
     final displayName = name?.trim();
     final hasDisplayName = displayName != null && displayName.isNotEmpty;
 
@@ -2892,7 +2858,7 @@ class _ContactMarker extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: scheme.surface,
+              color: isNighttime ? NightColors.surfaceHigh : scheme.surface,
               shape: BoxShape.circle,
               border: Border.all(
                 color: color,
@@ -2902,7 +2868,7 @@ class _ContactMarker extends StatelessWidget {
             child: Center(
               child: Icon(
                 isAutonomous ? Icons.gps_fixed : Icons.person,
-                color: color,
+                color: isNighttime ? NightColors.onSurface : color,
                 size: 20,
               ),
             ),
@@ -2921,11 +2887,11 @@ class _ContactMarker extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   height: 1.1,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  color: isNighttime ? NightColors.onSurface : Colors.white,
                 ),
               ),
             ),
@@ -3001,25 +2967,21 @@ class _GroupStatusPanel extends StatelessWidget {
 
   Widget _buildContactList(BuildContext context) {
     final settings = settingsService.settings;
+    final dimColor = Theme.of(context).colorScheme.outline;
+    final dimStyle = TextStyle(color: dimColor, fontSize: 12);
 
     if (!settings.telemetryEnabled) {
-      return const Padding(
-        padding: EdgeInsets.all(12),
-        child: Text(
-          'Location sharing is off',
-          style: TextStyle(color: Colors.grey, fontSize: 12),
-        ),
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: Text('Location sharing is off', style: dimStyle),
       );
     }
 
     final companionKey = settings.currentCompanionPublicKey;
     if (companionKey == null || companionKey.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(12),
-        child: Text(
-          'Not connected',
-          style: TextStyle(color: Colors.grey, fontSize: 12),
-        ),
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: Text('Not connected', style: dimStyle),
       );
     }
 
@@ -3036,23 +2998,17 @@ class _GroupStatusPanel extends StatelessWidget {
 
     final selectedHashHex = settings.telemetryChannelHash;
     if (selectedHashHex == null || selectedHashHex.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(12),
-        child: Text(
-          'No telemetry channel set',
-          style: TextStyle(color: Colors.grey, fontSize: 12),
-        ),
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: Text('No telemetry channel set', style: dimStyle),
       );
     }
 
     final selectedHash = tryParseHash(selectedHashHex);
     if (selectedHash == null) {
-      return const Padding(
-        padding: EdgeInsets.all(12),
-        child: Text(
-          'Invalid telemetry channel',
-          style: TextStyle(color: Colors.grey, fontSize: 12),
-        ),
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: Text('Invalid telemetry channel', style: dimStyle),
       );
     }
 
@@ -3070,12 +3026,9 @@ class _GroupStatusPanel extends StatelessWidget {
         }
 
         if (selectedChannel == null || selectedChannel.isPublic) {
-          return const Padding(
-            padding: EdgeInsets.all(12),
-            child: Text(
-              'No group channel active',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
+          return Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text('No group channel active', style: dimStyle),
           );
         }
 
@@ -3101,12 +3054,9 @@ class _GroupStatusPanel extends StatelessWidget {
                   ..sort((a, b) => b.lastSeen.compareTo(a.lastSeen));
 
             if (visible.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.all(12),
-                child: Text(
-                  'No members on map',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
+              return Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text('No members on map', style: dimStyle),
               );
             }
 
@@ -3126,12 +3076,15 @@ class _GroupStatusPanel extends StatelessWidget {
                   final hopText = s.lastPathLen == 0
                       ? 'Direct'
                       : '${s.lastPathLen} hop${s.lastPathLen == 1 ? '' : 's'}';
+                  final isNighttime =
+                      settingsService.settings.appTheme == AppThemeMode.nighttime;
                   return ListTile(
                     dense: true,
                     leading: Icon(
                       s.isAutonomousDevice ? Icons.gps_fixed : Icons.person,
                       size: 20,
-                      color: _contactStatusColor(s.lastSeen, s.lastPathLen),
+                      color: _contactStatusColor(s.lastSeen, s.lastPathLen,
+                          isNighttime: isNighttime),
                     ),
                     title: Text(
                       name,
