@@ -100,9 +100,11 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
     _messagesSub?.cancel();
     _contactCountSub?.cancel();
 
-    // Mark all messages as read when navigating away
-    _messageRepository.messagesDao
-        .markContactMessagesAsRead(widget.contact.hash);
+    // Only write if there are unread messages to avoid unnecessary DB cascade
+    if (_messages.any((m) => !m.isRead)) {
+      _messageRepository.messagesDao
+          .markContactMessagesAsRead(widget.contact.hash);
+    }
 
     // Clear active chat tracking
     MessageNotificationService.isMessagesScreenVisible = false;
