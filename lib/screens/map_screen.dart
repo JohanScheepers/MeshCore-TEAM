@@ -65,6 +65,7 @@ class _MapScreenState extends State<MapScreen> {
   Timer? _companionTelemetryTimer;
   Timer? _contactMarkerRefreshTimer;
   Timer? _phoneLocationPollingTimer;
+  bool _locationPollInProgress = false;
   bool? _lastShouldUseCompanion;
 
   bool _isFollowingUser = false;
@@ -1289,7 +1290,8 @@ class _MapScreenState extends State<MapScreen> {
     // Fused Location Provider batching with the native telemetry service).
     _phoneLocationPollingTimer =
         Timer.periodic(const Duration(seconds: 2), (_) async {
-      if (!mounted) return;
+      if (!mounted || _locationPollInProgress) return;
+      _locationPollInProgress = true;
       try {
         final position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
@@ -1306,6 +1308,8 @@ class _MapScreenState extends State<MapScreen> {
         );
       } catch (_) {
         // Polling is best-effort; stream is primary.
+      } finally {
+        _locationPollInProgress = false;
       }
     });
   }
@@ -1934,7 +1938,10 @@ class _MapScreenState extends State<MapScreen> {
                   final selectedChannelIdx = selectedChannel!.channelIndex;
 
                   return StreamBuilder<List<ContactDisplayStateData>>(
-                    stream: db.select(db.contactDisplayStates).watch(),
+                    stream: (db.select(db.contactDisplayStates)
+                          ..where((t) =>
+                              t.companionDeviceKey.equals(companionKey)))
+                        .watch(),
                     builder: (context, snapshot) {
                       final states =
                           snapshot.data ?? const <ContactDisplayStateData>[];
@@ -1943,7 +1950,7 @@ class _MapScreenState extends State<MapScreen> {
                       const windowMs = 12 * 60 * 60 * 1000; // 12 hours
 
                       final visible = states.where((s) {
-                        if (s.companionDeviceKey != companionKey) return false;
+                        if (s.isManuallyHidden) return false;
                         if (s.isManuallyHidden) return false;
                         if (s.totalTelemetryReceived <= 0) return false;
                         if (s.lastChannelIdx != selectedChannelIdx) {
@@ -3035,14 +3042,16 @@ class _GroupStatusPanel extends StatelessWidget {
         final selectedChannelIdx = selectedChannel.channelIndex;
 
         return StreamBuilder<List<ContactDisplayStateData>>(
-          stream: db.select(db.contactDisplayStates).watch(),
+          stream: (db.select(db.contactDisplayStates)
+                ..where((t) => t.companionDeviceKey.equals(companionKey)))
+              .watch(),
           builder: (context, snapshot) {
             final nowMs = DateTime.now().millisecondsSinceEpoch;
             const windowMs = 12 * 60 * 60 * 1000;
 
             final visible =
                 (snapshot.data ?? const <ContactDisplayStateData>[]).where((s) {
-              if (s.companionDeviceKey != companionKey) return false;
+              if (s.isManuallyHidden) return false;
               if (s.isManuallyHidden) return false;
               if (s.totalTelemetryReceived <= 0) return false;
               if (s.lastChannelIdx != selectedChannelIdx) return false;
