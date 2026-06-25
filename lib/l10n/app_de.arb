@@ -529,6 +529,107 @@
   "channelTypePrivate": "Typ: Privat",
   "publicChannel": "Öffentlicher Kanal",
   "privateChannel": "Privater Kanal",
+  "disabled": "Deaktiviert",
+  "keepScreenOnEnabled": "Aktiviert — Bildschirm bleibt an und wird über dem Sperrbildschirm angezeigt",
+  "connected": "Verbunden",
+  "connecting": "Verbinde...",
+  "scanning": "Suche...",
+  "error": "Fehler",
+  "disconnect": "Trennen",
+  "disconnectDevice": "Gerät trennen",
+  "advert": "Ankündigung",
+  "firmwareStock": "Standard",
+  "firmwareCustom": "Benutzerdefiniert",
+  "firmwareInfo": "FW: {type} • {forwarding} • {autonomous}",
+  "@firmwareInfo": {
+    "placeholders": {
+      "type": { "type": "String" },
+      "forwarding": { "type": "String" },
+      "autonomous": { "type": "String" }
+    }
+  },
+  "deviceId": "ID: {address}",
+  "@deviceId": {
+    "placeholders": {
+      "address": { "type": "String" }
+    }
+  },
+  "batteryVoltage": "Akku: {voltage}V",
+  "@batteryVoltage": {
+    "placeholders": {
+      "voltage": { "type": "String" }
+    }
+  },
+  "idle": "Leerlauf",
+  "syncingContacts": "Kontakte werden synchronisiert...",
+  "syncingChannels": "Kanäle werden synchronisiert...",
+  "syncingMessages": "Nachrichten werden synchronisiert...",
+  "syncComplete": "Synchronisierung abgeschlossen",
+  "logCategorySync": "Sync",
+  "logCategoryBle": "BLE",
+  "logCategoryTelemetry": "Telemetrie",
+  "logCategoryForwarding": "Weiterleitung",
+  "logCategoryGeneral": "Allgemein",
+  "autoScrollOn": "Auto-Scroll ein",
+  "autoScrollOff": "Auto-Scroll aus",
+  "sharingLocation": "Standort wird geteilt",
+  "locationSharingEnabledNotConnected": "Standortfreigabe aktiviert (nicht verbunden)",
+  "campModeForwardingActive": "Camp-Modus – Weiterleitung aktiv ({hops, plural, one{1 Hop} other{{hops} Hops}})",
+  "@campModeForwardingActive": {
+    "placeholders": {
+      "hops": { "type": "int" }
+    }
+  },
+  "policyEngineForwardingActive": "Regelwerk: Weiterleitung aktiv ({hops, plural, one{1 Hop} other{{hops} Hops}})",
+  "@policyEngineForwardingActive": {
+    "placeholders": {
+      "hops": { "type": "int" }
+    }
+  },
+  "forwardingModeCamp": "Weiterleitungsmodus: Camp",
+  "defaultRouting": "Standard-Routing",
+  "typeAMessageToChannel": "Nachricht an {channel} eingeben...",
+  "@typeAMessageToChannel": {
+    "placeholders": {
+      "channel": { "type": "String" }
+    }
+  },
+  "noMessagesInChannel": "Keine Nachrichten in diesem Kanal",
+  "beFirstToStartConversation": "Starte als Erster die Unterhaltung",
+  "noMessagesYet": "Noch keine Nachrichten",
+  "sendMessageToStartConversation": "Sende eine Nachricht, um das Gespräch zu beginnen",
+  "directConnection": "Direkt",
+  "hopCount": "{hops, plural, one{1 Hop} other{{hops} Hops}}",
+  "@hopCount": {
+    "placeholders": {
+      "hops": { "type": "int" }
+    }
+  },
+  "noMapMarkersOnly": "Keine Karte (nur Markierungen)",
+  "noContacts": "Keine Kontakte",
+  "connectToDeviceToSeeContacts": "Verbinde ein Gerät und synchronisiere, um Kontakte zu sehen",
+  "unknown": "Unbekannt",
+  "repeater": "Repeater",
+  "repeaterLabel": "REPEATER",
+  "locationCoordinates": "Standort: {lat}, {lon}",
+  "@locationCoordinates": {
+    "placeholders": {
+      "lat": { "type": "String" },
+      "lon": { "type": "String" }
+    }
+  },
+  "location": "Standort",
+  "appearance": "Erscheinungsbild",
+  "android": "Android",
+  "locationEnabledBackground": "Aktiviert — Standortaktualisierungen laufen im Hintergrund weiter",
+  "trackingChannelIndex": "Tracking-Kanal-Index: {index} • Timeout: 12h • Sichtbare Nutzer: {count}",
+  "@trackingChannelIndex": {
+    "placeholders": {
+      "index": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
+  "trackingChannelNotConfigured": "Tracking-Kanal nicht konfiguriert",
   "teamMembersCanNoLongerDownload": "Teammitglieder können nicht mehr herunterladen.",
 
   "offlineShareServer": "Konfiguration offline teilen",

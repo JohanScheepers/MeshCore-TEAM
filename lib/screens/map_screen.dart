@@ -1635,7 +1635,7 @@ class _MapScreenState extends State<MapScreen> {
         ),
         actions: [
           PopupMenuButton<String>(
-            tooltip: 'Map type',
+            tooltip: l10n.mapType,
             initialValue: currentProviderId,
             onSelected: (value) async {
               if (value.startsWith('overlay:')) {
@@ -1651,12 +1651,13 @@ class _MapScreenState extends State<MapScreen> {
               }
             },
             itemBuilder: (context) {
+              final mapL10n = AppLocalizations.of(context)!;
               return [
                 for (final opt in kMapTileProviderOptions)
                   CheckedPopupMenuItem<String>(
                     value: opt.id,
                     checked: opt.id == currentProviderId,
-                    child: Text(opt.label),
+                    child: Text(opt.id == MapProvider.noMap ? mapL10n.noMapMarkersOnly : opt.label),
                   ),
                 if (_overlayMaps.isNotEmpty) ...[
                   const PopupMenuDivider(),
@@ -1673,7 +1674,7 @@ class _MapScreenState extends State<MapScreen> {
           ),
           const SizedBox(width: 4),
           PopupMenuButton<String>(
-            tooltip: 'Map settings',
+            tooltip: l10n.mapSettings,
             icon: const Icon(Icons.settings),
             onSelected: (value) async {
               switch (value) {
@@ -2659,7 +2660,7 @@ class _MapScreenState extends State<MapScreen> {
                     if (_navTarget != null) ...[
                       FloatingActionButton.small(
                         heroTag: 'map_nav_cancel',
-                        tooltip: 'Cancel navigation',
+                        tooltip: l10n.cancelNavigation,
                         backgroundColor:
                             Theme.of(context).colorScheme.errorContainer,
                         foregroundColor:
@@ -2671,7 +2672,7 @@ class _MapScreenState extends State<MapScreen> {
                     ],
                     FloatingActionButton.small(
                       heroTag: 'map_group_status',
-                      tooltip: 'Group status',
+                      tooltip: l10n.groupStatus,
                       backgroundColor: _isGroupStatusOpen
                           ? Theme.of(context).colorScheme.primary
                           : null,
@@ -3097,8 +3098,8 @@ class _GroupStatusPanel extends StatelessWidget {
                       ? s.name!.trim()
                       : s.publicKeyHex.substring(0, 8).toUpperCase();
                   final hopText = s.lastPathLen == 0
-                      ? 'Direct'
-                      : '${s.lastPathLen} hop${s.lastPathLen == 1 ? '' : 's'}';
+                      ? l10n.directConnection
+                      : l10n.hopCount(s.lastPathLen);
                   final isNighttime =
                       settingsService.settings.appTheme == AppThemeMode.nighttime;
                   return ListTile(

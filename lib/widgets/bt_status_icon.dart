@@ -26,7 +26,7 @@ class BtStatusIcon extends StatelessWidget {
     return Opacity(
       opacity: 0.7,
       child: Tooltip(
-        message: isConnected ? 'Connected' : l10n.notConnected,
+        message: isConnected ? l10n.connected : l10n.notConnected,
         child: Icon(
           isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
           color: color,

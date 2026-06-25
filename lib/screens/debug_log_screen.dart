@@ -62,7 +62,7 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
             icon: Icon(
               _autoScroll ? Icons.vertical_align_bottom : Icons.pause,
             ),
-            tooltip: _autoScroll ? 'Auto-scroll on' : 'Auto-scroll off',
+            tooltip: _autoScroll ? l10n.autoScrollOn : l10n.autoScrollOff,
             onPressed: () => setState(() => _autoScroll = !_autoScroll),
           ),
           IconButton(
@@ -99,6 +99,7 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
   }
 
   Widget _buildFilterChips() {
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -108,7 +109,7 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
           return Padding(
             padding: const EdgeInsets.only(right: 6),
             child: FilterChip(
-              label: Text(cat.name.toUpperCase()),
+              label: Text(_categoryLabel(cat, l10n)),
               selected: selected,
               onSelected: (value) {
                 setState(() {
@@ -197,6 +198,17 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
         SnackBar(content: Text(AppLocalizations.of(context)!.exportFailedError(e.toString()))),
       );
     }
+  }
+
+  String _categoryLabel(LogCategory cat, AppLocalizations l10n) {
+    return switch (cat) {
+      LogCategory.sync => l10n.logCategorySync,
+      LogCategory.ble => l10n.logCategoryBle,
+      LogCategory.telemetry => l10n.logCategoryTelemetry,
+      LogCategory.forwarding => l10n.logCategoryForwarding,
+      LogCategory.error => l10n.error,
+      LogCategory.general => l10n.logCategoryGeneral,
+    };
   }
 
   IconData _iconForCategory(LogCategory category) {

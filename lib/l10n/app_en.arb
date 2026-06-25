@@ -529,5 +529,106 @@
   "channelTypePrivate": "Type: Private",
   "publicChannel": "Public Channel",
   "privateChannel": "Private Channel",
+  "disabled": "Disabled",
+  "keepScreenOnEnabled": "Enabled — screen stays on and shows over lock screen",
+  "connected": "Connected",
+  "connecting": "Connecting",
+  "scanning": "Scanning",
+  "error": "Error",
+  "disconnect": "Disconnect",
+  "disconnectDevice": "Disconnect device",
+  "advert": "Advert",
+  "firmwareStock": "Stock",
+  "firmwareCustom": "Custom",
+  "firmwareInfo": "FW: {type} • {forwarding} • {autonomous}",
+  "@firmwareInfo": {
+    "placeholders": {
+      "type": { "type": "String" },
+      "forwarding": { "type": "String" },
+      "autonomous": { "type": "String" }
+    }
+  },
+  "deviceId": "ID: {address}",
+  "@deviceId": {
+    "placeholders": {
+      "address": { "type": "String" }
+    }
+  },
+  "batteryVoltage": "Battery: {voltage}V",
+  "@batteryVoltage": {
+    "placeholders": {
+      "voltage": { "type": "String" }
+    }
+  },
+  "idle": "Idle",
+  "syncingContacts": "Syncing Contacts...",
+  "syncingChannels": "Syncing Channels...",
+  "syncingMessages": "Syncing Messages...",
+  "syncComplete": "Sync Complete",
+  "logCategorySync": "Sync",
+  "logCategoryBle": "BLE",
+  "logCategoryTelemetry": "Telemetry",
+  "logCategoryForwarding": "Forwarding",
+  "logCategoryGeneral": "General",
+  "autoScrollOn": "Auto-scroll on",
+  "autoScrollOff": "Auto-scroll off",
+  "sharingLocation": "Sharing location",
+  "locationSharingEnabledNotConnected": "Location sharing enabled (not connected)",
+  "campModeForwardingActive": "Camp mode - forwarding active ({hops, plural, one{1 hop} other{{hops} hops}})",
+  "@campModeForwardingActive": {
+    "placeholders": {
+      "hops": { "type": "int" }
+    }
+  },
+  "policyEngineForwardingActive": "Policy engine: forwarding active ({hops, plural, one{1 hop} other{{hops} hops}})",
+  "@policyEngineForwardingActive": {
+    "placeholders": {
+      "hops": { "type": "int" }
+    }
+  },
+  "forwardingModeCamp": "Forwarding mode: camp",
+  "defaultRouting": "Default routing",
+  "typeAMessageToChannel": "Type a message to {channel}...",
+  "@typeAMessageToChannel": {
+    "placeholders": {
+      "channel": { "type": "String" }
+    }
+  },
+  "noMessagesInChannel": "No messages in this channel",
+  "beFirstToStartConversation": "Be the first to start the conversation",
+  "noMessagesYet": "No messages yet",
+  "sendMessageToStartConversation": "Send a message to start the conversation",
+  "directConnection": "Direct",
+  "hopCount": "{hops, plural, one{1 hop} other{{hops} hops}}",
+  "@hopCount": {
+    "placeholders": {
+      "hops": { "type": "int" }
+    }
+  },
+  "noMapMarkersOnly": "No Map (markers only)",
+  "noContacts": "No contacts",
+  "connectToDeviceToSeeContacts": "Connect to a device and sync to see contacts",
+  "unknown": "Unknown",
+  "repeater": "Repeater",
+  "repeaterLabel": "REPEATER",
+  "locationCoordinates": "Location: {lat}, {lon}",
+  "@locationCoordinates": {
+    "placeholders": {
+      "lat": { "type": "String" },
+      "lon": { "type": "String" }
+    }
+  },
+  "location": "Location",
+  "appearance": "Appearance",
+  "android": "Android",
+  "locationEnabledBackground": "Enabled — location updates continue in background",
+  "trackingChannelIndex": "Tracking channel index: {index} • timeout: 12h • visible users: {count}",
+  "@trackingChannelIndex": {
+    "placeholders": {
+      "index": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
+  "trackingChannelNotConfigured": "Tracking channel not configured",
   "teamMembersCanNoLongerDownload": "Team members will no longer be able to download."
 }

@@ -31,18 +31,18 @@ class NetworkStatusIcons extends StatelessWidget {
     final forwardingActive = activeHops != null && activeHops > 0;
 
     final telemetryTooltip = telemetryActive
-        ? 'Sharing location'
+        ? l10n.sharingLocation
         : telemetryConfigured
-            ? 'Location sharing enabled (not connected)'
+            ? l10n.locationSharingEnabledNotConnected
             : l10n.locationSharingOff;
 
     final forwardingTooltip = forwardingActive && campModeEnabled
-        ? 'Camp mode - forwarding active ($activeHops hop${activeHops == 1 ? '' : 's'})'
+        ? l10n.campModeForwardingActive(activeHops!)
         : forwardingActive
-            ? 'Policy engine: forwarding active ($activeHops hop${activeHops == 1 ? '' : 's'})'
+            ? l10n.policyEngineForwardingActive(activeHops!)
             : campModeEnabled
-                ? 'Forwarding mode: camp'
-                : 'Default routing';
+                ? l10n.forwardingModeCamp
+                : l10n.defaultRouting;
 
     final forwardingIconColor = isNighttime
         ? NightColors.onSurfaceVariant

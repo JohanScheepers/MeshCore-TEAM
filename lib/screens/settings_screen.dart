@@ -42,7 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Text(
-              'Location',
+              l10n.location,
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
@@ -91,8 +91,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: Text(l10n.alwaysOnLocation,
                           style: const TextStyle(fontWeight: FontWeight.w500)),
                       subtitle: Text(settings.settings.backgroundLocationEnabled
-                          ? 'Enabled — location updates continue in background'
-                          : 'Disabled'),
+                          ? l10n.locationEnabledBackground
+                          : l10n.disabled),
                       trailing: const Icon(Icons.chevron_right),
                     ),
                   ),
@@ -105,7 +105,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Text(
-              'Appearance',
+              l10n.appearance,
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
@@ -169,7 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Text(
-                'Android',
+                l10n.android,
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
@@ -189,8 +189,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: Text(l10n.keepScreenOn,
                           style: const TextStyle(fontWeight: FontWeight.w500)),
                       subtitle: Text(settings.settings.keepScreenOnLock
-                          ? 'Enabled — screen stays on and shows over lock screen'
-                          : 'Disabled'),
+                          ? l10n.keepScreenOnEnabled
+                          : l10n.disabled),
                       trailing: const Icon(Icons.chevron_right),
                     ),
                   ),

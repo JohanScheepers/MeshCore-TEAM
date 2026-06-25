@@ -450,22 +450,22 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       case BleConnectionState.connected:
         statusColor = isNighttime ? NightColors.statusConnected : Colors.green;
         statusIcon = Icons.check_circle;
-        statusText = 'Connected';
+        statusText = l10n.connected;
         break;
       case BleConnectionState.connecting:
         statusColor = isNighttime ? NightColors.statusConnecting : Colors.orange;
         statusIcon = Icons.sync;
-        statusText = 'Connecting';
+        statusText = l10n.connecting;
         break;
       case BleConnectionState.scanning:
         statusColor = isNighttime ? NightColors.statusScanning : Colors.blue;
         statusIcon = Icons.search;
-        statusText = 'Scanning';
+        statusText = l10n.scanning;
         break;
       case BleConnectionState.error:
         statusColor = isNighttime ? NightColors.primary : Colors.red;
         statusIcon = Icons.error;
-        statusText = 'Error';
+        statusText = l10n.error;
         break;
       default:
         statusColor = isNighttime ? NightColors.statusDisconnected : Colors.grey;
@@ -487,8 +487,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
   /// Sync progress section
   Widget _buildSyncProgressSection(ConnectionViewModel connectionVM) {
+    final l10n = AppLocalizations.of(context)!;
     final syncStatus = connectionVM.syncStatus;
-    final phaseText = _getSyncPhaseText(syncStatus.phase);
+    final phaseText = _getSyncPhaseText(syncStatus.phase, l10n);
     final progress = syncStatus.progressPercentage;
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -537,20 +538,20 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   }
 
   /// Get sync phase display text
-  String _getSyncPhaseText(SyncPhase phase) {
+  String _getSyncPhaseText(SyncPhase phase, AppLocalizations l10n) {
     switch (phase) {
       case SyncPhase.idle:
-        return 'Idle';
+        return l10n.idle;
       case SyncPhase.connecting:
-        return 'Connecting...';
+        return '${l10n.connecting}...';
       case SyncPhase.syncingContacts:
-        return 'Syncing Contacts...';
+        return l10n.syncingContacts;
       case SyncPhase.syncingChannels:
-        return 'Syncing Channels...';
+        return l10n.syncingChannels;
       case SyncPhase.syncingMessages:
-        return 'Syncing Messages...';
+        return l10n.syncingMessages;
       case SyncPhase.complete:
-        return 'Sync Complete';
+        return l10n.syncComplete;
     }
   }
 
@@ -1515,14 +1516,14 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     final voltage = connectionVM.companionBatteryVoltage;
     final isAutonomous = connectionVM.currentAutonomousEnabled == true;
 
-    final firmwareType = (caps?.isCustomFirmware == true) ? 'Custom' : 'Stock';
+    final firmwareType = (caps?.isCustomFirmware == true) ? l10n.firmwareCustom : l10n.firmwareStock;
     final forwarding = (caps?.supportsForwarding == true) ? 'FWD ✓' : 'FWD ✗';
     final autonomous = (caps?.supportsAutonomous == true) ? 'AUTO ✓' : 'AUTO ✗';
 
     final subtitleParts = <String>[
-      if (address.isNotEmpty) 'ID: $address',
-      'FW: $firmwareType • $forwarding • $autonomous',
-      if (voltage != null) 'Battery: ${voltage.toStringAsFixed(2)}V',
+      if (address.isNotEmpty) l10n.deviceId(address),
+      l10n.firmwareInfo(firmwareType, forwarding, autonomous),
+      if (voltage != null) l10n.batteryVoltage(voltage.toStringAsFixed(2)),
     ];
 
     return Card(
@@ -1626,15 +1627,15 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                         }
                       }
                     },
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       child: Column(
                         children: [
-                          Icon(Icons.wifi_tethering),
-                          SizedBox(height: 2),
+                          const Icon(Icons.wifi_tethering),
+                          const SizedBox(height: 2),
                           Text(
-                            'Advert',
-                            style: TextStyle(fontSize: 11),
+                            l10n.advert,
+                            style: const TextStyle(fontSize: 11),
                           ),
                         ],
                       ),
@@ -1642,7 +1643,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ),
                 ),
                 Tooltip(
-                  message: 'Disconnect device',
+                  message: l10n.disconnectDevice,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(8),
                     onTap: () async {
@@ -1654,15 +1655,15 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                         debugPrint('❌ Disconnect error: $e');
                       }
                     },
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       child: Column(
                         children: [
-                          Icon(Icons.power_off),
-                          SizedBox(height: 2),
+                          const Icon(Icons.power_off),
+                          const SizedBox(height: 2),
                           Text(
-                            'Disconnect',
-                            style: TextStyle(fontSize: 11),
+                            l10n.disconnect,
+                            style: const TextStyle(fontSize: 11),
                           ),
                         ],
                       ),

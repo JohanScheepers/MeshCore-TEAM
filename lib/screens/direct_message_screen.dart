@@ -177,14 +177,14 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'No messages yet',
+                          l10n.noMessagesYet,
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: theme.colorScheme.outline,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Send a message to start the conversation',
+                          l10n.sendMessageToStartConversation,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.outline,
                           ),

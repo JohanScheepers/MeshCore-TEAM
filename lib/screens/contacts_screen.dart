@@ -58,20 +58,20 @@ class ContactsScreen extends StatelessWidget {
           final contactsWithUnread = snapshot.data ?? [];
 
           if (contactsWithUnread.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.people_outline, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
+                  const Icon(Icons.people_outline, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
                   Text(
-                    'No contacts',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                    l10n.noContacts,
+                    style: const TextStyle(fontSize: 18, color: Colors.grey),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
-                    'Connect to a device and sync to see contacts',
-                    style: TextStyle(color: Colors.grey),
+                    l10n.connectToDeviceToSeeContacts,
+                    style: const TextStyle(color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -166,7 +166,7 @@ class ContactListTile extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                contact.name ?? 'Unknown',
+                contact.name ?? l10n.unknown,
                 style: TextStyle(
                   fontWeight:
                       unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
@@ -175,11 +175,11 @@ class ContactListTile extends StatelessWidget {
               ),
             ),
             if (contact.isRepeater)
-              const Padding(
-                padding: EdgeInsets.only(left: 8),
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
                 child: Text(
-                  'REPEATER',
-                  style: TextStyle(
+                  l10n.repeaterLabel,
+                  style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),
@@ -192,17 +192,17 @@ class ContactListTile extends StatelessWidget {
           children: [
             Text(l10n.channelHash(contact.hash.toRadixString(16))),
             if (contact.isRepeater)
-              const Text(
-                'Repeater',
-                style: TextStyle(fontWeight: FontWeight.w600),
+              Text(
+                l10n.repeater,
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             Text(l10n.lastSeen(lastSeenText)),
             if (hasLocation)
               Text(
-                  'Location: ${contact.latitude!.toStringAsFixed(4)}, ${contact.longitude!.toStringAsFixed(4)}'),
+                  l10n.locationCoordinates(contact.latitude!.toStringAsFixed(4), contact.longitude!.toStringAsFixed(4))),
             if (contact.companionBatteryMilliVolts != null)
               Text(
-                  'Battery: ${(contact.companionBatteryMilliVolts! / 1000).toStringAsFixed(2)}V'),
+                  l10n.batteryVoltage((contact.companionBatteryMilliVolts! / 1000).toStringAsFixed(2))),
           ],
         ),
         trailing: hasLocation

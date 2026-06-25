@@ -80,9 +80,10 @@ class _ForwardingDebugScreenState extends State<ForwardingDebugScreen> {
 
                   final selectedNode = _resolveSelected(nodes);
                   final furthestHop = _furthestHop(visibleTrackedStates);
+                  final fwdL10n = AppLocalizations.of(context)!;
                   final summarySuffix = trackingChannelIndex == null
-                      ? 'Tracking channel not configured'
-                      : 'Tracking channel index: $trackingChannelIndex • timeout: 12h • visible users: ${visibleTrackedStates.length}';
+                      ? fwdL10n.trackingChannelNotConfigured
+                      : fwdL10n.trackingChannelIndex(trackingChannelIndex.toString(), visibleTrackedStates.length);
 
                   return Padding(
                     padding: const EdgeInsets.all(12),

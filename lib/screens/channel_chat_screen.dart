@@ -202,14 +202,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'No messages in this channel',
+                          l10n.noMessagesInChannel,
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: theme.colorScheme.outline,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Be the first to start the conversation',
+                          l10n.beFirstToStartConversation,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.outline,
                           ),
@@ -318,7 +318,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                           focusNode: _inputFocusNode,
                           decoration: InputDecoration(
                             hintText:
-                                'Type a message to ${widget.channel.name}...',
+                                l10n.typeAMessageToChannel(widget.channel.name),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24),
                               borderSide: BorderSide.none,
