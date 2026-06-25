@@ -527,5 +527,7 @@
 
   "channelTypePublic": "Type: Public",
   "channelTypePrivate": "Type: Private",
+  "publicChannel": "Public Channel",
+  "privateChannel": "Private Channel",
   "teamMembersCanNoLongerDownload": "Team members will no longer be able to download."
 }

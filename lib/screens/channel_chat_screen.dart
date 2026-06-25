@@ -141,7 +141,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           children: [
             Text(widget.channel.name),
             Text(
-              widget.channel.isPublic ? 'Public Channel' : 'Private Channel',
+              widget.channel.isPublic ? l10n.publicChannel : l10n.privateChannel,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

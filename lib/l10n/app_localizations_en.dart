@@ -906,6 +906,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get channelTypePrivate => 'Type: Private';
 
   @override
+  String get publicChannel => 'Public Channel';
+
+  @override
+  String get privateChannel => 'Private Channel';
+
+  @override
   String get teamMembersCanNoLongerDownload =>
       'Team members will no longer be able to download.';
 }

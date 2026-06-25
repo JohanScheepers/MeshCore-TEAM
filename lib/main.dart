@@ -51,6 +51,7 @@ import 'services/debug_log_service.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 const bool isBetaBuild = bool.fromEnvironment('BETA');
+const String _forceLocale = String.fromEnvironment('FORCE_LOCALE');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -459,6 +460,7 @@ class TeamFlutterApp extends StatelessWidget {
           return MaterialApp(
             navigatorKey: navigatorKey,
             title: 'TEAM Flutter',
+            locale: _forceLocale.isNotEmpty ? Locale(_forceLocale) : null,
             localizationsDelegates: const [
               AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
