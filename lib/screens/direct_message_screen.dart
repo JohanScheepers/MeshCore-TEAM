@@ -7,6 +7,7 @@
 
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -356,7 +357,14 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
         children: [
           if (!isFromMe) const SizedBox(width: 0), // Align left for received
           Flexible(
-            child: Container(
+            child: GestureDetector(
+              onLongPress: (Platform.isAndroid || Platform.isIOS)
+                  ? () => _showMessageActions(message)
+                  : null,
+              onSecondaryTapDown: (!Platform.isAndroid && !Platform.isIOS)
+                  ? (d) => _showMessageActions(message)
+                  : null,
+              child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               margin: EdgeInsets.only(
                 left: isFromMe ? 48 : 0,
@@ -410,6 +418,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                   ),
                 ],
               ),
+            ),
             ),
           ),
         ],
@@ -553,6 +562,33 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
         );
       }
     }
+  }
+
+  void _showMessageActions(MessageData message) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.copy),
+              title: const Text('Copy message text'),
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: message.content));
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Copied'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   String _bytesToHex(List<int> bytes) {

@@ -484,8 +484,12 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           if (!isFromMe) const SizedBox(width: 0), // Align left for received
           Flexible(
             child: GestureDetector(
-              onLongPress: isFromMe ? null : () => _seedReply(senderName),
-              onSecondaryTap: isFromMe ? null : () => _seedReply(senderName),
+              onLongPress: (Platform.isAndroid || Platform.isIOS)
+                  ? () => _showMessageActions(message, senderName, isFromMe)
+                  : null,
+              onSecondaryTapDown: (!Platform.isAndroid && !Platform.isIOS)
+                  ? (d) => _showMessageActions(message, senderName, isFromMe)
+                  : null,
               child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               margin: EdgeInsets.only(
@@ -568,6 +572,42 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       selection: TextSelection.collapsed(offset: newText.length),
     );
     _inputFocusNode.requestFocus();
+  }
+
+  void _showMessageActions(MessageData message, String senderName, bool isFromMe) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.copy),
+              title: const Text('Copy message text'),
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: message.content));
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Copied'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              },
+            ),
+            if (!isFromMe)
+              ListTile(
+                leading: const Icon(Icons.reply),
+                title: const Text('Reply'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _seedReply(senderName);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   IconData _getStatusIcon(String status) {
