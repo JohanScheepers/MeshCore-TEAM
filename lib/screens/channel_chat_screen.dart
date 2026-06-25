@@ -48,8 +48,12 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   List<String> _mentionSuggestions = [];
   StreamSubscription<List<MessageData>>? _messagesSub;
   late final Stream<List<MessageData>> _messagesStream;
+  List<MessageData> _allMessages = const [];
   List<MessageData> _messages = const [];
   bool _messagesLoaded = false;
+  bool _isAtBottom = true;
+
+  int get _newMessageCount => _allMessages.length - _messages.length;
 
   @override
   void initState() {
@@ -61,16 +65,19 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         if (mounted) _inputFocusNode.requestFocus();
       });
     }
+    _scrollController.addListener(_onScroll);
     _messagesStream =
         _messageRepository.watchMessagesByChannel(widget.channel.hash);
     _messagesSub = _messagesStream.listen((messages) {
       if (!mounted) return;
-      final prevCount = _messages.length;
       setState(() {
-        _messages = messages;
+        _allMessages = messages;
         _messagesLoaded = true;
+        if (_isAtBottom || messages.length <= _messages.length) {
+          _messages = messages;
+        }
       });
-      if (messages.length > prevCount) {
+      if (_isAtBottom) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
             _scrollController.animateTo(
@@ -176,56 +183,104 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         children: [
           // Messages list
           Expanded(
-            child: !_messagesLoaded
-                ? const Center(child: CircularProgressIndicator())
-                : _messages.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.forum_outlined,
-                              color: theme.colorScheme.outline,
-                              size: 64,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No messages in this channel',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: theme.colorScheme.outline,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Be the first to start the conversation',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.outline,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+            child: Stack(
+              children: [
+                if (!_messagesLoaded)
+                  const Center(child: CircularProgressIndicator())
+                else if (_messages.isEmpty)
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.forum_outlined,
+                          color: theme.colorScheme.outline,
+                          size: 64,
                         ),
-                      )
-                    : ListView.builder(
-                        reverse: true,
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          final message =
-                              _messages[_messages.length - 1 - index];
-                          final showUnreadDivider =
-                              _firstUnreadTimestamp != null &&
-                                  message.timestamp == _firstUnreadTimestamp;
+                        const SizedBox(height: 16),
+                        Text(
+                          'No messages in this channel',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Be the first to start the conversation',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.outline,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  ListView.builder(
+                    reverse: true,
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final message =
+                          _messages[_messages.length - 1 - index];
+                      final showUnreadDivider =
+                          _firstUnreadTimestamp != null &&
+                              message.timestamp == _firstUnreadTimestamp;
 
-                          return Column(
-                            children: [
-                              if (showUnreadDivider) _buildUnreadDivider(theme),
-                              _buildMessageBubble(message, theme),
+                      return Column(
+                        children: [
+                          if (showUnreadDivider) _buildUnreadDivider(theme),
+                          _buildMessageBubble(message, theme),
+                        ],
+                      );
+                    },
+                  ),
+                if (_newMessageCount > 0)
+                  Positioned(
+                    bottom: 8,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: GestureDetector(
+                        onTap: _scrollToBottom,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: const [
+                              BoxShadow(
+                                blurRadius: 4,
+                                color: Colors.black26,
+                              )
                             ],
-                          );
-                        },
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '$_newMessageCount new ${_newMessageCount == 1 ? 'message' : 'messages'}',
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color:
+                                      theme.colorScheme.onPrimaryContainer,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.keyboard_arrow_down,
+                                size: 18,
+                                color: theme.colorScheme.onPrimaryContainer,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
+                    ),
+                  ),
+              ],
+            ),
           ),
 
           // @mention suggestions
@@ -617,6 +672,32 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     if (!Platform.isAndroid && !Platform.isIOS) _inputFocusNode.requestFocus();
   }
 
+  void _onScroll() {
+    final atBottom = _scrollController.offset <= 50;
+    if (atBottom != _isAtBottom) {
+      setState(() {
+        _isAtBottom = atBottom;
+        if (atBottom) _messages = _allMessages;
+      });
+    }
+  }
+
+  void _scrollToBottom() {
+    setState(() {
+      _messages = _allMessages;
+      _isAtBottom = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
   Future<void> _sendMessage() async {
     final content = _messageController.text.trim();
     if (content.isEmpty) return;
@@ -624,7 +705,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
     // Clear input immediately
     _messageController.clear();
-    setState(() => _mentionSuggestions = []);
+    setState(() { _mentionSuggestions = []; _messages = _allMessages; });
     if (!Platform.isAndroid && !Platform.isIOS) _inputFocusNode.requestFocus();
 
     // Scroll to bottom
