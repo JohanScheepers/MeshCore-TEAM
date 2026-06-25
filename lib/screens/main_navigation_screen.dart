@@ -36,6 +36,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
   bool _identityDialogShowing = false;
 
+
   static const MethodChannel _appLifecycleChannel =
       MethodChannel('com.meshcore.team/app_lifecycle');
 
@@ -104,18 +105,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
   @override
   Widget build(BuildContext context) {
-    final connectionVM = context.watch<ConnectionViewModel>();
+    final navLocked = context.select<ConnectionViewModel, bool>(
+        (vm) => vm.identityConfirmationRequired);
+    final syncPhase = context.select<ConnectionViewModel, SyncPhase>(
+        (vm) => vm.syncStatus.phase);
     final isNighttime = context.watch<SettingsService>().settings.appTheme ==
         AppThemeMode.nighttime;
-    final navLocked = connectionVM.identityConfirmationRequired;
     if (_currentIndex >= _screens.length) _currentIndex = 0;
     final shouldShowIdentityDialog =
-        navLocked && connectionVM.syncStatus.phase == SyncPhase.complete;
+        navLocked && syncPhase == SyncPhase.complete;
 
     if (shouldShowIdentityDialog && !_identityDialogShowing) {
       _identityDialogShowing = true;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
+        final connectionVM = context.read<ConnectionViewModel>();
         await _showIdentityDialog(context, connectionVM);
         if (!mounted) return;
         _identityDialogShowing = false;

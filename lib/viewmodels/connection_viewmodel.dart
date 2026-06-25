@@ -842,8 +842,9 @@ class ConnectionViewModel extends ChangeNotifier {
 
     // Start listening for PUSH_MSG_WAITING (device will push when messages available)
     _messageRepository.startPushListener();
+    _messageRepository.beginNotificationSync();
 
-    // Actively pull any queued messages now (some firmware won’t emit a PUSH immediately).
+    // Actively pull any queued messages now (some firmware won't emit a PUSH immediately).
     final pulled = await _messageRepository.syncMessagesNow();
     debugPrint(
         '[ConnectionVM] ✅ Phase 3 complete: pulled $pulled messages (listener active)');
@@ -851,6 +852,7 @@ class ConnectionViewModel extends ChangeNotifier {
     // All phases complete
     _updateSyncStatus(
         const SyncStatus(phase: SyncPhase.complete, isComplete: true));
+    await _messageRepository.endNotificationSync();
     debugPrint('[ConnectionVM] ✅ All sync phases complete');
   }
 
@@ -896,12 +898,14 @@ class ConnectionViewModel extends ChangeNotifier {
     _updateSyncStatus(const SyncStatus(phase: SyncPhase.syncingMessages));
 
     _messageRepository.startPushListener();
+    _messageRepository.beginNotificationSync();
     final pulled = await _messageRepository.syncMessagesNow();
     debugPrint(
         '[ConnectionVM] ✅ Reconnect sync complete: pulled $pulled messages (channels skipped)');
 
     _updateSyncStatus(
         const SyncStatus(phase: SyncPhase.complete, isComplete: true));
+    await _messageRepository.endNotificationSync();
   }
 
   Future<void> _finalizeAfterSync() async {
