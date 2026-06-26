@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:meshcore_team/database/database.dart';
+import 'package:meshcore_team/models/channel_notification_mode.dart';
 import 'package:meshcore_team/models/unread_models.dart';
 import 'package:meshcore_team/repositories/channel_repository.dart';
 import 'package:meshcore_team/screens/qr_scan_screen.dart';
@@ -16,10 +17,87 @@ import 'package:meshcore_team/widgets/status_bar_actions.dart';
 import 'package:meshcore_team/widgets/night_clock.dart';
 import 'channel_chat_screen.dart';
 
+enum _ChannelSort { messageCount, alpha, channelNumber, favoritesFirst }
+
 /// Channels Screen
 /// Displays list of synced channels from companion device
-class ChannelsScreen extends StatelessWidget {
+class ChannelsScreen extends StatefulWidget {
   const ChannelsScreen({super.key});
+
+  @override
+  State<ChannelsScreen> createState() => _ChannelsScreenState();
+}
+
+class _ChannelsScreenState extends State<ChannelsScreen> {
+  _ChannelSort _sort = _ChannelSort.messageCount;
+
+  void _cycleSort() {
+    setState(() {
+      _sort = switch (_sort) {
+        _ChannelSort.messageCount => _ChannelSort.alpha,
+        _ChannelSort.alpha => _ChannelSort.channelNumber,
+        _ChannelSort.channelNumber => _ChannelSort.favoritesFirst,
+        _ChannelSort.favoritesFirst => _ChannelSort.messageCount,
+      };
+    });
+  }
+
+  IconData _sortIcon() => switch (_sort) {
+        _ChannelSort.messageCount => Icons.mark_unread_chat_alt,
+        _ChannelSort.alpha => Icons.sort_by_alpha,
+        _ChannelSort.channelNumber => Icons.tag,
+        _ChannelSort.favoritesFirst => Icons.star,
+      };
+
+  String _sortTooltip(AppLocalizations l10n) => switch (_sort) {
+        _ChannelSort.messageCount => l10n.sortByMessageCount,
+        _ChannelSort.alpha => l10n.sortByName,
+        _ChannelSort.channelNumber => l10n.sortByChannelNumber,
+        _ChannelSort.favoritesFirst => l10n.sortByFavorites,
+      };
+
+  List<ChannelWithUnread> _applySort(List<ChannelWithUnread> channels) {
+    // Muted channels always go to the bottom, sorted by channel index.
+    final muted = channels
+        .where((c) =>
+            ChannelNotificationMode.fromString(c.channel.notificationMode) ==
+            ChannelNotificationMode.muted)
+        .toList()
+      ..sort(
+          (a, b) => a.channel.channelIndex.compareTo(b.channel.channelIndex));
+
+    final rest = channels
+        .where((c) =>
+            ChannelNotificationMode.fromString(c.channel.notificationMode) !=
+            ChannelNotificationMode.muted)
+        .toList();
+
+    switch (_sort) {
+      case _ChannelSort.messageCount:
+        rest.sort((a, b) {
+          if (a.unreadCount != b.unreadCount) {
+            return b.unreadCount.compareTo(a.unreadCount);
+          }
+          return a.channel.channelIndex.compareTo(b.channel.channelIndex);
+        });
+      case _ChannelSort.alpha:
+        String key(String name) =>
+            name.toLowerCase().replaceFirst(RegExp(r'^#+'), '').trimLeft();
+        rest.sort((a, b) => key(a.channel.name).compareTo(key(b.channel.name)));
+      case _ChannelSort.channelNumber:
+        rest.sort(
+            (a, b) => a.channel.channelIndex.compareTo(b.channel.channelIndex));
+      case _ChannelSort.favoritesFirst:
+        rest.sort((a, b) {
+          if (a.channel.isFavorite != b.channel.isFavorite) {
+            return a.channel.isFavorite ? -1 : 1;
+          }
+          return a.channel.channelIndex.compareTo(b.channel.channelIndex);
+        });
+    }
+
+    return [...rest, ...muted];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +109,11 @@ class ChannelsScreen extends StatelessWidget {
         centerTitle: false,
         title: NightTitle(title: l10n.channels),
         actions: [
+          IconButton(
+            icon: Icon(_sortIcon()),
+            tooltip: _sortTooltip(l10n),
+            onPressed: _cycleSort,
+          ),
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: l10n.addChannelLower,
@@ -65,7 +148,7 @@ class ChannelsScreen extends StatelessWidget {
             );
           }
 
-          final channelsWithUnread = snapshot.data ?? [];
+          final channelsWithUnread = _applySort(snapshot.data ?? []);
 
           if (channelsWithUnread.isEmpty) {
             final emptyColor = Theme.of(context).colorScheme.outline;
@@ -224,9 +307,6 @@ class ChannelsScreen extends StatelessWidget {
         );
       },
     );
-    // Controllers are method-local and will be GC'd; explicit disposal
-    // races with the dialog exit animation and causes _dependents.isEmpty
-    // assertions, so we intentionally skip it.
   }
 
   Future<void> _showJoinHashtagChannelDialog(
@@ -446,15 +526,152 @@ class ChannelListTile extends StatelessWidget {
     required this.unreadCount,
   });
 
+  void _showChannelOptions(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final repo = context.read<ChannelRepository>();
+    final mode = ChannelNotificationMode.fromString(channel.notificationMode);
+    final isPublic = channel.isPublic;
+
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  l10n.channelNotifications,
+                  style: Theme.of(ctx).textTheme.titleSmall,
+                ),
+              ),
+              _NotificationModeOption(
+                label: l10n.notificationModeNormal,
+                description: l10n.notificationModeNormalDesc,
+                icon: Icons.notifications,
+                selected: mode == ChannelNotificationMode.normal,
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  repo.setNotificationMode(channel.hash, 'normal');
+                },
+              ),
+              _NotificationModeOption(
+                label: l10n.notificationModeSilent,
+                description: l10n.notificationModeSilentDesc,
+                icon: Icons.notifications_off,
+                selected: mode == ChannelNotificationMode.silent,
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  repo.setNotificationMode(channel.hash, 'silent');
+                },
+              ),
+              _NotificationModeOption(
+                label: l10n.notificationModeMuted,
+                description: l10n.notificationModeMutedDesc,
+                icon: Icons.volume_off,
+                selected: mode == ChannelNotificationMode.muted,
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  repo.setNotificationMode(channel.hash, 'muted');
+                },
+              ),
+              if (!isPublic) ...[
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: Text(
+                    l10n.deleteChannel,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _showDeleteDialog(context, repo);
+                  },
+                ),
+              ],
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showDeleteDialog(
+      BuildContext context, ChannelRepository repo) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        bool isDeleting = false;
+        return StatefulBuilder(
+          builder: (dialogContext, setState) {
+            Future<void> doDelete() async {
+              if (isDeleting) return;
+              setState(() => isDeleting = true);
+              try {
+                await repo.deletePrivateChannel(channel);
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text(AppLocalizations.of(context)!
+                            .channelDeleted(channel.name))),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(e.toString())),
+                  );
+                }
+                if (dialogContext.mounted) {
+                  setState(() => isDeleting = false);
+                }
+              }
+            }
+
+            return AlertDialog(
+              title: Text(AppLocalizations.of(dialogContext)!.deleteChannel),
+              content: Text(
+                'Delete "${channel.name}" from the companion and this phone?\n\nThis cannot be undone.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed:
+                      isDeleting ? null : () => Navigator.of(dialogContext).pop(),
+                  child: Text(AppLocalizations.of(dialogContext)!.cancel),
+                ),
+                FilledButton(
+                  onPressed: isDeleting ? null : doDelete,
+                  child: isDeleting
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(AppLocalizations.of(dialogContext)!.delete),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isPublic = channel.isPublic;
     final isNighttime = context.watch<SettingsService>().settings.appTheme ==
         AppThemeMode.nighttime;
+    final mode = ChannelNotificationMode.fromString(channel.notificationMode);
+    final isMuted = mode == ChannelNotificationMode.muted;
+    final isSilent = mode == ChannelNotificationMode.silent;
+    final showBadge = unreadCount > 0 && !isMuted;
 
-
-    // Determine if this channel is the active telemetry channel.
     final settings = context.watch<SettingsService>().settings;
     final telemetryHashHex = settings.telemetryChannelHash;
     int? telemetryHashInt;
@@ -468,197 +685,174 @@ class ChannelListTile extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: ListTile(
-        leading: Stack(
-          children: [
-            CircleAvatar(
-              backgroundColor: isNighttime
-                  ? (isPublic ? NightColors.connectStale : NightColors.surfaceHigh)
-                  : (isPublic ? Colors.green : Colors.blue),
-              child: Icon(
-                isPublic ? Icons.public : Icons.lock,
-                color: isNighttime ? NightColors.onSurface : Colors.white,
+      child: GestureDetector(
+        onLongPress: () => _showChannelOptions(context),
+        onSecondaryTap: () => _showChannelOptions(context),
+        child: ListTile(
+          leading: Stack(
+            children: [
+              CircleAvatar(
+                backgroundColor: isNighttime
+                    ? (isPublic
+                        ? NightColors.connectStale
+                        : NightColors.surfaceHigh)
+                    : (isPublic ? Colors.green : Colors.blue),
+                child: Icon(
+                  isPublic ? Icons.public : Icons.lock,
+                  color: isNighttime ? NightColors.onSurface : Colors.white,
+                ),
               ),
-            ),
-            if (unreadCount > 0)
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: isNighttime ? NightColors.primary : Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 16,
-                    minHeight: 16,
-                  ),
-                  child: Text(
-                    unreadCount > 99 ? '99+' : unreadCount.toString(),
-                    style: TextStyle(
-                      color: isNighttime ? NightColors.onSurface : Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+              if (showBadge)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: isNighttime ? NightColors.primary : Colors.red,
+                      shape: BoxShape.circle,
                     ),
-                    textAlign: TextAlign.center,
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      unreadCount > 99 ? '99+' : unreadCount.toString(),
+                      style: TextStyle(
+                        color:
+                            isNighttime ? NightColors.onSurface : Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
-              ),
-          ],
-        ),
-        title: Text(
-          channel.name.isNotEmpty ? channel.name : 'Unnamed Channel',
-          style: TextStyle(
-            fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
+            ],
           ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.channelHash(channel.hash.toRadixString(16))),
-            Text(l10n.channelIndex(channel.channelIndex.toString())),
-            Text(isPublic ? l10n.channelTypePublic : l10n.channelTypePrivate),
-            if (channel.muteNotifications) Text(l10n.notificationsMuted),
-            if (isTelemetryChannel)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.location_on,
-                      size: 14,
-                      color: isNighttime ? NightColors.primary : Colors.blue),
-                  const SizedBox(width: 2),
-                  Text(l10n.locationSharingOn),
-                ],
-              )
-            else if (!settings.telemetryEnabled &&
-                channel.hash == telemetryHashInt)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.location_off,
-                      size: 14,
-                      color: isNighttime
-                          ? NightColors.dimmer
-                          : Colors.grey),
-                  const SizedBox(width: 2),
-                  Text(l10n.locationSharingOff),
-                ],
-              ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  isPublic ? Icons.public : Icons.group,
-                  color: isNighttime
-                      ? (isPublic ? NightColors.connectStale : NightColors.onSurfaceVariant)
-                      : (isPublic ? Colors.green : Colors.blue),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Ch${channel.channelIndex}',
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ],
+          title: Text(
+            channel.name.isNotEmpty ? channel.name : 'Unnamed Channel',
+            style: TextStyle(
+              fontWeight:
+                  showBadge ? FontWeight.bold : FontWeight.normal,
             ),
-            if (!isPublic) ...[
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.channelHash(channel.hash.toRadixString(16))),
+              Text(l10n.channelIndex(channel.channelIndex.toString())),
+              Text(isPublic ? l10n.channelTypePublic : l10n.channelTypePrivate),
+              if (isMuted) Text(l10n.notificationsMuted),
+              if (isSilent) Text(l10n.notificationsSilent),
+              if (isTelemetryChannel)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.location_on,
+                        size: 14,
+                        color: isNighttime ? NightColors.primary : Colors.blue),
+                    const SizedBox(width: 2),
+                    Text(l10n.locationSharingOn),
+                  ],
+                )
+              else if (!settings.telemetryEnabled &&
+                  channel.hash == telemetryHashInt)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.location_off,
+                        size: 14,
+                        color: isNighttime ? NightColors.dimmer : Colors.grey),
+                    const SizedBox(width: 2),
+                    Text(l10n.locationSharingOff),
+                  ],
+                ),
+            ],
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: () => context
+                    .read<ChannelRepository>()
+                    .setFavorite(channel.hash, !channel.isFavorite),
+                child: Icon(
+                  channel.isFavorite ? Icons.star : Icons.star_border,
+                  color: channel.isFavorite
+                      ? (isNighttime ? NightColors.primary : Colors.amber)
+                      : (isNighttime ? NightColors.dimmer : Colors.grey),
+                  size: 22,
+                ),
+              ),
               const SizedBox(width: 8),
-              PopupMenuButton<String>(
-                tooltip: l10n.channelActions,
-                onSelected: (value) async {
-                  if (value != 'delete') return;
-
-                  final repo = context.read<ChannelRepository>();
-
-                  await showDialog<void>(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (dialogContext) {
-                      bool isDeleting = false;
-                      return StatefulBuilder(
-                        builder: (dialogContext, setState) {
-                          Future<void> doDelete() async {
-                            if (isDeleting) return;
-                            setState(() => isDeleting = true);
-                            try {
-                              await repo.deletePrivateChannel(channel);
-                              if (dialogContext.mounted) {
-                                Navigator.of(dialogContext).pop();
-                              }
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text(AppLocalizations.of(context)!.channelDeleted(channel.name))),
-                                );
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(e.toString())),
-                                );
-                              }
-                              if (dialogContext.mounted) {
-                                setState(() => isDeleting = false);
-                              }
-                            }
-                          }
-
-                          return AlertDialog(
-                            title: Text(AppLocalizations.of(dialogContext)!.deleteChannel),
-                            content: Text(
-                              'Delete "${channel.name}" from the companion and this phone?\n\nThis cannot be undone.',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: isDeleting
-                                    ? null
-                                    : () => Navigator.of(dialogContext).pop(),
-                                child: Text(AppLocalizations.of(dialogContext)!.cancel),
-                              ),
-                              FilledButton(
-                                onPressed: isDeleting ? null : doDelete,
-                                child: isDeleting
-                                    ? const SizedBox(
-                                        height: 16,
-                                        width: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : Text(AppLocalizations.of(dialogContext)!.delete),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem<String>(
-                    value: 'delete',
-                    child: Text(AppLocalizations.of(context)!.delete),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isPublic ? Icons.public : Icons.group,
+                    color: isNighttime
+                        ? (isPublic
+                            ? NightColors.connectStale
+                            : NightColors.onSurfaceVariant)
+                        : (isPublic ? Colors.green : Colors.blue),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Ch${channel.channelIndex}',
+                    style: const TextStyle(fontSize: 12),
                   ),
                 ],
               ),
             ],
-          ],
+          ),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChannelChatScreen(channel: channel),
+              ),
+            );
+          },
         ),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChannelChatScreen(channel: channel),
-            ),
-          );
-        },
       ),
     );
   }
+}
 
+class _NotificationModeOption extends StatelessWidget {
+  final String label;
+  final String description;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _NotificationModeOption({
+    required this.label,
+    required this.description,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: selected ? colorScheme.primary : null,
+      ),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+          color: selected ? colorScheme.primary : null,
+        ),
+      ),
+      subtitle: Text(description),
+      trailing: selected ? Icon(Icons.check, color: colorScheme.primary) : null,
+      onTap: onTap,
+    );
+  }
 }

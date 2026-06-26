@@ -940,6 +940,16 @@ class ChannelRepository {
     });
   }
 
+  /// Set favorite status for a channel
+  Future<void> setFavorite(int hash, bool favorite) {
+    return _channelsDao.setFavorite(hash, favorite);
+  }
+
+  /// Set notification mode for a channel
+  Future<void> setNotificationMode(int hash, String mode) {
+    return _channelsDao.setNotificationMode(hash, mode);
+  }
+
   /// Dispose resources
   void dispose() {
     _frameSubscription?.cancel();

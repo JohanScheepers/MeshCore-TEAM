@@ -94,11 +94,17 @@ class ChannelsDao extends DatabaseAccessor<AppDatabase>
     ));
   }
 
-  /// Toggle mute notifications for a channel
-  Future<void> toggleMuteNotifications(int hash, bool mute) {
+  /// Set favorite status for a channel
+  Future<void> setFavorite(int hash, bool favorite) {
+    return (update(channels)..where((t) => t.hash.equals(hash)))
+        .write(ChannelsCompanion(isFavorite: Value(favorite)));
+  }
+
+  /// Set notification mode for a channel
+  Future<void> setNotificationMode(int hash, String mode) {
     return (update(channels)..where((t) => t.hash.equals(hash)))
         .write(ChannelsCompanion(
-      muteNotifications: Value(mute),
+      notificationMode: Value(mode),
     ));
   }
 

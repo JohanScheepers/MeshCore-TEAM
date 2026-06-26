@@ -70,12 +70,35 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (Migrator m) async {
           await m.createAll();
+        },
+        beforeOpen: (details) async {
+          // Self-healing: ensure columns exist regardless of prior migration state.
+          // ALTER TABLE ADD COLUMN fails if column already exists — that's fine, we ignore it.
+          for (final sql in [
+            'ALTER TABLE contacts ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
+            "ALTER TABLE channels ADD COLUMN notification_mode TEXT NOT NULL DEFAULT 'normal'",
+            'ALTER TABLE channels ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
+          ]) {
+            try {
+              await customStatement(sql);
+            } catch (_) {}
+          }
+          // Patch any NULLs left by a partial earlier migration.
+          await customStatement(
+            'UPDATE contacts SET is_favorite = 0 WHERE is_favorite IS NULL',
+          );
+          await customStatement(
+            "UPDATE channels SET notification_mode = 'normal' WHERE notification_mode IS NULL",
+          );
+          await customStatement(
+            'UPDATE channels SET is_favorite = 0 WHERE is_favorite IS NULL',
+          );
         },
         onUpgrade: (Migrator m, int from, int to) async {
           // Migration from schema version 1 to 2: Add isRead column to Messages table
@@ -128,16 +151,17 @@ class AppDatabase extends _$AppDatabase {
                 '[Migration] Added isAutonomousDevice to contact_display_states table');
           }
 
-          // Migration from schema version 7 to 8: Add imported_overlay_maps table
+          // Migration from schema version 7 to 8: new tables, favorites, channel notification mode
           if (from <= 7 && to >= 8) {
             await m.createTable(importedOverlayMaps);
-            print('[Migration] Created imported_overlay_maps table');
-          }
-
-          // Migration from schema version 8 to 9: Add isFavorite to contacts
-          if (from <= 8 && to >= 9) {
             await m.addColumn(contacts, contacts.isFavorite);
-            print('[Migration] Added isFavorite to contacts table');
+            await customStatement(
+              "ALTER TABLE channels ADD COLUMN notification_mode TEXT NOT NULL DEFAULT 'normal'",
+            );
+            await customStatement(
+              'ALTER TABLE channels ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
+            );
+            print('[Migration] v7->v8: importedOverlayMaps, favorites, channel notification mode');
           }
         },
       );

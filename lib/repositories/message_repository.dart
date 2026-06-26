@@ -788,8 +788,10 @@ class MessageRepository {
         debugPrint(
             '[MessageSync] 💾 Saved channel message from $senderName (channel ${channel.name}, idx=${response.channelIndex})');
 
-        // Show notification for received channel messages (not sent by me)
-        if (!response.isFromSelf && insertedMessage != null) {
+        // Show notification for received channel messages (not sent by me, not silenced/muted)
+        if (!response.isFromSelf &&
+            insertedMessage != null &&
+            channel.notificationMode == 'normal') {
           await _notificationService.showMessageNotification(
             message: insertedMessage,
             channelName: channel.name,
