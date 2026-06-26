@@ -328,6 +328,7 @@
   "noGroupStatusChannel": "No group channel active",
 
   "channels": "Channels",
+  "search": "Search",
   "contacts": "Contacts",
   "route": "Route",
   "waypointsAndRoutes": "Waypoints & Routes",

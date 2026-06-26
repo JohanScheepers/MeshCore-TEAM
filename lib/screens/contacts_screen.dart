@@ -30,6 +30,15 @@ class ContactsScreen extends StatefulWidget {
 class _ContactsScreenState extends State<ContactsScreen> {
   Set<_ContactFilter> _filter = {};
   _SortOrder _sort = _SortOrder.lastSeen;
+  bool _searching = false;
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   List<ContactWithUnread> _applyFilterAndSort(List<ContactWithUnread> all) {
     // Type chips (End Nodes, Repeaters) are OR'd; Favorites is AND'd on top.
@@ -57,9 +66,18 @@ class _ContactsScreenState extends State<ContactsScreen> {
         ? locFiltered.where((c) => c.contact.isFavorite).toList()
         : locFiltered;
 
-    if (_sort == _SortOrder.lastSeen) return filtered;
+    final q = _searchQuery.trim().toLowerCase();
+    final searched = q.isEmpty
+        ? filtered
+        : filtered.where((c) {
+            final name = (c.contact.name ?? '').toLowerCase();
+            final hash = c.contact.hash.toRadixString(16).toLowerCase();
+            return name.contains(q) || hash.contains(q);
+          }).toList();
 
-    final sorted = [...filtered];
+    if (_sort == _SortOrder.lastSeen) return searched;
+
+    final sorted = [...searched];
     if (_sort == _SortOrder.name) {
       sorted.sort((a, b) {
         final aName = (a.contact.name ?? '').toLowerCase();
@@ -196,12 +214,48 @@ class _ContactsScreenState extends State<ContactsScreen> {
   }
 
   Widget _buildFilterBar(AppLocalizations l10n) {
+    if (_searching) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: l10n.search,
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                ),
+                onChanged: (v) => setState(() => _searchQuery = v),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => setState(() {
+                _searching = false;
+                _searchQuery = '';
+                _searchController.clear();
+              }),
+            ),
+          ],
+        ),
+      );
+    }
+
     final anyActive = _filter.isNotEmpty;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: l10n.search,
+            onPressed: () => setState(() => _searching = true),
+          ),
           SegmentedButton<_ContactFilter>(
         multiSelectionEnabled: true,
         emptySelectionAllowed: true,
