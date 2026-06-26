@@ -131,6 +131,16 @@ class $ContactsTable extends Contacts
   late final GeneratedColumn<String> companionDeviceKey =
       GeneratedColumn<String>('companion_device_key', aliasedName, true,
           type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _isFavoriteMeta =
+      const VerificationMeta('isFavorite');
+  @override
+  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
+      'is_favorite', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_favorite" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         publicKey,
@@ -149,7 +159,8 @@ class $ContactsTable extends Contacts
         lastTelemetryTimestamp,
         isOutOfRange,
         isAutonomousDevice,
-        companionDeviceKey
+        companionDeviceKey,
+        isFavorite
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -255,6 +266,12 @@ class $ContactsTable extends Contacts
           companionDeviceKey.isAcceptableOrUnknown(
               data['companion_device_key']!, _companionDeviceKeyMeta));
     }
+    if (data.containsKey('is_favorite')) {
+      context.handle(
+          _isFavoriteMeta,
+          isFavorite.isAcceptableOrUnknown(
+              data['is_favorite']!, _isFavoriteMeta));
+    }
     return context;
   }
 
@@ -301,6 +318,8 @@ class $ContactsTable extends Contacts
           DriftSqlType.bool, data['${effectivePrefix}is_autonomous_device'])!,
       companionDeviceKey: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}companion_device_key']),
+      isFavorite: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_favorite'])!,
     );
   }
 
@@ -328,6 +347,7 @@ class ContactData extends DataClass implements Insertable<ContactData> {
   final bool isOutOfRange;
   final bool isAutonomousDevice;
   final String? companionDeviceKey;
+  final bool isFavorite;
   const ContactData(
       {required this.publicKey,
       required this.hash,
@@ -345,7 +365,8 @@ class ContactData extends DataClass implements Insertable<ContactData> {
       this.lastTelemetryTimestamp,
       required this.isOutOfRange,
       required this.isAutonomousDevice,
-      this.companionDeviceKey});
+      this.companionDeviceKey,
+      required this.isFavorite});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -384,6 +405,7 @@ class ContactData extends DataClass implements Insertable<ContactData> {
     if (!nullToAbsent || companionDeviceKey != null) {
       map['companion_device_key'] = Variable<String>(companionDeviceKey);
     }
+    map['is_favorite'] = Variable<bool>(isFavorite);
     return map;
   }
 
@@ -421,6 +443,7 @@ class ContactData extends DataClass implements Insertable<ContactData> {
       companionDeviceKey: companionDeviceKey == null && nullToAbsent
           ? const Value.absent()
           : Value(companionDeviceKey),
+      isFavorite: Value(isFavorite),
     );
   }
 
@@ -450,6 +473,7 @@ class ContactData extends DataClass implements Insertable<ContactData> {
       isAutonomousDevice: serializer.fromJson<bool>(json['isAutonomousDevice']),
       companionDeviceKey:
           serializer.fromJson<String?>(json['companionDeviceKey']),
+      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
     );
   }
   @override
@@ -475,6 +499,7 @@ class ContactData extends DataClass implements Insertable<ContactData> {
       'isOutOfRange': serializer.toJson<bool>(isOutOfRange),
       'isAutonomousDevice': serializer.toJson<bool>(isAutonomousDevice),
       'companionDeviceKey': serializer.toJson<String?>(companionDeviceKey),
+      'isFavorite': serializer.toJson<bool>(isFavorite),
     };
   }
 
@@ -495,7 +520,8 @@ class ContactData extends DataClass implements Insertable<ContactData> {
           Value<int?> lastTelemetryTimestamp = const Value.absent(),
           bool? isOutOfRange,
           bool? isAutonomousDevice,
-          Value<String?> companionDeviceKey = const Value.absent()}) =>
+          Value<String?> companionDeviceKey = const Value.absent(),
+          bool? isFavorite}) =>
       ContactData(
         publicKey: publicKey ?? this.publicKey,
         hash: hash ?? this.hash,
@@ -524,6 +550,7 @@ class ContactData extends DataClass implements Insertable<ContactData> {
         companionDeviceKey: companionDeviceKey.present
             ? companionDeviceKey.value
             : this.companionDeviceKey,
+        isFavorite: isFavorite ?? this.isFavorite,
       );
   ContactData copyWithCompanion(ContactsCompanion data) {
     return ContactData(
@@ -561,6 +588,8 @@ class ContactData extends DataClass implements Insertable<ContactData> {
       companionDeviceKey: data.companionDeviceKey.present
           ? data.companionDeviceKey.value
           : this.companionDeviceKey,
+      isFavorite:
+          data.isFavorite.present ? data.isFavorite.value : this.isFavorite,
     );
   }
 
@@ -583,7 +612,8 @@ class ContactData extends DataClass implements Insertable<ContactData> {
           ..write('lastTelemetryTimestamp: $lastTelemetryTimestamp, ')
           ..write('isOutOfRange: $isOutOfRange, ')
           ..write('isAutonomousDevice: $isAutonomousDevice, ')
-          ..write('companionDeviceKey: $companionDeviceKey')
+          ..write('companionDeviceKey: $companionDeviceKey, ')
+          ..write('isFavorite: $isFavorite')
           ..write(')'))
         .toString();
   }
@@ -606,7 +636,8 @@ class ContactData extends DataClass implements Insertable<ContactData> {
       lastTelemetryTimestamp,
       isOutOfRange,
       isAutonomousDevice,
-      companionDeviceKey);
+      companionDeviceKey,
+      isFavorite);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -627,7 +658,8 @@ class ContactData extends DataClass implements Insertable<ContactData> {
           other.lastTelemetryTimestamp == this.lastTelemetryTimestamp &&
           other.isOutOfRange == this.isOutOfRange &&
           other.isAutonomousDevice == this.isAutonomousDevice &&
-          other.companionDeviceKey == this.companionDeviceKey);
+          other.companionDeviceKey == this.companionDeviceKey &&
+          other.isFavorite == this.isFavorite);
 }
 
 class ContactsCompanion extends UpdateCompanion<ContactData> {
@@ -648,6 +680,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
   final Value<bool> isOutOfRange;
   final Value<bool> isAutonomousDevice;
   final Value<String?> companionDeviceKey;
+  final Value<bool> isFavorite;
   final Value<int> rowid;
   const ContactsCompanion({
     this.publicKey = const Value.absent(),
@@ -667,6 +700,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
     this.isOutOfRange = const Value.absent(),
     this.isAutonomousDevice = const Value.absent(),
     this.companionDeviceKey = const Value.absent(),
+    this.isFavorite = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ContactsCompanion.insert({
@@ -687,6 +721,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
     this.isOutOfRange = const Value.absent(),
     this.isAutonomousDevice = const Value.absent(),
     this.companionDeviceKey = const Value.absent(),
+    this.isFavorite = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : publicKey = Value(publicKey),
         hash = Value(hash),
@@ -709,6 +744,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
     Expression<bool>? isOutOfRange,
     Expression<bool>? isAutonomousDevice,
     Expression<String>? companionDeviceKey,
+    Expression<bool>? isFavorite,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -735,6 +771,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
         'is_autonomous_device': isAutonomousDevice,
       if (companionDeviceKey != null)
         'companion_device_key': companionDeviceKey,
+      if (isFavorite != null) 'is_favorite': isFavorite,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -757,6 +794,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
       Value<bool>? isOutOfRange,
       Value<bool>? isAutonomousDevice,
       Value<String?>? companionDeviceKey,
+      Value<bool>? isFavorite,
       Value<int>? rowid}) {
     return ContactsCompanion(
       publicKey: publicKey ?? this.publicKey,
@@ -780,6 +818,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
       isOutOfRange: isOutOfRange ?? this.isOutOfRange,
       isAutonomousDevice: isAutonomousDevice ?? this.isAutonomousDevice,
       companionDeviceKey: companionDeviceKey ?? this.companionDeviceKey,
+      isFavorite: isFavorite ?? this.isFavorite,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -842,6 +881,9 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
     if (companionDeviceKey.present) {
       map['companion_device_key'] = Variable<String>(companionDeviceKey.value);
     }
+    if (isFavorite.present) {
+      map['is_favorite'] = Variable<bool>(isFavorite.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -868,6 +910,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
           ..write('isOutOfRange: $isOutOfRange, ')
           ..write('isAutonomousDevice: $isAutonomousDevice, ')
           ..write('companionDeviceKey: $companionDeviceKey, ')
+          ..write('isFavorite: $isFavorite, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5838,6 +5881,7 @@ typedef $$ContactsTableCreateCompanionBuilder = ContactsCompanion Function({
   Value<bool> isOutOfRange,
   Value<bool> isAutonomousDevice,
   Value<String?> companionDeviceKey,
+  Value<bool> isFavorite,
   Value<int> rowid,
 });
 typedef $$ContactsTableUpdateCompanionBuilder = ContactsCompanion Function({
@@ -5858,6 +5902,7 @@ typedef $$ContactsTableUpdateCompanionBuilder = ContactsCompanion Function({
   Value<bool> isOutOfRange,
   Value<bool> isAutonomousDevice,
   Value<String?> companionDeviceKey,
+  Value<bool> isFavorite,
   Value<int> rowid,
 });
 
@@ -5926,6 +5971,9 @@ class $$ContactsTableFilterComposer
   ColumnFilters<String> get companionDeviceKey => $composableBuilder(
       column: $table.companionDeviceKey,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isFavorite => $composableBuilder(
+      column: $table.isFavorite, builder: (column) => ColumnFilters(column));
 }
 
 class $$ContactsTableOrderingComposer
@@ -5995,6 +6043,9 @@ class $$ContactsTableOrderingComposer
   ColumnOrderings<String> get companionDeviceKey => $composableBuilder(
       column: $table.companionDeviceKey,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isFavorite => $composableBuilder(
+      column: $table.isFavorite, builder: (column) => ColumnOrderings(column));
 }
 
 class $$ContactsTableAnnotationComposer
@@ -6056,6 +6107,9 @@ class $$ContactsTableAnnotationComposer
 
   GeneratedColumn<String> get companionDeviceKey => $composableBuilder(
       column: $table.companionDeviceKey, builder: (column) => column);
+
+  GeneratedColumn<bool> get isFavorite => $composableBuilder(
+      column: $table.isFavorite, builder: (column) => column);
 }
 
 class $$ContactsTableTableManager extends RootTableManager<
@@ -6098,6 +6152,7 @@ class $$ContactsTableTableManager extends RootTableManager<
             Value<bool> isOutOfRange = const Value.absent(),
             Value<bool> isAutonomousDevice = const Value.absent(),
             Value<String?> companionDeviceKey = const Value.absent(),
+            Value<bool> isFavorite = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ContactsCompanion(
@@ -6118,6 +6173,7 @@ class $$ContactsTableTableManager extends RootTableManager<
             isOutOfRange: isOutOfRange,
             isAutonomousDevice: isAutonomousDevice,
             companionDeviceKey: companionDeviceKey,
+            isFavorite: isFavorite,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -6138,6 +6194,7 @@ class $$ContactsTableTableManager extends RootTableManager<
             Value<bool> isOutOfRange = const Value.absent(),
             Value<bool> isAutonomousDevice = const Value.absent(),
             Value<String?> companionDeviceKey = const Value.absent(),
+            Value<bool> isFavorite = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ContactsCompanion.insert(
@@ -6158,6 +6215,7 @@ class $$ContactsTableTableManager extends RootTableManager<
             isOutOfRange: isOutOfRange,
             isAutonomousDevice: isAutonomousDevice,
             companionDeviceKey: companionDeviceKey,
+            isFavorite: isFavorite,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

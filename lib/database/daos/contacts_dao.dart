@@ -199,6 +199,13 @@ class ContactsDao extends DatabaseAccessor<AppDatabase>
     ));
   }
 
+  Future<void> setFavorite(Uint8List publicKey, bool isFavorite) {
+    return (update(contacts)..where((t) => t.publicKey.equals(publicKey)))
+        .write(ContactsCompanion(
+      isFavorite: Value(isFavorite),
+    ));
+  }
+
   /// Update battery levels
   Future<void> updateBatteryLevels(
     Uint8List publicKey, {

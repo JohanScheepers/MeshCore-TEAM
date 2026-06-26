@@ -460,6 +460,10 @@ class ContactRepository {
     });
   }
 
+  Future<void> setFavorite(Uint8List publicKey, bool isFavorite) {
+    return _contactsDao.setFavorite(publicKey, isFavorite);
+  }
+
   /// Dispose resources
   void dispose() {
     _frameSubscription?.cancel();
