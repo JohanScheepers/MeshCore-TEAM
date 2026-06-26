@@ -383,11 +383,6 @@ class ContactListTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(l10n.channelHash(contact.hash.toRadixString(16))),
-            if (contact.isRepeater)
-              Text(
-                l10n.repeater,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
             Text(l10n.lastSeen(lastSeenText)),
             if (hasLocation)
               Text(l10n.locationCoordinates(

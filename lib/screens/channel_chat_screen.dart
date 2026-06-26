@@ -400,9 +400,22 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Center(
-                  child: QrImageView(
-                    data: link,
-                    size: 220,
+                  child: SizedBox(
+                    width: 220,
+                    height: 220,
+                    child: QrImageView(
+                      data: link,
+                      size: 220,
+                      backgroundColor: Colors.white,
+                      eyeStyle: const QrEyeStyle(
+                        eyeShape: QrEyeShape.square,
+                        color: Colors.black,
+                      ),
+                      dataModuleStyle: const QrDataModuleStyle(
+                        dataModuleShape: QrDataModuleShape.square,
+                        color: Colors.black,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
