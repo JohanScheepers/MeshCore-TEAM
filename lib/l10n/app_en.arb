@@ -640,6 +640,39 @@
   },
   "location": "Location",
   "appearance": "Appearance",
+  "data": "Data",
+  "deleteContact": "Delete contact",
+  "contactDeletedName": "{name} deleted",
+  "@contactDeletedName": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "autoPurgeContacts": "Auto-purge contacts",
+  "autoPurgeContactsDays": "{count} {count, plural, =1{day} other{days}}",
+  "@autoPurgeContactsDays": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "autoPurgeContactsNever": "Never",
+  "deleteAllContacts": "Delete all contacts",
+  "deleteAllContactsConfirm": "This will permanently delete all contacts from this device and from the companion. Contacts will reappear as nodes are heard on the mesh.",
+  "deleteAllChannels": "Delete all channels",
+  "deleteAllChannelsConfirm": "This will permanently delete all private channels from this device and from the companion. The public channel will not be affected.",
+  "channelsDeleted": "{count} {count, plural, =1{channel} other{channels}} deleted",
+  "@channelsDeleted": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "deleteAllContactsFavoritesNote": "Favorites will not be deleted.",
+  "contactsDeleted": "{count} {count, plural, =1{contact} other{contacts}} deleted",
+  "@contactsDeleted": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "android": "Android",
   "locationEnabledBackground": "Enabled — location updates continue in background",
   "trackingChannelIndex": "Tracking channel index: {index} • timeout: 12h • visible users: {count}",

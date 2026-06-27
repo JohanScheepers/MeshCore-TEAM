@@ -640,6 +640,39 @@
   },
   "location": "Standort",
   "appearance": "Erscheinungsbild",
+  "data": "Daten",
+  "deleteContact": "Kontakt loeschen",
+  "contactDeletedName": "{name} geloescht",
+  "@contactDeletedName": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "autoPurgeContacts": "Kontakte automatisch loeschen",
+  "autoPurgeContactsDays": "{count} Tag(e)",
+  "@autoPurgeContactsDays": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "autoPurgeContactsNever": "Nie",
+  "deleteAllContacts": "Alle Kontakte loeschen",
+  "deleteAllContactsConfirm": "Alle Kontakte werden dauerhaft von diesem Geraet und vom Companion geloescht. Kontakte erscheinen wieder, sobald Knoten im Mesh gehoert werden.",
+  "deleteAllChannels": "Alle Kanaele loeschen",
+  "deleteAllChannelsConfirm": "Alle privaten Kanaele werden dauerhaft von diesem Geraet und vom Companion geloescht. Der oeffentliche Kanal wird nicht beeinflusst.",
+  "channelsDeleted": "{count} Kanal/Kanaele geloescht",
+  "@channelsDeleted": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "deleteAllContactsFavoritesNote": "Favoriten werden nicht geloescht.",
+  "contactsDeleted": "{count} Kontakt(e) geloescht",
+  "@contactsDeleted": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "android": "Android",
   "locationEnabledBackground": "Aktiviert — Standortaktualisierungen laufen im Hintergrund weiter",
   "trackingChannelIndex": "Tracking-Kanal-Index: {index} • Timeout: 12h • Sichtbare Nutzer: {count}",

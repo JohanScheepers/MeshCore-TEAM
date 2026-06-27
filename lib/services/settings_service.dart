@@ -45,6 +45,7 @@ class SettingsService extends ChangeNotifier {
       'battery_optimization_requested';
   static const String _keyServiceWasRunning = 'service_was_running';
   static const String _keyKeepScreenOnLock = 'keep_screen_on_lock';
+  static const String _keyContactAutoPurgeDays = 'contact_auto_purge_days';
   static const String _keyContactLastmod = 'contact_lastmod';
   static const String _keyAppTheme = 'app_theme';
 
@@ -168,6 +169,8 @@ class SettingsService extends ChangeNotifier {
           _prefs.getBool(_keyBatteryOptimizationRequested) ?? false,
       serviceWasRunning: _prefs.getBool(_keyServiceWasRunning) ?? false,
       keepScreenOnLock: _prefs.getBool(_keyKeepScreenOnLock) ?? false,
+      contactAutoPurgeDays:
+          _prefs.getInt(_keyContactAutoPurgeDays) ?? 0,
     );
   }
 
@@ -423,6 +426,12 @@ class SettingsService extends ChangeNotifier {
   Future<void> setKeepScreenOnLock(bool enabled) async {
     await _prefs.setBool(_keyKeepScreenOnLock, enabled);
     _settings = _settings.copyWith(keepScreenOnLock: enabled);
+    notifyListeners();
+  }
+
+  Future<void> setContactAutoPurgeDays(int days) async {
+    await _prefs.setInt(_keyContactAutoPurgeDays, days);
+    _settings = _settings.copyWith(contactAutoPurgeDays: days);
     notifyListeners();
   }
 

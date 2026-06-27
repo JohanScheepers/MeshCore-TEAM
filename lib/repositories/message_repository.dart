@@ -237,12 +237,23 @@ class MessageRepository {
                 ? await _contactsDao.getContactCount()
                 : await _contactsDao.getContactCountByCompanion(companionKey);
 
-            final result =
+            var result =
                 await _contactRepository.syncContactsComplete(since: since);
 
             if (!result.success) {
               debugPrint('[🔍DISC] ❌ Contact sync failed or timed out');
               return;
+            }
+
+            // If we did an incremental sync and got nothing back, the firmware
+            // may have the contact but outside the lastmod window. Retry full.
+            if (since > 0 && result.mostRecentLastmod == 0) {
+              debugPrint('[🔍DISC] ⚠️ Incremental sync returned nothing — retrying full sync');
+              result = await _contactRepository.syncContactsComplete(since: 0);
+              if (!result.success) {
+                debugPrint('[🔍DISC] ❌ Full sync retry failed');
+                return;
+              }
             }
 
             if (result.mostRecentLastmod > 0 &&
@@ -282,8 +293,12 @@ class MessageRepository {
             final since = (companionKey != null && companionKey.isNotEmpty)
                 ? _settingsService.getContactLastmod(companionKey)
                 : 0;
-            final result =
+            var result =
                 await _contactRepository.syncContactsComplete(since: since);
+            if (result.success && since > 0 && result.mostRecentLastmod == 0) {
+              debugPrint('[🔍DISC] ⚠️ Incremental sync returned nothing — retrying full sync');
+              result = await _contactRepository.syncContactsComplete(since: 0);
+            }
             if (result.success &&
                 result.mostRecentLastmod > 0 &&
                 companionKey != null &&

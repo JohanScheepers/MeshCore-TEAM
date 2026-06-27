@@ -346,7 +346,10 @@ class ContactListTile extends StatelessWidget {
     final connectivityColor =
         _getConnectivityColor(minutesSinceLastSeen.toInt(), isNighttime);
 
-    return Card(
+    return GestureDetector(
+      onLongPress: () => _showContactOptions(context),
+      onSecondaryTap: () => _showContactOptions(context),
+      child: Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: ListTile(
         leading: Stack(
@@ -488,13 +491,47 @@ class ContactListTile extends StatelessWidget {
           );
         },
       ),
+    ),
+    );
+  }
+
+  void _showContactOptions(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final repo = context.read<ContactRepository>();
+    final name = contact.name ?? l10n.unknown;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: Text(
+                l10n.deleteContact,
+                style: const TextStyle(color: Colors.red),
+              ),
+              onTap: () async {
+                Navigator.of(ctx).pop();
+                await repo.deleteContact(contact);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l10n.contactDeletedName(name))),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   String _formatLastSeen(int timestamp) {
-    final lastSeen = DateTime.fromMillisecondsSinceEpoch(timestamp);
     final now = DateTime.now();
-    final difference = now.difference(lastSeen);
+    final lastSeen = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    final difference = lastSeen.isAfter(now) ? Duration.zero : now.difference(lastSeen);
 
     if (difference.inMinutes < 1) {
       return 'Just now';
