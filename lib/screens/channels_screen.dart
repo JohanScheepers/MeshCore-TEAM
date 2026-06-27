@@ -30,6 +30,9 @@ class ChannelsScreen extends StatefulWidget {
 
 class _ChannelsScreenState extends State<ChannelsScreen> {
   _ChannelSort _sort = _ChannelSort.messageCount;
+  // Positions (hash -> index) from the last message-count sort pass.
+  // Used as tiebreaker so equal-count channels don't jump back to channel-index order.
+  Map<int, int> _messageCountPositions = {};
 
   void _cycleSort() {
     setState(() {
@@ -74,12 +77,22 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
 
     switch (_sort) {
       case _ChannelSort.messageCount:
+        final prevPositions = _messageCountPositions;
         rest.sort((a, b) {
           if (a.unreadCount != b.unreadCount) {
             return b.unreadCount.compareTo(a.unreadCount);
           }
+          final ai = prevPositions[a.channel.hash];
+          final bi = prevPositions[b.channel.hash];
+          if (ai != null && bi != null) return ai.compareTo(bi);
+          if (ai != null) return -1;
+          if (bi != null) return 1;
           return a.channel.channelIndex.compareTo(b.channel.channelIndex);
         });
+        _messageCountPositions = {
+          for (final entry in rest.asMap().entries)
+            entry.value.channel.hash: entry.key,
+        };
       case _ChannelSort.alpha:
         String key(String name) =>
             name.toLowerCase().replaceFirst(RegExp(r'^#+'), '').trimLeft();

@@ -102,9 +102,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   Future<void> _loadFirstUnreadTimestamp() async {
     final timestamp = await _messageRepository.messagesDao
         .getFirstUnreadTimestampByChannel(widget.channel.hash);
+    if (!mounted) return;
     setState(() {
       _firstUnreadTimestamp = timestamp;
     });
+    // Mark as read now, while this screen is still visible, so the channel
+    // list is already sorted correctly by the time the user navigates back.
+    await _messageRepository.messagesDao
+        .markChannelMessagesAsRead(widget.channel.hash);
   }
 
   @override
@@ -113,12 +118,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     _scrollController.dispose();
     _inputFocusNode.dispose();
     _messagesSub?.cancel();
-
-    // Only write if there are unread messages to avoid unnecessary DB cascade
-    if (_messages.any((m) => !m.isRead)) {
-      _messageRepository.messagesDao
-          .markChannelMessagesAsRead(widget.channel.hash);
-    }
 
     // Clear active channel tracking
     MessageNotificationService.isMessagesScreenVisible = false;
