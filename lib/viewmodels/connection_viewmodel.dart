@@ -508,6 +508,12 @@ class ConnectionViewModel extends ChangeNotifier {
       // Wait 200ms
       await Future.delayed(const Duration(milliseconds: 200));
 
+      // Sync device clock before session start
+      final nowSecs = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final timeCmd = BleCommands.buildSetDeviceTime(nowSecs);
+      await _bleManager.sendFrame(timeCmd);
+      debugPrint('[ConnectionVM] 🕐 SET_DEVICE_TIME sent: $nowSecs');
+
       // Send CMD_APP_START to initialize session
       debugPrint('[ConnectionVM] 📡 Sending CMD_APP_START...');
       final appStartCmd = BleCommands.buildAppStart();
@@ -534,6 +540,14 @@ class ConnectionViewModel extends ChangeNotifier {
       }
 
       await _finalizeAfterSync();
+
+      final purgeDays = _settingsService.settings.contactAutoPurgeDays;
+      if (purgeDays > 0) {
+        final purged = await _contactRepository.purgeContactsOlderThan(purgeDays);
+        if (purged > 0) {
+          debugPrint('[ConnectionVM] 🗑️ Auto-purged $purged contact(s) older than $purgeDays days');
+        }
+      }
     } catch (e) {
       debugPrint('[ConnectionVM] ❌ Initial sync failed: $e');
       _updateSyncStatus(

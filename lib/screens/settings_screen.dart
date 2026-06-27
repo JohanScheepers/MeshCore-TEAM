@@ -13,7 +13,6 @@ import 'package:meshcore_team/models/app_settings.dart';
 import 'package:meshcore_team/repositories/channel_repository.dart';
 import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
-import 'package:meshcore_team/widgets/night_clock.dart';
 
 const MethodChannel _appLifecycleChannel =
     MethodChannel('com.meshcore.team/app_lifecycle');
@@ -164,6 +163,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Text(
+              l10n.data,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: Column(
+              children: [
+                _buildAutoPurgeCard(context, l10n, settings),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
           if (Platform.isAndroid) ...[
             const Divider(height: 1),
             Padding(
@@ -203,6 +222,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+
+  static const _purgeDayOptions = [7, 14, 30, 60, 90, 180, 365, 0];
+
+  Widget _buildAutoPurgeCard(BuildContext context, AppLocalizations l10n,
+      SettingsService settingsService) {
+    final days = settingsService.settings.contactAutoPurgeDays;
+    final sliderIndex = () {
+      final idx = _purgeDayOptions.indexOf(days);
+      return idx < 0 ? _purgeDayOptions.length - 1 : idx;
+    }();
+    final label = days == 0
+        ? l10n.autoPurgeContactsNever
+        : l10n.autoPurgeContactsDays(days);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(l10n.autoPurgeContacts,
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+                Text(label,
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ),
+            Slider(
+              value: sliderIndex.toDouble(),
+              min: 0,
+              max: (_purgeDayOptions.length - 1).toDouble(),
+              divisions: _purgeDayOptions.length - 1,
+              onChanged: (v) {
+                final selected = _purgeDayOptions[v.round()];
+                settingsService.setContactAutoPurgeDays(selected);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Future<void> _toggleKeepScreenOnLock(SettingsService settingsService) async {
     final enabled = !settingsService.settings.keepScreenOnLock;

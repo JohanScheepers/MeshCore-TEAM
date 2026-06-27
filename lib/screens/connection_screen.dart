@@ -19,6 +19,7 @@ import 'package:meshcore_team/widgets/night_clock.dart';
 import 'package:meshcore_team/widgets/themed_dropdown.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
 import 'package:meshcore_team/repositories/channel_repository.dart';
+import 'package:meshcore_team/repositories/contact_repository.dart';
 import 'package:meshcore_team/screens/forwarding_debug_screen.dart';
 import 'package:meshcore_team/screens/debug_log_screen.dart';
 import 'package:meshcore_team/screens/team_config_screen.dart';
@@ -698,7 +699,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   Widget _buildConnectedView(
       BleConnectionManager bleManager, ConnectionViewModel connectionVM) {
     final l10n = AppLocalizations.of(context)!;
-    final settingsService = context.watch<SettingsService>();
     final channelRepository = context.watch<ChannelRepository>();
 
     return StreamBuilder<List<ChannelData>>(
@@ -764,11 +764,124 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   const SizedBox(height: 16),
                 ],
               ),
-            )
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Text(
+                l10n.data,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              child: Column(
+                children: [
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.delete_sweep, color: Colors.red),
+                      title: Text(
+                        l10n.deleteAllContacts,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w500, color: Colors.red),
+                      ),
+                      onTap: () => _showDeleteAllContactsDialog(context),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.layers_clear, color: Colors.red),
+                      title: Text(
+                        l10n.deleteAllChannels,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w500, color: Colors.red),
+                      ),
+                      onTap: () => _showDeleteAllChannelsDialog(context),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
           ],
         );
       },
     );
+  }
+
+  Future<void> _showDeleteAllContactsDialog(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deleteAllContacts),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.deleteAllContactsConfirm),
+            const SizedBox(height: 12),
+            Text(
+              l10n.deleteAllContactsFavoritesNote,
+              style: const TextStyle(fontStyle: FontStyle.italic),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final repo = context.read<ContactRepository>();
+    final count = await repo.purgeContactsOlderThan(0);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.contactsDeleted(count))),
+      );
+    }
+  }
+
+  Future<void> _showDeleteAllChannelsDialog(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deleteAllChannels),
+        content: Text(l10n.deleteAllChannelsConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final repo = context.read<ChannelRepository>();
+    final count = await repo.deleteAllPrivateChannels();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.channelsDeleted(count))),
+      );
+    }
   }
 
   Widget _buildSettingsCard({

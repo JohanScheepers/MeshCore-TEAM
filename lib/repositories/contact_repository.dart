@@ -464,6 +464,39 @@ class ContactRepository {
     return _contactsDao.setFavorite(publicKey, isFavorite);
   }
 
+  /// Delete a single contact from the local DB and from the companion (if connected).
+  /// A "not found" response from the companion is not an error.
+  Future<void> deleteContact(ContactData contact) async {
+    final frame = BleCommands.buildRemoveContact(contact.publicKey);
+    await _bleManager.sendFrame(frame);
+    await _contactsDao.deleteContact(contact.publicKey);
+  }
+
+  /// Delete all contacts not seen within [days] days, skipping favorites.
+  /// Always removes from both local DB and companion.
+  Future<int> purgeContactsOlderThan(int days) async {
+    final cutoffMs = DateTime.now()
+        .subtract(Duration(days: days))
+        .add(const Duration(minutes: 1))
+        .millisecondsSinceEpoch;
+
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final stale = (await _contactsDao.getAllContacts())
+        .where((c) {
+          // Clamp future timestamps to now (companion clock may be ahead).
+          final effectiveLastSeen = c.lastSeen > nowMs ? nowMs : c.lastSeen;
+          return effectiveLastSeen < cutoffMs && !c.isFavorite;
+        })
+        .toList();
+
+    for (final contact in stale) {
+      await deleteContact(contact);
+    }
+
+    debugPrint('[ContactPurge] Removed ${stale.length} contacts older than $days days');
+    return stale.length;
+  }
+
   /// Dispose resources
   void dispose() {
     _frameSubscription?.cancel();

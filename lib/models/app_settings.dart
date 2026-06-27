@@ -52,6 +52,7 @@ class AppSettings {
 
   // Android: show over lock screen and keep screen on
   final bool keepScreenOnLock;
+  final int contactAutoPurgeDays; // 0 = disabled
 
   const AppSettings({
     this.appTheme = AppThemeMode.system,
@@ -83,6 +84,7 @@ class AppSettings {
     this.batteryOptimizationRequested = false,
     this.serviceWasRunning = false,
     this.keepScreenOnLock = false,
+    this.contactAutoPurgeDays = 0,
   });
 
   AppSettings copyWith({
@@ -115,6 +117,7 @@ class AppSettings {
     bool? backgroundLocationEnabled,
     bool? batteryOptimizationRequested,
     bool? keepScreenOnLock,
+    int? contactAutoPurgeDays,
   }) {
     return AppSettings(
       appTheme: appTheme ?? this.appTheme,
@@ -156,6 +159,7 @@ class AppSettings {
           batteryOptimizationRequested ?? this.batteryOptimizationRequested,
       serviceWasRunning: serviceWasRunning ?? this.serviceWasRunning,
       keepScreenOnLock: keepScreenOnLock ?? this.keepScreenOnLock,
+      contactAutoPurgeDays: contactAutoPurgeDays ?? this.contactAutoPurgeDays,
     );
   }
 }

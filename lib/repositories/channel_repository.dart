@@ -945,6 +945,23 @@ class ChannelRepository {
     return _channelsDao.setFavorite(hash, favorite);
   }
 
+  /// Delete all private channels from the companion and local DB.
+  Future<int> deleteAllPrivateChannels() async {
+    final companionKey = _settingsService.settings.currentCompanionPublicKey;
+    if (companionKey == null || companionKey.isEmpty) return 0;
+    final privateChannels = await _channelsDao.getPrivateChannels();
+    int count = 0;
+    for (final channel in privateChannels) {
+      try {
+        await deletePrivateChannel(channel);
+        count++;
+      } catch (e) {
+        debugPrint('[Channel] ⚠️ Failed to delete "${channel.name}": $e');
+      }
+    }
+    return count;
+  }
+
   /// Set notification mode for a channel
   Future<void> setNotificationMode(int hash, String mode) {
     return _channelsDao.setNotificationMode(hash, mode);

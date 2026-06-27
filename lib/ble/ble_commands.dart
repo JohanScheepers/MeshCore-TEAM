@@ -9,6 +9,16 @@ import 'package:meshcore_team/ble/ble_protocol.dart';
 /// BLE Command Builders
 /// Serializes commands to send to MeshCore companion device
 class BleCommands {
+  /// Build SET_DEVICE_TIME command
+  /// Format: [cmd=6][uint32 unix seconds, little-endian]
+  static Uint8List buildSetDeviceTime(int unixSeconds) {
+    final writer = BufferWriter();
+    writer.writeByte(BleConstants.cmdSetDeviceTime);
+    final bytes = ByteData(4)..setUint32(0, unixSeconds, Endian.little);
+    writer.writeBytes(bytes.buffer.asUint8List());
+    return writer.toBytes();
+  }
+
   /// Build DEVICE_QUERY command
   /// Queries device capabilities (max contacts, max channels, firmware version, etc.)
   /// Format: [cmd][app_ver]
