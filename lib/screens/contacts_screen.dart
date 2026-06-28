@@ -2,6 +2,7 @@
 // Licensed under CC BY-NC-SA 4.0
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:meshcore_team/database/database.dart';
 import '../l10n/app_localizations.dart';
@@ -47,8 +48,8 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
     final typeFiltered = hasType
         ? all.where((c) {
-            if (_filter.contains(_ContactFilter.endNodes) && !c.contact.isRepeater) return true;
             if (_filter.contains(_ContactFilter.repeaters) && c.contact.isRepeater) return true;
+            if (_filter.contains(_ContactFilter.endNodes) && !c.contact.isRepeater && !c.contact.isRoomServer) return true;
             return false;
           }).toList()
         : all;
@@ -120,96 +121,115 @@ class _ContactsScreenState extends State<ContactsScreen> {
     final l10n = AppLocalizations.of(context)!;
     final contactRepository = context.watch<ContactRepository>();
 
-    return Scaffold(
-      appBar: AppBar(
-        centerTitle: false,
-        title: NightTitle(title: l10n.contacts),
-        actions: [
-          IconButton(
-            icon: Icon(_sortIcon()),
-            tooltip: _sortTooltip(l10n),
-            onPressed: _cycleSortOrder,
-          ),
-          const SizedBox(
-            height: 24,
-            child: VerticalDivider(width: 16, thickness: 1),
-          ),
-          const StatusBarActions(),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildFilterBar(l10n),
-          Expanded(
-            child: StreamBuilder<List<ContactWithUnread>>(
-              stream: contactRepository.watchContactsWithUnread(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+    return StreamBuilder<List<ContactWithUnread>>(
+      stream: contactRepository.watchContactsWithUnread(),
+      builder: (context, snapshot) {
+        final all = snapshot.data ?? [];
+        final contacts = _applyFilterAndSort(all);
+        final hasData = snapshot.connectionState != ConnectionState.waiting;
+        final repCount = contacts.where((c) => c.contact.isRepeater).length;
+        final endCount = contacts.where((c) => !c.contact.isRepeater && !c.contact.isRoomServer).length;
 
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error, size: 64, color: Colors.red),
-                        const SizedBox(height: 16),
-                        Text(l10n.genericError(snapshot.error.toString())),
-                      ],
-                    ),
-                  );
-                }
-
-                final all = snapshot.data ?? [];
-                final contacts = _applyFilterAndSort(all);
-
-                if (all.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.people_outline, size: 64, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        Text(
-                          l10n.noContacts,
-                          style: const TextStyle(fontSize: 18, color: Colors.grey),
+        return Scaffold(
+          appBar: AppBar(
+            centerTitle: false,
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                NightTitle(title: l10n.contacts),
+                if (hasData && all.isNotEmpty)
+                  Text(
+                    'Rep: $repCount  End: $endCount',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          l10n.connectToDeviceToSeeContacts,
+                  ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: Icon(_sortIcon()),
+                tooltip: _sortTooltip(l10n),
+                onPressed: _cycleSortOrder,
+              ),
+              const SizedBox(
+                height: 24,
+                child: VerticalDivider(width: 16, thickness: 1),
+              ),
+              const StatusBarActions(),
+            ],
+          ),
+          body: Column(
+            children: [
+              _buildFilterBar(l10n),
+              Expanded(
+                child: Builder(
+                  builder: (context) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error, size: 64, color: Colors.red),
+                            const SizedBox(height: 16),
+                            Text(l10n.genericError(snapshot.error.toString())),
+                          ],
+                        ),
+                      );
+                    }
+
+                    if (all.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.people_outline, size: 64, color: Colors.grey),
+                            const SizedBox(height: 16),
+                            Text(
+                              l10n.noContacts,
+                              style: const TextStyle(fontSize: 18, color: Colors.grey),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              l10n.connectToDeviceToSeeContacts,
+                              style: const TextStyle(color: Colors.grey),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    if (contacts.isEmpty) {
+                      return Center(
+                        child: Text(
+                          l10n.noContactsMatchFilter,
                           style: const TextStyle(color: Colors.grey),
-                          textAlign: TextAlign.center,
                         ),
-                      ],
-                    ),
-                  );
-                }
+                      );
+                    }
 
-                if (contacts.isEmpty) {
-                  return Center(
-                    child: Text(
-                      l10n.noContactsMatchFilter,
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  itemCount: contacts.length,
-                  itemBuilder: (context, index) {
-                    final contactWithUnread = contacts[index];
-                    return ContactListTile(
-                      contact: contactWithUnread.contact,
-                      unreadCount: contactWithUnread.unreadCount,
+                    return ListView.builder(
+                      itemCount: contacts.length,
+                      itemBuilder: (context, index) {
+                        final contactWithUnread = contacts[index];
+                        return ContactListTile(
+                          contact: contactWithUnread.contact,
+                          unreadCount: contactWithUnread.unreadCount,
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -246,73 +266,69 @@ class _ContactsScreenState extends State<ContactsScreen> {
     }
 
     final anyActive = _filter.isNotEmpty;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    Widget filterChip(_ContactFilter value, IconData icon, String tooltip) {
+      final active = _filter.contains(value);
+      return Tooltip(
+        message: tooltip,
+        child: GestureDetector(
+          onTap: () => setState(() {
+            if (active) {
+              _filter = Set.of(_filter)..remove(value);
+            } else {
+              _filter = Set.of(_filter)..add(value);
+            }
+          }),
+          child: Container(
+            height: 38,
+            width: 38,
+            decoration: BoxDecoration(
+              color: active ? colorScheme.primary : colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(
+              icon,
+              size: 24,
+              color: active ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        spacing: 4,
         children: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            tooltip: l10n.search,
-            onPressed: () => setState(() => _searching = true),
+          GestureDetector(
+            onTap: () => setState(() => _searching = true),
+            child: Tooltip(
+              message: l10n.search,
+              child: Icon(Icons.search, size: 20, color: colorScheme.onSurfaceVariant),
+            ),
           ),
-          SegmentedButton<_ContactFilter>(
-        multiSelectionEnabled: true,
-        emptySelectionAllowed: true,
-        showSelectedIcon: false,
-        segments: [
-          ButtonSegment(
-            value: _ContactFilter.endNodes,
-            icon: const Icon(Icons.person, size: 16),
-            tooltip: l10n.filterEndNodes,
-          ),
-          ButtonSegment(
-            value: _ContactFilter.repeaters,
-            icon: const Icon(Icons.device_hub, size: 16),
-            tooltip: l10n.filterRepeaters,
-          ),
-          ButtonSegment(
-            value: _ContactFilter.hasLocation,
-            icon: const Icon(Icons.location_on, size: 16),
-            tooltip: l10n.filterHasLocation,
-          ),
-          ButtonSegment(
-            value: _ContactFilter.noLocation,
-            icon: const Icon(Icons.location_off, size: 16),
-            tooltip: l10n.filterNoLocation,
-          ),
-          ButtonSegment(
-            value: _ContactFilter.favorites,
-            icon: const Icon(Icons.star, size: 16),
-          ),
-        ],
-        selected: _filter,
-        onSelectionChanged: (s) => setState(() => _filter = s),
-        style: const ButtonStyle(
-          visualDensity: VisualDensity.compact,
-        ),
-      ),
-          Padding(
-            padding: const EdgeInsets.only(left: 4),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: anyActive ? () => setState(() => _filter = {}) : null,
-              child: Container(
-                height: 32,
-                width: 32,
-                decoration: BoxDecoration(
-                  color: anyActive
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
-                  Icons.filter_alt_off,
-                  size: 18,
-                  color: anyActive
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : Theme.of(context).colorScheme.outlineVariant,
-                ),
+          const SizedBox(width: 4),
+          filterChip(_ContactFilter.endNodes, Icons.person, l10n.filterEndNodes),
+          filterChip(_ContactFilter.repeaters, Icons.device_hub, l10n.filterRepeaters),
+          filterChip(_ContactFilter.hasLocation, Icons.location_on, l10n.filterHasLocation),
+          filterChip(_ContactFilter.noLocation, Icons.location_off, l10n.filterNoLocation),
+          filterChip(_ContactFilter.favorites, Icons.star, l10n.sortByFavorites),
+          GestureDetector(
+            onTap: anyActive ? () => setState(() => _filter = {}) : null,
+            child: Container(
+              height: 38,
+              width: 38,
+              decoration: BoxDecoration(
+                color: anyActive ? colorScheme.primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(
+                Icons.filter_alt_off,
+                size: 24,
+                color: anyActive ? colorScheme.onPrimary : colorScheme.outlineVariant,
               ),
             ),
           ),
@@ -378,7 +394,7 @@ class ContactListTile extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  contact.isRepeater ? Icons.device_hub : Icons.person,
+                  contact.isRepeater ? Icons.device_hub : contact.isRoomServer ? Icons.meeting_room : Icons.person,
                   size: 13,
                   color: isNighttime ? NightColors.surface : Colors.white,
                 ),
@@ -474,7 +490,7 @@ class ContactListTile extends StatelessWidget {
           ],
         ),
         onTap: () {
-          if (contact.isRepeater) {
+          if (contact.isRepeater || contact.isRoomServer) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(l10n.directMessagesDisabledForRepeaters),
@@ -506,6 +522,29 @@ class ContactListTile extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              leading: const Icon(Icons.copy),
+              title: const Text('Copy contact info'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                final hash = contact.hash.toRadixString(16);
+                final lines = <String>[
+                  'Name: $name',
+                  'Hash: $hash',
+                  if (contact.latitude != null && contact.longitude != null)
+                    'Location: ${contact.latitude!.toStringAsFixed(6)}, ${contact.longitude!.toStringAsFixed(6)}',
+                  if (contact.companionBatteryMilliVolts != null)
+                    'Battery: ${(contact.companionBatteryMilliVolts! / 1000).toStringAsFixed(2)}V',
+                  'Type: ${contact.isRepeater ? 'Repeater' : contact.isRoomServer ? 'Room Server' : 'End Node'}',
+                ];
+                Clipboard.setData(ClipboardData(text: lines.join('\n')));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Contact info copied')),
+                  );
+                }
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
               title: Text(

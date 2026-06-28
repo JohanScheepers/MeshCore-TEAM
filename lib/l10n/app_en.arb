@@ -622,6 +622,7 @@
   "filterHasLocation": "Has location",
   "filterNoLocation": "No location",
   "filterRepeaters": "Repeaters",
+  "filterRoomServers": "Room Servers",
   "sortByName": "Sort by name",
   "sortByLastSeen": "Sort by last seen",
   "sortByFavorites": "Sort by favorites",
