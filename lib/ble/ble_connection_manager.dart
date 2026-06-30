@@ -121,6 +121,29 @@ class BleConnectionManager extends ChangeNotifier {
     }
   }
 
+  /// Opt into Core Bluetooth state preservation/restoration (iOS/macOS only).
+  ///
+  /// This tells flutter_blue_plus to create its CBCentralManager with a
+  /// `CBCentralManagerOptionRestoreIdentifierKey`, which lets iOS relaunch the
+  /// app into the background and restore the active BLE session after the app
+  /// has been terminated (e.g. due to memory pressure).  Combined with the
+  /// `bluetooth-central` background mode, this keeps the companion connection
+  /// resilient across app termination rather than only across backgrounding.
+  ///
+  /// Must be called before the first BLE operation on every launch (including
+  /// background relaunches) so the restore identifier is applied when the
+  /// central manager is lazily created.  `setOptions` itself does not create
+  /// the central manager, so this is safe to call before the permission gate.
+  Future<void> enableIosStateRestoration() async {
+    if (!Platform.isIOS) return;
+    try {
+      await FlutterBluePlus.setOptions(restoreState: true);
+      debugPrint('[BleManager] ✅ iOS CoreBluetooth state restoration enabled');
+    } catch (e) {
+      debugPrint('[BleManager] ⚠️ Failed to enable state restoration: $e');
+    }
+  }
+
   Future<void> refreshStatus() async {
     if (!_isAndroid) return;
     try {

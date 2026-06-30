@@ -137,6 +137,14 @@ Future<void> _runAppStartup() async {
     // Initialize BLE Connection Manager
     print('📡 Initializing BLE manager...');
     final bleManager = BleConnectionManager();
+    // iOS: opt into CoreBluetooth state preservation/restoration so the OS can
+    // relaunch the app into the background and restore the companion connection
+    // after termination.  Must run on every launch before the first BLE
+    // operation; setOptions does not create the CBCentralManager, so this does
+    // not trigger the Bluetooth/local-network prompt before the permission gate.
+    if (Platform.isIOS) {
+      await bleManager.enableIosStateRestoration();
+    }
     print('✅ BLE manager initialized');
 
     // Initialize BLE Service
