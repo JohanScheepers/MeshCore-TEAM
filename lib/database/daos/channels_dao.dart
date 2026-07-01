@@ -129,11 +129,25 @@ class ChannelsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Delete all channels then insert replacements in a single transaction.
+  /// Preserves user-set fields (notificationMode, isFavorite) across syncs.
   Future<void> replaceAllChannels(List<ChannelsCompanion> replacements) {
     return db.transaction(() async {
+      final existing = await select(channels).get();
+      final preserved = {
+        for (final c in existing)
+          c.hash: (notificationMode: c.notificationMode, isFavorite: c.isFavorite)
+      };
+
       await delete(channels).go();
       for (final channel in replacements) {
-        await into(channels).insertOnConflictUpdate(channel);
+        final saved = preserved[channel.hash.value];
+        final merged = saved != null
+            ? channel.copyWith(
+                notificationMode: Value(saved.notificationMode),
+                isFavorite: Value(saved.isFavorite),
+              )
+            : channel;
+        await into(channels).insertOnConflictUpdate(merged);
       }
     });
   }

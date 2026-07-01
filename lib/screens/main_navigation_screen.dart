@@ -13,6 +13,7 @@ import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
 import 'package:meshcore_team/services/message_notification_service.dart';
 import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/models/unread_models.dart';
+import 'package:meshcore_team/models/channel_notification_mode.dart';
 import 'package:meshcore_team/repositories/channel_repository.dart';
 import 'package:meshcore_team/repositories/contact_repository.dart';
 import 'contacts_screen.dart';
@@ -61,8 +62,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     _channelsSub = channelRepo.watchChannelsWithUnread().listen((channels) {
       if (!mounted) return;
       setState(() {
-        _channelsUnread =
-            channels.fold(0, (sum, c) => sum + c.unreadCount);
+        _channelsUnread = channels
+            .where((c) =>
+                ChannelNotificationMode.fromString(c.channel.notificationMode) !=
+                ChannelNotificationMode.muted)
+            .fold(0, (sum, c) => sum + c.unreadCount);
       });
     }, onError: (Object e) {
       debugPrint('[MainNav] ⚠️ channels unread stream error: $e');
