@@ -17,6 +17,7 @@ import 'package:meshcore_team/services/phone_battery_service.dart';
 import 'package:meshcore_team/models/app_settings.dart';
 import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/services/forwarding_policy_service.dart';
+import 'package:meshcore_team/utils/location_settings.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
 
 /// Sends TEAM-compatible telemetry based on user settings.
@@ -321,10 +322,7 @@ class TelemetrySendService extends ChangeNotifier {
       // Phone GPS mode — subscribe to the platform location stream.
       unawaited(_seedCurrentPosition());
 
-      const locationSettings = LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
-      );
+      final locationSettings = buildAppLocationSettings(distanceFilter: 5);
 
       _positionSub =
           Geolocator.getPositionStream(locationSettings: locationSettings)

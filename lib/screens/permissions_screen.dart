@@ -105,9 +105,12 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
       if (requiredGranted) {
         debugPrint('✅ Required permissions granted!');
 
-        // Optional: request background location (Android only). This is not required
+        // Optional: request background ("Always") location. This keeps the
+        // periodic telemetry/position-sharing and location updates running
+        // when the app is backgrounded or the screen is locked. iOS requires
+        // "Always" authorization for background location updates. Not required
         // for initial app usage, so we don't block launch if denied.
-        if (Platform.isAndroid) {
+        if (Platform.isAndroid || Platform.isIOS) {
           await _requestOptionalBackgroundLocation();
         }
 

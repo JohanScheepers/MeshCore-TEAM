@@ -33,7 +33,9 @@ enum BleConnectionState {
 /// Handles scanning, connecting, and communicating with MeshCore companion radios
 class BleConnectionManager extends ChangeNotifier {
   static const String _syncTraceTag = '[SYNCTRACE][BLE]';
-  static const bool _logRawBleFrames = false;
+  // TEMP DIAGNOSTIC: enabled to trace the iOS message-sync timeout. Revert to
+  // false before release — this logs every raw TX/RX BLE frame.
+  static const bool _logRawBleFrames = true;
 
   static const MethodChannel _methodChannel =
       MethodChannel('com.meshcore.team/mesh_ble');
@@ -74,6 +76,7 @@ class BleConnectionManager extends ChangeNotifier {
   BluetoothCharacteristic? _fbpRxChar;
   BluetoothCharacteristic? _fbpTxChar;
   bool _fbpWriteWithoutResponse = true; // updated at connect time based on characteristic properties
+  bool _fbpRxSupportsWrite = false; // RX supports write-WITH-response (updated at connect)
   StreamSubscription<BluetoothConnectionState>? _fbpConnectionSub;
   StreamSubscription<List<int>>? _fbpNotifySub;
   StreamSubscription<List<ScanResult>>? _fbpScanSub;
@@ -118,6 +121,29 @@ class BleConnectionManager extends ChangeNotifier {
       await _methodChannel.invokeMethod('stopService');
     } catch (_) {
       // Best-effort
+    }
+  }
+
+  /// Opt into Core Bluetooth state preservation/restoration (iOS/macOS only).
+  ///
+  /// This tells flutter_blue_plus to create its CBCentralManager with a
+  /// `CBCentralManagerOptionRestoreIdentifierKey`, which lets iOS relaunch the
+  /// app into the background and restore the active BLE session after the app
+  /// has been terminated (e.g. due to memory pressure).  Combined with the
+  /// `bluetooth-central` background mode, this keeps the companion connection
+  /// resilient across app termination rather than only across backgrounding.
+  ///
+  /// Must be called before the first BLE operation on every launch (including
+  /// background relaunches) so the restore identifier is applied when the
+  /// central manager is lazily created.  `setOptions` itself does not create
+  /// the central manager, so this is safe to call before the permission gate.
+  Future<void> enableIosStateRestoration() async {
+    if (!Platform.isIOS) return;
+    try {
+      await FlutterBluePlus.setOptions(restoreState: true);
+      debugPrint('[BleManager] ✅ iOS CoreBluetooth state restoration enabled');
+    } catch (e) {
+      debugPrint('[BleManager] ⚠️ Failed to enable state restoration: $e');
     }
   }
 
@@ -412,6 +438,7 @@ class BleConnectionManager extends ChangeNotifier {
       _fbpRxChar = rxChar;
       _fbpTxChar = txChar;
       _fbpWriteWithoutResponse = rxChar.properties.writeWithoutResponse;
+      _fbpRxSupportsWrite = rxChar.properties.write;
 
       // Enable notifications on TX characteristic
       await txChar.setNotifyValue(true);
@@ -421,6 +448,19 @@ class BleConnectionManager extends ChangeNotifier {
       _fbpNotifySub = txChar.onValueReceived.listen((value) {
         _handleReceivedFrame(Uint8List.fromList(value));
       });
+
+      // TEMP DIAGNOSTIC: log the negotiated MTU. iOS negotiates automatically
+      // (the app cannot requestMtu like Android does), so a small value here
+      // (~23) means large frames — i.e. actual messages — cannot be delivered
+      // even though tiny push notifications (PUSH_MSG_WAITING) arrive fine.
+      // Android explicitly requests MTU 185; this shows what iOS ended up with.
+      try {
+        final mtu = fbpDevice.mtuNow;
+        debugPrint('[BleManager] 📏 Negotiated MTU: $mtu '
+            '(ATT payload ~${mtu - 3} bytes)');
+      } catch (e) {
+        debugPrint('[BleManager] ⚠️ Could not read MTU: $e');
+      }
 
       _deviceName = device.name;
       _deviceAddress = device.address;
@@ -491,7 +531,18 @@ class BleConnectionManager extends ChangeNotifier {
   }
 
   /// Send a frame to the device
-  Future<bool> sendFrame(Uint8List frame) async {
+  /// Send a frame to the RX characteristic.
+  ///
+  /// [preferWithResponse]: when true (and the RX characteristic supports
+  /// write-with-response), the frame is written with an ATT-layer
+  /// acknowledgement instead of fire-and-forget write-without-response. Use
+  /// this for command frames whose reply we then wait for (e.g.
+  /// SYNC_NEXT_MESSAGE): on iOS a write-without-response can be silently
+  /// dropped by CoreBluetooth flow control, so the firmware never sees the
+  /// command and never replies. Android already writes reliably via its own
+  /// queue+retry, so this only changes iOS/Linux (flutter_blue_plus) behaviour.
+  Future<bool> sendFrame(Uint8List frame,
+      {bool preferWithResponse = false}) async {
     return _withWriteLock(() async {
       if (!isConnected) {
         debugPrint('❌ Cannot send frame: not connected');
@@ -528,7 +579,11 @@ class BleConnectionManager extends ChangeNotifier {
           if (_fbpRxChar == null) {
             throw Exception('RX characteristic not available');
           }
-          await _fbpRxChar!.write(frame.toList(), withoutResponse: _fbpWriteWithoutResponse);
+          final withoutResponse = preferWithResponse && _fbpRxSupportsWrite
+              ? false
+              : _fbpWriteWithoutResponse;
+          await _fbpRxChar!
+              .write(frame.toList(), withoutResponse: withoutResponse);
         }
         _lastWriteTime = DateTime.now();
         return true;
@@ -792,6 +847,7 @@ class BleConnectionManager extends ChangeNotifier {
     _fbpTxChar = null;
     _fbpDevice = null;
     _fbpWriteWithoutResponse = true;
+    _fbpRxSupportsWrite = false;
   }
 
   @override
