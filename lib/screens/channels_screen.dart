@@ -15,6 +15,7 @@ import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/theme/night_theme.dart';
 import 'package:meshcore_team/widgets/status_bar_actions.dart';
 import 'package:meshcore_team/widgets/night_clock.dart';
+import 'package:meshcore_team/widgets/sort_menu_button.dart';
 import 'channel_chat_screen.dart';
 
 enum _ChannelSort { messageCount, alpha, channelNumber, favoritesFirst }
@@ -34,30 +35,12 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
   // Used as tiebreaker so equal-count channels don't jump back to channel-index order.
   Map<int, int> _messageCountPositions = {};
 
-  void _cycleSort() {
-    setState(() {
-      _sort = switch (_sort) {
-        _ChannelSort.messageCount => _ChannelSort.alpha,
-        _ChannelSort.alpha => _ChannelSort.channelNumber,
-        _ChannelSort.channelNumber => _ChannelSort.favoritesFirst,
-        _ChannelSort.favoritesFirst => _ChannelSort.messageCount,
-      };
-    });
-  }
-
-  IconData _sortIcon() => switch (_sort) {
-        _ChannelSort.messageCount => Icons.mark_unread_chat_alt,
-        _ChannelSort.alpha => Icons.sort_by_alpha,
-        _ChannelSort.channelNumber => Icons.tag,
-        _ChannelSort.favoritesFirst => Icons.star,
-      };
-
-  String _sortTooltip(AppLocalizations l10n) => switch (_sort) {
-        _ChannelSort.messageCount => l10n.sortByMessageCount,
-        _ChannelSort.alpha => l10n.sortByName,
-        _ChannelSort.channelNumber => l10n.sortByChannelNumber,
-        _ChannelSort.favoritesFirst => l10n.sortByFavorites,
-      };
+  List<SortMenuOption<_ChannelSort>> _sortOptions(AppLocalizations l10n) => [
+        SortMenuOption(value: _ChannelSort.messageCount, icon: Icons.mark_unread_chat_alt, label: l10n.sortByMessageCount),
+        SortMenuOption(value: _ChannelSort.alpha, icon: Icons.sort_by_alpha, label: l10n.sortByName),
+        SortMenuOption(value: _ChannelSort.channelNumber, icon: Icons.tag, label: l10n.sortByChannelNumber),
+        SortMenuOption(value: _ChannelSort.favoritesFirst, icon: Icons.star, label: l10n.sortByFavorites),
+      ];
 
   List<ChannelWithUnread> _applySort(List<ChannelWithUnread> channels) {
     // Muted channels always go to the bottom, sorted by channel index.
@@ -122,10 +105,10 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
         centerTitle: false,
         title: NightTitle(title: l10n.channels),
         actions: [
-          IconButton(
-            icon: Icon(_sortIcon()),
-            tooltip: _sortTooltip(l10n),
-            onPressed: _cycleSort,
+          SortMenuButton<_ChannelSort>(
+            value: _sort,
+            options: _sortOptions(l10n),
+            onChanged: (value) => setState(() => _sort = value),
           ),
           IconButton(
             icon: const Icon(Icons.add),

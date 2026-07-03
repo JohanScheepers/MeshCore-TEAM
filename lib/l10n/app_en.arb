@@ -617,6 +617,7 @@
     }
   },
   "noMapMarkersOnly": "No Map (markers only)",
+  "filterContacts": "Filter contacts",
   "filterEndNodes": "End Nodes",
   "clearFilters": "Clear filters",
   "filterHasLocation": "Has location",

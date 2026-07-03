@@ -617,6 +617,7 @@
     }
   },
   "noMapMarkersOnly": "Keine Karte (nur Markierungen)",
+  "filterContacts": "Kontakte filtern",
   "filterEndNodes": "Endknoten",
   "clearFilters": "Filter zurücksetzen",
   "filterHasLocation": "Hat Standort",
