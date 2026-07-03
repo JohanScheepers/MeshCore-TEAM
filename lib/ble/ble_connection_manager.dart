@@ -448,6 +448,19 @@ class BleConnectionManager extends ChangeNotifier {
         _handleReceivedFrame(Uint8List.fromList(value));
       });
 
+      // TEMP DIAGNOSTIC: log the negotiated MTU. iOS negotiates automatically
+      // (the app cannot requestMtu like Android does), so a small value here
+      // (~23) means large frames — i.e. actual messages — cannot be delivered
+      // even though tiny push notifications (PUSH_MSG_WAITING) arrive fine.
+      // Android explicitly requests MTU 185; this shows what iOS ended up with.
+      try {
+        final mtu = fbpDevice.mtuNow;
+        debugPrint('[BleManager] 📏 Negotiated MTU: $mtu '
+            '(ATT payload ~${mtu - 3} bytes)');
+      } catch (e) {
+        debugPrint('[BleManager] ⚠️ Could not read MTU: $e');
+      }
+
       _deviceName = device.name;
       _deviceAddress = device.address;
       bleLog('Connected to ${device.name}');
