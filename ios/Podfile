@@ -29,7 +29,6 @@ use_frameworks! :linkage => :static
 
 target 'Runner' do
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
-  pod 'SDWebImage', :modular_headers => true
   pod 'sqlite3', :modular_headers => true
 end
 
