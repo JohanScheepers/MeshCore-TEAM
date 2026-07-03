@@ -137,14 +137,13 @@ Future<void> _runAppStartup() async {
     // Initialize BLE Connection Manager
     print('📡 Initializing BLE manager...');
     final bleManager = BleConnectionManager();
-    // iOS: opt into CoreBluetooth state preservation/restoration so the OS can
-    // relaunch the app into the background and restore the companion connection
-    // after termination.  Must run on every launch before the first BLE
-    // operation; setOptions does not create the CBCentralManager, so this does
-    // not trigger the Bluetooth/local-network prompt before the permission gate.
-    if (Platform.isIOS) {
-      await bleManager.enableIosStateRestoration();
-    }
+    // NOTE: iOS CoreBluetooth state restoration is intentionally NOT enabled
+    // here. FlutterBluePlus.setOptions(restoreState: true) creates the
+    // CBCentralManager, which surfaces the iOS Bluetooth / "find devices on
+    // your local network" prompt. Calling it during startup made that prompt
+    // appear *before* the permission screen. It is deferred to
+    // _PermissionGate._startDeferredReconnect(), which runs after the gate and
+    // still before the first BLE connect.
     print('✅ BLE manager initialized');
 
     // Initialize BLE Service
@@ -674,7 +673,7 @@ class _PermissionGateState extends State<_PermissionGate>
           '🔐 Permissions check: ${allGranted ? "✅ Granted" : "❌ Not granted"}');
 
       if (allGranted) {
-        _startDeferredReconnect();
+        unawaited(_startDeferredReconnect());
       }
 
       setState(() {
@@ -691,15 +690,27 @@ class _PermissionGateState extends State<_PermissionGate>
   }
 
   void _onPermissionsGranted() {
-    _startDeferredReconnect();
+    unawaited(_startDeferredReconnect());
     setState(() {
       _permissionsGranted = true;
     });
   }
 
-  /// Start auto-reconnect that was deferred until after permissions.
-  void _startDeferredReconnect() {
+  /// Enable deferred iOS BLE options and start auto-reconnect, both of which
+  /// were deferred until after the permission gate.
+  Future<void> _startDeferredReconnect() async {
     if (Platform.isAndroid) return; // Android native service handles reconnect
+
+    // iOS: enable CoreBluetooth state restoration now (deferred from startup so
+    // the OS Bluetooth / Local Network prompt doesn't appear before the
+    // permission screen). This creates the CBCentralManager, so it must run
+    // before the first BLE connect below — but only now that we're past the
+    // gate. Applied regardless of whether an auto-reconnect follows, so a later
+    // manual connect is also covered.
+    final bleManager = context.read<BleConnectionManager>();
+    await bleManager.enableIosStateRestoration();
+    if (!mounted) return;
+
     final settings = context.read<SettingsService>();
     if (!settings.settings.serviceWasRunning ||
         settings.settings.manualDisconnect) {

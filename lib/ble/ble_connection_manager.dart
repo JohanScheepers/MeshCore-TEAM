@@ -33,7 +33,9 @@ enum BleConnectionState {
 /// Handles scanning, connecting, and communicating with MeshCore companion radios
 class BleConnectionManager extends ChangeNotifier {
   static const String _syncTraceTag = '[SYNCTRACE][BLE]';
-  static const bool _logRawBleFrames = false;
+  // TEMP DIAGNOSTIC: enabled to trace the iOS message-sync timeout. Revert to
+  // false before release — this logs every raw TX/RX BLE frame.
+  static const bool _logRawBleFrames = true;
 
   static const MethodChannel _methodChannel =
       MethodChannel('com.meshcore.team/mesh_ble');
