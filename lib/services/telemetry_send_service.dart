@@ -17,6 +17,7 @@ import 'package:meshcore_team/services/phone_battery_service.dart';
 import 'package:meshcore_team/models/app_settings.dart';
 import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/services/forwarding_policy_service.dart';
+import 'package:meshcore_team/utils/location_settings.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
 
 /// Sends TEAM-compatible telemetry based on user settings.
@@ -321,7 +322,7 @@ class TelemetrySendService extends ChangeNotifier {
       // Phone GPS mode — subscribe to the platform location stream.
       unawaited(_seedCurrentPosition());
 
-      final locationSettings = _buildLocationSettings();
+      final locationSettings = buildAppLocationSettings(distanceFilter: 5);
 
       _positionSub =
           Geolocator.getPositionStream(locationSettings: locationSettings)
@@ -341,43 +342,6 @@ class TelemetrySendService extends ChangeNotifier {
       _lastLatitude = lat;
       _lastLongitude = lon;
     }
-  }
-
-  /// Build platform-specific location settings for the telemetry GPS stream.
-  ///
-  /// On iOS we opt into background location updates so the periodic telemetry
-  /// timer keeps firing — and fresh fixes keep arriving — while the app is
-  /// backgrounded or the screen is locked.  Without this, iOS suspends the
-  /// Flutter engine and telemetry only resumes when an incoming BLE
-  /// notification briefly wakes the app.  This stream is only created while
-  /// telemetry/position-sharing is enabled and connected (see
-  /// [_applyConfigAndMaybeStartAsync]), so background location is active only
-  /// when the feature that needs it is on.
-  ///
-  /// Requires "Always" location authorization plus the `location`
-  /// `UIBackgroundModes` entry, both of which the app now requests/declares.
-  LocationSettings _buildLocationSettings() {
-    const distanceFilter = 5;
-    if (Platform.isIOS) {
-      return AppleSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: distanceFilter,
-        allowBackgroundLocationUpdates: true,
-        pauseLocationUpdatesAutomatically: false,
-        showBackgroundLocationIndicator: true,
-        activityType: ActivityType.other,
-      );
-    }
-    if (Platform.isAndroid) {
-      return AndroidSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: distanceFilter,
-      );
-    }
-    return const LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: distanceFilter,
-    );
   }
 
   Future<void> _seedCurrentPosition() async {

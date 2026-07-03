@@ -16,6 +16,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:meshcore_team/database/database.dart';
+import 'package:meshcore_team/utils/location_settings.dart';
 import 'package:meshcore_team/models/app_settings.dart';
 import 'package:meshcore_team/models/map_tile_providers.dart';
 import 'package:meshcore_team/models/route_payload.dart';
@@ -1265,10 +1266,13 @@ class _MapScreenState extends State<MapScreen> {
     // Seed with one current position ASAP.
     _getCurrentLocation();
 
-    const settings = LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 0,
-    );
+    // Use the shared, background-enabled settings. geolocator reuses a single
+    // native location session across all getPositionStream callers, so this
+    // stream and the telemetry stream must agree on background updates —
+    // otherwise whichever subscribes first can leave the shared iOS session
+    // without allowsBackgroundLocationUpdates and the app is suspended shortly
+    // after backgrounding. distanceFilter: 0 keeps map tracking smooth.
+    final settings = buildAppLocationSettings(distanceFilter: 0);
 
     _positionSub = Geolocator.getPositionStream(locationSettings: settings)
         .listen((position) {
