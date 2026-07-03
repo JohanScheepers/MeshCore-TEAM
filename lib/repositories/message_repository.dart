@@ -464,9 +464,14 @@ class MessageRepository {
       }
     });
 
-    // Now send the request.
-    final success =
-        await _bleManager.sendFrame(BleCommands.buildSyncNextMessage());
+    // Now send the request. Use write-with-response so iOS CoreBluetooth can't
+    // silently drop the command via write-without-response flow control — that
+    // was causing the firmware to never receive SYNC_NEXT_MESSAGE and never
+    // reply, surfacing as a timeout with no frame received.
+    final success = await _bleManager.sendFrame(
+      BleCommands.buildSyncNextMessage(),
+      preferWithResponse: true,
+    );
     if (!success) {
       finish(sendFailed: true);
       return completer.future;
