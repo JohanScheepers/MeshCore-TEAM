@@ -19,6 +19,8 @@ import 'package:meshcore_team/services/team_config_service.dart';
 import 'package:meshcore_team/screens/qr_scan_screen.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
 
+import '../l10n/app_localizations.dart';
+
 enum TeamConfigMode { export, import }
 
 class TeamConfigScreen extends StatefulWidget {
@@ -102,10 +104,11 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
     final connectionVM = context.watch<ConnectionViewModel>();
     final isConnected = bleManager.isConnected;
     final isExport = widget.mode == TeamConfigMode.export;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isExport ? 'Create Team Config' : 'Import Team Config'),
+        title: Text(isExport ? l10n.createTeamConfig : l10n.importTeamConfig),
       ),
       body: _isBusy
           ? _buildBusyView()
@@ -140,6 +143,7 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
   }
 
   Widget _buildExportView(ConnectionViewModel connectionVM) {
+    final l10n = AppLocalizations.of(context)!;
     final privateChannels = _allChannels.where((c) => !c.isPublic).toList();
     final estimatedTileSize = _allMapAreas
         .where((a) => _selectedMapAreaIds.contains(a.id))
@@ -158,11 +162,11 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
           padding: const EdgeInsets.only(bottom: 12),
           child: TextField(
             controller: _configNameController,
-            decoration: const InputDecoration(
-              labelText: 'Config Name',
-              hintText: 'e.g. Team Alpha, SAR Unit 5',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.label_outline),
+            decoration: InputDecoration(
+              labelText: l10n.configName,
+              hintText: l10n.channelNameHint,
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.label_outline),
             ),
             textCapitalization: TextCapitalization.words,
           ),
@@ -173,8 +177,8 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
           Card(
             clipBehavior: Clip.antiAlias,
             child: SwitchListTile(
-              title: const Text('Radio Settings',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+              title: Text(l10n.radioSettings,
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
               subtitle: Text(
                 '${caps.frequencyMHz.toStringAsFixed(3)} MHz · '
                 'BW ${caps.bandwidthKHz.toStringAsFixed(1)} kHz · '
@@ -188,7 +192,7 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
 
         // Channels
         _buildSectionCard(
-          title: 'Channels',
+          title: l10n.channels,
           subtitle:
               '${_selectedChannelHashes.length} of ${privateChannels.length} selected',
           children: privateChannels.map((channel) {
@@ -212,12 +216,12 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
         // Waypoints & Routes
         if (_allWaypoints.isNotEmpty)
           _buildSectionCard(
-            title: 'Waypoints & Routes',
+            title: l10n.waypointsAndRoutes,
             subtitle:
                 '${_selectedWaypointIds.length} of ${_allWaypoints.length} selected',
             children: [
               CheckboxListTile(
-                title: const Text('Select All'),
+                title: Text(l10n.selectAll),
                 value: _selectedWaypointIds.length == _allWaypoints.length
                     ? true
                     : _selectedWaypointIds.isEmpty
@@ -247,7 +251,7 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
                     size: 20,
                   ),
                   title: Text(wp.name),
-                  subtitle: Text(isRoute ? 'Route' : wp.waypointType),
+                  subtitle: Text(isRoute ? l10n.route : wp.waypointType),
                   value: _selectedWaypointIds.contains(wp.id),
                   onChanged: (val) {
                     setState(() {
@@ -267,7 +271,7 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
         // Map Areas
         if (_allMapAreas.isNotEmpty) ...[
           _buildSectionCard(
-            title: 'Offline Map Areas',
+            title: l10n.offlineMapAreas,
             subtitle:
                 '${_selectedMapAreaIds.length} of ${_allMapAreas.length} selected',
             children: _allMapAreas.map((area) {
@@ -297,14 +301,14 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
         // Overlay Maps (KMZ)
         if (_allOverlayMaps.isNotEmpty) ...[
           _buildSectionCard(
-            title: 'Overlay Maps (KMZ)',
+            title: l10n.overlayMapsKmz,
             subtitle:
                 '${_selectedOverlayMapIds.length} of ${_allOverlayMaps.length} selected',
             children: _allOverlayMaps.map((map) {
               return CheckboxListTile(
                 secondary: const Icon(Icons.layers, size: 20),
                 title: Text(map.name),
-                subtitle: Text('${map.tileCount} tiles'),
+                subtitle: Text(l10n.tileCount(map.tileCount)),
                 value: _selectedOverlayMapIds.contains(map.id),
                 onChanged: (val) {
                   setState(() {
@@ -344,13 +348,14 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
               ? null
               : _exportConfig,
           icon: const Icon(Icons.file_download),
-          label: const Text('Export Config'),
+          label: Text(l10n.exportConfig),
         ),
       ],
     );
   }
 
   Widget _buildImportView(bool isConnected, ConnectionViewModel connectionVM) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -384,13 +389,13 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
           FilledButton.icon(
             onPressed: isConnected ? _importConfig : null,
             icon: const Icon(Icons.folder_open),
-            label: const Text('From File'),
+            label: Text(l10n.fromFile),
           ),
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: isConnected ? _importFromQrCode : null,
             icon: const Icon(Icons.qr_code_scanner),
-            label: const Text('From QR Code'),
+            label: Text(l10n.fromQrCode),
           ),
         ],
       ),
@@ -514,20 +519,21 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
 
       if (savedPath != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Config exported successfully')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.configExportedSuccessfully)),
         );
       }
     } catch (e) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Export Failed'),
-          content: Text('$e'),
+          title: Text(l10n.exportFailed),
+          content: Text(e.toString()),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('OK'),
+              child: Text(l10n.ok),
             ),
           ],
         ),
@@ -612,7 +618,7 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Import failed: $e')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.importFailedError(e.toString()))),
       );
     } finally {
       if (mounted) setState(() => _isBusy = false);
@@ -622,9 +628,10 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
   Future<void> _importFromQrCode() async {
     try {
       // Open QR scanner.
+      final l10n = AppLocalizations.of(context)!;
       final scannedUrl = await Navigator.of(context).push<String>(
         MaterialPageRoute(
-          builder: (_) => const QrScanScreen(title: 'Scan Config QR Code'),
+          builder: (_) => QrScanScreen(title: l10n.scanConfigQrCode),
         ),
       );
       if (scannedUrl == null || !mounted) return;
@@ -633,8 +640,7 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
       final uri = Uri.tryParse(scannedUrl);
       if (uri == null || !uri.hasScheme || !uri.scheme.startsWith('http')) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Invalid QR code. Expected a download URL.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.invalidQrCode)),
         );
         return;
       }
@@ -739,7 +745,7 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Import failed: $e')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.importFailedError(e.toString()))),
       );
     } finally {
       if (mounted) setState(() => _isBusy = false);
@@ -747,13 +753,14 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
   }
 
   Future<bool?> _showImportPreviewDialog(TeamConfigPreview preview) {
+    final l10n = AppLocalizations.of(context)!;
     final tileSizeMB =
         (preview.tileSizeBytes / (1024 * 1024)).toStringAsFixed(1);
 
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Import Team Config'),
+        title: Text(l10n.importTeamConfig),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -780,7 +787,7 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
                 ),
               if (preview.radioSettings != null) ...[
                 Text(
-                  'Radio Settings',
+                  l10n.radioSettings,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Padding(
@@ -796,7 +803,7 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
               ],
               if (preview.channels.isNotEmpty) ...[
                 Text(
-                  'Channels (${preview.channels.length})',
+                  l10n.channelsWithPrivateCount(preview.channels.length),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 ...preview.channels.map((c) => Padding(
@@ -807,7 +814,7 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
               ],
               if (preview.waypoints.isNotEmpty) ...[
                 Text(
-                  'Waypoints & Routes (${preview.waypoints.length})',
+                  l10n.waypointsAndRoutesWithCount(preview.waypoints.length),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 ...preview.waypoints.map((w) => Padding(
@@ -832,7 +839,7 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
               if (preview.overlayMaps.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Overlay Maps (${preview.overlayMaps.length})',
+                  l10n.overlayMapsKmz,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 ...preview.overlayMaps.map((m) => Padding(
@@ -846,11 +853,11 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Import'),
+            child: Text(l10n.importConfig),
           ),
         ],
       ),

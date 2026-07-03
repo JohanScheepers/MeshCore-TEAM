@@ -4,6 +4,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:meshcore_team/models/app_settings.dart';
 import 'package:meshcore_team/models/sync_status.dart';
@@ -11,6 +12,8 @@ import 'package:meshcore_team/theme/night_theme.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
 import 'package:meshcore_team/services/message_notification_service.dart';
 import 'package:meshcore_team/services/settings_service.dart';
+import 'package:meshcore_team/models/unread_models.dart';
+import 'package:meshcore_team/models/channel_notification_mode.dart';
 import 'package:meshcore_team/repositories/channel_repository.dart';
 import 'package:meshcore_team/repositories/contact_repository.dart';
 import 'contacts_screen.dart';
@@ -28,8 +31,13 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen>
     with WidgetsBindingObserver {
   int _currentIndex = 0;
+  int _channelsUnread = 0;
+  int _contactsUnread = 0;
+  StreamSubscription<List<ChannelWithUnread>>? _channelsSub;
+  StreamSubscription<List<ContactWithUnread>>? _contactsSub;
 
   bool _identityDialogShowing = false;
+
 
   static const MethodChannel _appLifecycleChannel =
       MethodChannel('com.meshcore.team/app_lifecycle');
@@ -45,10 +53,40 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     MessageNotificationService.isAppInForeground = true;
+
+    final channelRepo =
+        Provider.of<ChannelRepository>(context, listen: false);
+    final contactRepo =
+        Provider.of<ContactRepository>(context, listen: false);
+
+    _channelsSub = channelRepo.watchChannelsWithUnread().listen((channels) {
+      if (!mounted) return;
+      setState(() {
+        _channelsUnread = channels
+            .where((c) =>
+                ChannelNotificationMode.fromString(c.channel.notificationMode) !=
+                ChannelNotificationMode.muted)
+            .fold(0, (sum, c) => sum + c.unreadCount);
+      });
+    }, onError: (Object e) {
+      debugPrint('[MainNav] ⚠️ channels unread stream error: $e');
+    });
+
+    _contactsSub = contactRepo.watchContactsWithUnread().listen((contacts) {
+      if (!mounted) return;
+      setState(() {
+        _contactsUnread =
+            contacts.fold(0, (sum, c) => sum + c.unreadCount);
+      });
+    }, onError: (Object e) {
+      debugPrint('[MainNav] ⚠️ contacts unread stream error: $e');
+    });
   }
 
   @override
   void dispose() {
+    _channelsSub?.cancel();
+    _contactsSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -72,20 +110,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
   @override
   Widget build(BuildContext context) {
-    final connectionVM = context.watch<ConnectionViewModel>();
-    final channelRepository = context.watch<ChannelRepository>();
-    final contactRepository = context.watch<ContactRepository>();
+    final l10n = AppLocalizations.of(context)!;
+    final navLocked = context.select<ConnectionViewModel, bool>(
+        (vm) => vm.identityConfirmationRequired);
+    final syncPhase = context.select<ConnectionViewModel, SyncPhase>(
+        (vm) => vm.syncStatus.phase);
     final isNighttime = context.watch<SettingsService>().settings.appTheme ==
         AppThemeMode.nighttime;
-    final navLocked = connectionVM.identityConfirmationRequired;
     if (_currentIndex >= _screens.length) _currentIndex = 0;
     final shouldShowIdentityDialog =
-        navLocked && connectionVM.syncStatus.phase == SyncPhase.complete;
+        navLocked && syncPhase == SyncPhase.complete;
 
     if (shouldShowIdentityDialog && !_identityDialogShowing) {
       _identityDialogShowing = true;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
+        final connectionVM = context.read<ConnectionViewModel>();
         await _showIdentityDialog(context, connectionVM);
         if (!mounted) return;
         _identityDialogShowing = false;
@@ -109,58 +149,51 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
           index: _currentIndex,
           children: _screens,
         ),
-        bottomNavigationBar: StreamBuilder<_UnreadCounts>(
-          stream: _getUnreadCounts(channelRepository, contactRepository),
-          builder: (context, snapshot) {
-            final counts = snapshot.data ?? const _UnreadCounts(0, 0);
-            final contactsUnread = counts.contacts;
-            final channelsUnread = counts.channels;
-
-            final nav = BottomNavigationBar(
-              type: BottomNavigationBarType.fixed,
-              currentIndex: _currentIndex,
-              onTap: navLocked
-                  ? null
-                  : (index) {
-                      setState(() {
-                        _currentIndex = index;
-                      });
-                    },
-              items: [
-                BottomNavigationBarItem(
-                  icon: _buildBadgedIcon(
-                    Icons.people,
-                    contactsUnread,
-                    isNighttime,
-                  ),
-                  label: 'Contacts',
+        bottomNavigationBar: Builder(builder: (context) {
+          final nav = BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            currentIndex: _currentIndex,
+            onTap: navLocked
+                ? null
+                : (index) {
+                    setState(() {
+                      _currentIndex = index;
+                    });
+                  },
+            items: [
+              BottomNavigationBarItem(
+                icon: _buildBadgedIcon(
+                  Icons.people,
+                  _contactsUnread,
+                  isNighttime,
                 ),
-                BottomNavigationBarItem(
-                  icon: _buildBadgedIcon(
-                    Icons.chat_bubble,
-                    channelsUnread,
-                    isNighttime,
-                  ),
-                  label: 'Channels',
-                ),
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.map),
-                  label: 'Map',
-                ),
-              ],
-            );
-
-            if (!navLocked) return nav;
-
-            return Opacity(
-              opacity: 0.4,
-              child: IgnorePointer(
-                ignoring: true,
-                child: nav,
+                label: l10n.contacts,
               ),
-            );
-          },
-        ),
+              BottomNavigationBarItem(
+                icon: _buildBadgedIcon(
+                  Icons.chat_bubble,
+                  _channelsUnread,
+                  isNighttime,
+                ),
+                label: l10n.channels,
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.map),
+                label: l10n.map,
+              ),
+            ],
+          );
+
+          if (!navLocked) return nav;
+
+          return Opacity(
+            opacity: 0.4,
+            child: IgnorePointer(
+              ignoring: true,
+              child: nav,
+            ),
+          );
+        }),
       ),
     );
   }
@@ -175,6 +208,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       context: context,
       barrierDismissible: false,
       builder: (context) {
+        final l10n = AppLocalizations.of(context)!;
         String? errorText;
         bool isSaving = false;
 
@@ -183,7 +217,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
           child: StatefulBuilder(
             builder: (context, setState) {
               return AlertDialog(
-                title: const Text('Set Identity'),
+                title: Text(l10n.setIdentity),
                 content: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -196,7 +230,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                       maxLength: 31,
                       enabled: !isSaving,
                       decoration: InputDecoration(
-                        labelText: 'Name',
+                        labelText: l10n.name,
                         errorText: errorText,
                       ),
                     ),
@@ -235,7 +269,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                               });
                             }
                           },
-                    child: Text(isSaving ? 'Saving...' : 'Save'),
+                    child: Text(isSaving ? 'Saving...' : l10n.save),
                   ),
                 ],
               );
@@ -284,68 +318,5 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     );
   }
 
-  /// Get combined unread counts for contacts and channels
-  /// Matches Android MessageViewModel reactive unread tracking
-  /// Uses companion-filtered channels and contacts streams
-  /// Auto-switches when companion changes (handled by repositories)
-  Stream<_UnreadCounts> _getUnreadCounts(
-    ChannelRepository channelRepository,
-    ContactRepository contactRepository,
-  ) async* {
-    // Manually combine both streams using a controller
-    final controller = StreamController<_UnreadCounts>();
-
-    var latestChannelsUnread = 0;
-    var latestContactsUnread = 0;
-
-    // Listen to channels with unread
-    final channelsSub =
-        channelRepository.watchChannelsWithUnread().listen((channels) {
-      latestChannelsUnread = channels.fold<int>(
-        0,
-        (sum, channel) => sum + channel.unreadCount,
-      );
-      if (!controller.isClosed) {
-        controller
-            .add(_UnreadCounts(latestContactsUnread, latestChannelsUnread));
-      }
-    }, onError: (Object e) {
-      debugPrint('[MainNav] ⚠️ channels unread stream error: $e');
-    });
-
-    // Listen to contacts with unread
-    final contactsSub =
-        contactRepository.watchContactsWithUnread().listen((contacts) {
-      latestContactsUnread = contacts.fold<int>(
-        0,
-        (sum, contact) => sum + contact.unreadCount,
-      );
-      if (!controller.isClosed) {
-        controller
-            .add(_UnreadCounts(latestContactsUnread, latestChannelsUnread));
-      }
-    }, onError: (Object e) {
-      debugPrint('[MainNav] ⚠️ contacts unread stream error: $e');
-    });
-
-    // Emit initial value
-    controller.add(const _UnreadCounts(0, 0));
-
-    try {
-      await for (final counts in controller.stream) {
-        yield counts;
-      }
-    } finally {
-      await channelsSub.cancel();
-      await contactsSub.cancel();
-      await controller.close();
-    }
-  }
 }
-/// Simple data class for unread counts
-class _UnreadCounts {
-  final int contacts;
-  final int channels;
 
-  const _UnreadCounts(this.contacts, this.channels);
-}

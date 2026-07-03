@@ -276,6 +276,13 @@ class MessagesDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// Lightweight trigger stream — emits the total message count whenever the
+  /// messages table changes, without fetching row data across isolate boundaries.
+  Stream<int> watchMessageCount() {
+    final query = selectOnly(messages)..addColumns([messages.id.count()]);
+    return query.watchSingle().map((row) => row.read(messages.id.count()) ?? 0);
+  }
+
   /// Get message count for a channel
   Future<int> getMessageCountByChannel(int channelHash) async {
     final query = selectOnly(messages)

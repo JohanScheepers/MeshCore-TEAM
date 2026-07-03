@@ -139,7 +139,12 @@ void installDebugLogInterceptor() {
 
   debugPrint = (String? message, {int? wrapWidth}) {
     if (message == null || message.isEmpty) return;
-    if (kDebugMode) original(message, wrapWidth: wrapWidth);
+    if (kDebugMode) {
+      final now = DateTime.now();
+      final ts =
+          '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}.${now.millisecond.toString().padLeft(3, '0')}';
+      original('$ts $message', wrapWidth: wrapWidth);
+    }
     logService.add(DebugLogService.categorize(message), message);
   };
 }

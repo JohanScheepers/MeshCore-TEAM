@@ -18,6 +18,8 @@ import 'package:meshcore_team/models/waypoint.dart';
 import 'package:meshcore_team/repositories/message_repository.dart';
 import 'package:meshcore_team/widgets/waypoint_edit_dialog.dart';
 
+import '../l10n/app_localizations.dart';
+
 class ManageWaypointsScreen extends StatefulWidget {
   const ManageWaypointsScreen({super.key});
 
@@ -42,6 +44,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
   }
 
   Future<bool> _confirm(String title, String message) async {
+    final l10n = AppLocalizations.of(context)!;
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -50,11 +53,11 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('OK'),
+            child: Text(l10n.ok),
           ),
         ],
       ),
@@ -91,7 +94,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $e')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.deleteFailed(e.toString()))),
       );
     } finally {
       if (!mounted) return;
@@ -119,7 +122,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $e')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.deleteFailed(e.toString()))),
       );
     } finally {
       if (!mounted) return;
@@ -142,7 +145,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $e')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.deleteFailed(e.toString()))),
       );
     }
   }
@@ -200,7 +203,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $e')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.deleteFailed(e.toString()))),
       );
       return;
     } finally {
@@ -212,7 +215,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Deleted ${ids.length} waypoint(s)')),
+      SnackBar(content: Text(AppLocalizations.of(context)!.deletedWaypoints(ids.length))),
     );
 
     _exitMultiSelectMode();
@@ -320,7 +323,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
     if (ext != 'gpx') {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a .gpx file')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.pleaseSelectGpxFile)),
       );
       return;
     }
@@ -420,12 +423,12 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Imported $importedCount waypoint(s)')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.importedWaypoints(importedCount))),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Import failed: $e')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.importFailedError(e.toString()))),
       );
     } finally {
       if (!mounted) return;
@@ -480,30 +483,31 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
       if (!mounted) return;
 
       // Show export options dialog.
+      final l10n = AppLocalizations.of(context)!;
       final choice = await showModalBottomSheet<String>(
         context: context,
         builder: (ctx) => SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(
-                  'Export GPX',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  l10n.exportToGpx,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.save_alt),
-                title: const Text('Save to file…'),
-                subtitle: const Text('Choose save location'),
+                title: Text(l10n.saveToFileEllipsis),
+                subtitle: Text(l10n.chooseSaveLocation),
                 onTap: () => Navigator.pop(ctx, 'save'),
               ),
               ListTile(
                 leading: const Icon(Icons.share),
-                title: const Text('Share…'),
-                subtitle: const Text('Share with other apps'),
+                title: Text(l10n.shareEllipsis),
+                subtitle: Text(l10n.shareWithOtherApps),
                 onTap: () => Navigator.pop(ctx, 'share'),
               ),
               const SizedBox(height: 8),
@@ -532,7 +536,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Saved to $outputPath')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.savedToPath(outputPath))),
         );
       } else {
         await Share.shareXFiles([xFile], subject: fileName);
@@ -540,7 +544,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Export failed: $e')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.exportFailedError(e.toString()))),
       );
     } finally {
       if (!mounted) return;
@@ -593,7 +597,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
                 const SizedBox(height: 12),
                 ListTile(
                   leading: const Icon(Icons.navigation),
-                  title: const Text('Navigate to Waypoint'),
+                  title: Text(AppLocalizations.of(context)!.navigateToWaypoint),
                   onTap: () {
                     Navigator.of(context).pop();
                     Navigator.of(outerContext).pop(
@@ -603,7 +607,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.share),
-                  title: const Text('Share via Mesh'),
+                  title: Text(AppLocalizations.of(context)!.shareViaMesh),
                   onTap: () async {
                     Navigator.of(context).pop();
                     final repo = outerContext.read<MessageRepository>();
@@ -622,7 +626,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.check_circle),
-                  title: const Text('Select Multiple'),
+                  title: Text(AppLocalizations.of(context)!.selectMultiple),
                   onTap: () {
                     Navigator.of(context).pop();
                     _enterMultiSelectMode(initialWaypointId: waypoint.id);
@@ -632,7 +636,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
                   ListTile(
                     leading: const Icon(Icons.edit),
                     title: Text(
-                      _isRoute(waypoint) ? 'Edit Route Info' : 'Edit Waypoint',
+                      _isRoute(waypoint) ? 'Edit Route Info' : AppLocalizations.of(context)!.editWaypoint,
                     ),
                     onTap: () async {
                       Navigator.of(context).pop();
@@ -641,7 +645,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
                   ),
                 ListTile(
                   leading: const Icon(Icons.delete),
-                  title: const Text('Delete Waypoint'),
+                  title: Text(AppLocalizations.of(context)!.deleteWaypoint),
                   onTap: () async {
                     Navigator.of(context).pop();
                     await _deleteWaypoint(waypoint);
@@ -703,6 +707,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
   @override
   Widget build(BuildContext context) {
     final db = context.read<AppDatabase>();
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
@@ -711,11 +716,11 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
               ? (_selectedWaypointIds.isEmpty
                   ? 'Select Waypoints'
                   : '${_selectedWaypointIds.length} selected')
-              : 'Manage Waypoints & Routes',
+              : l10n.manageWaypointsAndRoutes,
         ),
         leading: _isMultiSelectMode
             ? IconButton(
-                tooltip: 'Cancel selection',
+                tooltip: l10n.cancelSelection,
                 onPressed: _exitMultiSelectMode,
                 icon: const Icon(Icons.close),
               )
@@ -724,13 +729,13 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
             ? [
                 if (_selectedWaypointIds.isNotEmpty)
                   IconButton(
-                    tooltip: 'Share selected',
+                    tooltip: l10n.shareSelected,
                     onPressed: _shareSelectedWaypoints,
                     icon: const Icon(Icons.share),
                   ),
                 if (_selectedWaypointIds.isNotEmpty)
                   IconButton(
-                    tooltip: 'Export selected',
+                    tooltip: l10n.exportSelected,
                     onPressed: () async {
                       final all = await db.waypointsDao.getAllWaypoints();
                       final selected = all
@@ -743,7 +748,7 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
                   ),
                 if (_selectedWaypointIds.isNotEmpty)
                   IconButton(
-                    tooltip: 'Delete selected',
+                    tooltip: l10n.deleteSelected,
                     onPressed: _deleteSelectedWaypoints,
                     icon: const Icon(Icons.delete),
                   ),
@@ -769,27 +774,27 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
                         break;
                     }
                   },
-                  itemBuilder: (context) => const [
+                  itemBuilder: (context) => [
                     PopupMenuItem(
                       value: 'import_gpx',
-                      child: Text('Import from GPX'),
+                      child: Text(l10n.importFromGpx),
                     ),
                     PopupMenuItem(
                       value: 'export_gpx',
-                      child: Text('Export to GPX'),
+                      child: Text(l10n.exportToGpx),
                     ),
                     PopupMenuItem(
                       value: 'select_multiple',
-                      child: Text('Select Multiple'),
+                      child: Text(l10n.selectMultiple),
                     ),
-                    PopupMenuDivider(),
+                    const PopupMenuDivider(),
                     PopupMenuItem(
                       value: 'delete_received',
-                      child: Text('Delete All Received'),
+                      child: Text(l10n.deleteAllReceived),
                     ),
                     PopupMenuItem(
                       value: 'delete_local',
-                      child: Text('Delete All Local'),
+                      child: Text(l10n.deleteAllLocal),
                     ),
                   ],
                 ),
@@ -820,20 +825,20 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           const SizedBox(height: 8),
-                          Text('Total: $total'),
-                          Text('Local: $local'),
-                          Text('Received: $received'),
-                          Text('Routes: $routes'),
+                          Text(l10n.totalCount(total)),
+                          Text(l10n.localCount(local)),
+                          Text(l10n.receivedCount(received)),
+                          Text(l10n.routesCount(routes)),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 12),
                   if (waypoints.isEmpty)
-                    const Center(
+                    Center(
                       child: Padding(
-                        padding: EdgeInsets.only(top: 24),
-                        child: Text('No waypoints or routes yet.'),
+                        padding: const EdgeInsets.only(top: 24),
+                        child: Text(l10n.noWaypointsOrRoutesYet),
                       ),
                     )
                   else
@@ -888,12 +893,12 @@ class _ManageWaypointsScreenState extends State<ManageWaypointsScreen> {
                                   children: [
                                     if (!w.isReceived)
                                       IconButton(
-                                        tooltip: 'Edit',
+                                        tooltip: l10n.edit,
                                         onPressed: () => _editWaypoint(w),
                                         icon: const Icon(Icons.edit),
                                       ),
                                     IconButton(
-                                      tooltip: 'Delete',
+                                      tooltip: l10n.delete,
                                       onPressed: () => _deleteWaypoint(w),
                                       icon: const Icon(Icons.delete),
                                     ),

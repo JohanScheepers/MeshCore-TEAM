@@ -1,5 +1,8 @@
 package com.meshcore.team
 
+import android.os.Build
+import android.os.Bundle
+import android.view.WindowManager
 import com.meshcore.team.mesh.MeshBleEventBus
 import com.meshcore.team.mesh.MeshBleService
 import com.meshcore.team.mesh.MeshBleState
@@ -12,6 +15,41 @@ class MainActivity : FlutterActivity() {
 	private val methodChannelName = "com.meshcore.team/mesh_ble"
 	private val eventChannelName = "com.meshcore.team/mesh_ble_events"
 	private val appChannelName = "com.meshcore.team/app_lifecycle"
+
+	override fun onCreate(savedInstanceState: Bundle?) {
+		super.onCreate(savedInstanceState)
+		// Re-apply lock screen flags on cold start without waiting for Dart.
+		// shared_preferences stores keys under "FlutterSharedPreferences" with
+		// a "flutter." prefix.
+		val prefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
+		val keepScreenOnLock = prefs.getBoolean("flutter.keep_screen_on_lock", false)
+		applyShowOverLockScreen(keepScreenOnLock)
+	}
+
+	private fun applyShowOverLockScreen(enabled: Boolean) {
+		if (enabled) {
+			window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+		} else {
+			window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+		}
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+			setShowWhenLocked(enabled)
+			setTurnScreenOn(enabled)
+		} else {
+			@Suppress("DEPRECATION")
+			if (enabled) {
+				window.addFlags(
+					WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+					WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+				)
+			} else {
+				window.clearFlags(
+					WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+					WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+				)
+			}
+		}
+	}
 
 	override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
 		super.configureFlutterEngine(flutterEngine)
@@ -112,6 +150,11 @@ class MainActivity : FlutterActivity() {
 				when (call.method) {
 					"moveToBackground" -> {
 						moveTaskToBack(true)
+						result.success(true)
+					}
+					"setShowOverLockScreen" -> {
+						val enabled = call.argument<Boolean>("enabled") ?: false
+						applyShowOverLockScreen(enabled)
 						result.success(true)
 					}
 					else -> result.notImplemented()

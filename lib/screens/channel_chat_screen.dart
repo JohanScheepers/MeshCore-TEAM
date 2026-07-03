@@ -5,6 +5,7 @@
 // This file is part of TEAM-Flutter.
 // Non-commercial use only. See LICENSE file for details.
 
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -14,14 +15,16 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:async';
 
 import '../database/database.dart';
+import '../l10n/app_localizations.dart';
 import '../repositories/channel_repository.dart';
-import '../repositories/contact_repository.dart';
 import '../repositories/message_repository.dart';
 import '../services/message_notification_service.dart';
 import '../widgets/chat_message_text.dart';
+import '../widgets/status_bar_actions.dart';
 import '../models/app_settings.dart';
 import '../services/settings_service.dart';
 import '../theme/night_theme.dart';
+import '../utils/message_time_format.dart';
 
 /// Channel chat screen for group conversations
 class ChannelChatScreen extends StatefulWidget {
@@ -39,23 +42,53 @@ class ChannelChatScreen extends StatefulWidget {
 class _ChannelChatScreenState extends State<ChannelChatScreen> {
   late final MessageRepository _messageRepository;
   late final ChannelRepository _channelRepository;
-  late final ContactRepository _contactRepository;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  int _previousMessageCount = 0;
+  final FocusNode _inputFocusNode = FocusNode();
   int? _firstUnreadTimestamp;
-  List<ContactData> _allContacts = [];
-  List<ContactData> _mentionSuggestions = [];
-  StreamSubscription<List<ContactData>>? _contactsSub;
+  List<String> _mentionSuggestions = [];
+  StreamSubscription<List<MessageData>>? _messagesSub;
+  late final Stream<List<MessageData>> _messagesStream;
+  List<MessageData> _allMessages = const [];
+  List<MessageData> _messages = const [];
+  bool _messagesLoaded = false;
+  bool _isAtBottom = true;
+
+  int get _newMessageCount => _allMessages.length - _messages.length;
 
   @override
   void initState() {
     super.initState();
     _messageRepository = Provider.of<MessageRepository>(context, listen: false);
     _channelRepository = Provider.of<ChannelRepository>(context, listen: false);
-    _contactRepository = Provider.of<ContactRepository>(context, listen: false);
-    _contactsSub = _contactRepository.getAllContacts().listen((contacts) {
-      if (mounted) setState(() => _allContacts = contacts);
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _inputFocusNode.requestFocus();
+      });
+    }
+    _scrollController.addListener(_onScroll);
+    _messagesStream =
+        _messageRepository.watchMessagesByChannel(widget.channel.hash);
+    _messagesSub = _messagesStream.listen((messages) {
+      if (!mounted) return;
+      setState(() {
+        _allMessages = messages;
+        _messagesLoaded = true;
+        if (_isAtBottom || messages.length <= _messages.length) {
+          _messages = messages;
+        }
+      });
+      if (_isAtBottom) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              0.0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
     });
 
     // Track active channel for notification suppression
@@ -69,20 +102,22 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   Future<void> _loadFirstUnreadTimestamp() async {
     final timestamp = await _messageRepository.messagesDao
         .getFirstUnreadTimestampByChannel(widget.channel.hash);
+    if (!mounted) return;
     setState(() {
       _firstUnreadTimestamp = timestamp;
     });
+    // Mark as read now, while this screen is still visible, so the channel
+    // list is already sorted correctly by the time the user navigates back.
+    await _messageRepository.messagesDao
+        .markChannelMessagesAsRead(widget.channel.hash);
   }
 
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
-    _contactsSub?.cancel();
-
-    // Mark all messages as read when navigating away
-    _messageRepository.messagesDao
-        .markChannelMessagesAsRead(widget.channel.hash);
+    _inputFocusNode.dispose();
+    _messagesSub?.cancel();
 
     // Clear active channel tracking
     MessageNotificationService.isMessagesScreenVisible = false;
@@ -93,6 +128,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final isNighttime = context.watch<SettingsService>().settings.appTheme ==
         AppThemeMode.nighttime;
@@ -104,7 +140,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           children: [
             Text(widget.channel.name),
             Text(
-              widget.channel.isPublic ? 'Public Channel' : 'Private Channel',
+              widget.channel.isPublic ? l10n.publicChannel : l10n.privateChannel,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -116,7 +152,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           if (!widget.channel.isPublic)
             IconButton(
               icon: const Icon(Icons.share),
-              tooltip: 'Share channel',
+              tooltip: l10n.shareChannelLower,
               onPressed: () => _showShareChannelDialog(context),
             ),
           IconButton(
@@ -127,76 +163,34 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                   : (widget.channel.isPublic ? Colors.green : Colors.orange),
             ),
             onPressed: () {
+              final l = AppLocalizations.of(context)!;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    'Channel Index: ${widget.channel.channelIndex}\n'
-                    'Hash: ${widget.channel.hash.toRadixString(16).padLeft(2, '0')}',
+                    '${l.channelIndex(widget.channel.channelIndex.toString())}\n'
+                    '${l.channelHash(widget.channel.hash.toRadixString(16).padLeft(2, '0'))}',
                   ),
                 ),
               );
             },
           ),
+          const SizedBox(
+            height: 24,
+            child: VerticalDivider(width: 16, thickness: 1),
+          ),
+          const StatusBarActions(),
         ],
       ),
       body: Column(
         children: [
           // Messages list
           Expanded(
-            child: StreamBuilder<List<MessageData>>(
-              stream: _messageRepository
-                  .watchMessagesByChannel(widget.channel.hash),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: theme.colorScheme.error,
-                          size: 48,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Error loading messages',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: theme.colorScheme.error,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          snapshot.error.toString(),
-                          style: theme.textTheme.bodySmall,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final messages = snapshot.data ?? [];
-
-                // Auto-scroll to bottom when new messages arrive
-                if (messages.length > _previousMessageCount) {
-                  _previousMessageCount = messages.length;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (_scrollController.hasClients) {
-                      _scrollController.animateTo(
-                        0.0,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOut,
-                      );
-                    }
-                  });
-                }
-
-                if (messages.isEmpty) {
-                  return Center(
+            child: Stack(
+              children: [
+                if (!_messagesLoaded)
+                  const Center(child: CircularProgressIndicator())
+                else if (_messages.isEmpty)
+                  Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -207,14 +201,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'No messages in this channel',
+                          l10n.noMessagesInChannel,
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: theme.colorScheme.outline,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Be the first to start the conversation',
+                          l10n.beFirstToStartConversation,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.outline,
                           ),
@@ -222,28 +216,72 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                         ),
                       ],
                     ),
-                  );
-                }
+                  )
+                else
+                  ListView.builder(
+                    reverse: true,
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final message =
+                          _messages[_messages.length - 1 - index];
+                      final showUnreadDivider =
+                          _firstUnreadTimestamp != null &&
+                              message.timestamp == _firstUnreadTimestamp;
 
-                return ListView.builder(
-                  reverse: true,
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final message = messages[messages.length - 1 - index];
-                    final showUnreadDivider = _firstUnreadTimestamp != null &&
-                        message.timestamp == _firstUnreadTimestamp;
-
-                    return Column(
-                      children: [
-                        if (showUnreadDivider) _buildUnreadDivider(theme),
-                        _buildMessageBubble(message, theme),
-                      ],
-                    );
-                  },
-                );
-              },
+                      return Column(
+                        children: [
+                          if (showUnreadDivider) _buildUnreadDivider(theme),
+                          _buildMessageBubble(message, theme),
+                        ],
+                      );
+                    },
+                  ),
+                if (_newMessageCount > 0)
+                  Positioned(
+                    bottom: 8,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: GestureDetector(
+                        onTap: _scrollToBottom,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: const [
+                              BoxShadow(
+                                blurRadius: 4,
+                                color: Colors.black26,
+                              )
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '$_newMessageCount new ${_newMessageCount == 1 ? 'message' : 'messages'}',
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color:
+                                      theme.colorScheme.onPrimaryContainer,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.keyboard_arrow_down,
+                                size: 18,
+                                color: theme.colorScheme.onPrimaryContainer,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
 
@@ -276,9 +314,10 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                       children: [
                         TextField(
                           controller: _messageController,
+                          focusNode: _inputFocusNode,
                           decoration: InputDecoration(
                             hintText:
-                                'Type a message to ${widget.channel.name}...',
+                                l10n.typeAMessageToChannel(widget.channel.name),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24),
                               borderSide: BorderSide.none,
@@ -351,17 +390,31 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     await showDialog<void>(
       context: context,
       builder: (ctx) {
+        final l = AppLocalizations.of(context)!;
         return AlertDialog(
-          title: const Text('Share Channel'),
+          title: Text(l.shareChannel),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Center(
-                  child: QrImageView(
-                    data: link,
-                    size: 220,
+                  child: SizedBox(
+                    width: 220,
+                    height: 220,
+                    child: QrImageView(
+                      data: link,
+                      size: 220,
+                      backgroundColor: Colors.white,
+                      eyeStyle: const QrEyeStyle(
+                        eyeShape: QrEyeShape.square,
+                        color: Colors.black,
+                      ),
+                      dataModuleStyle: const QrDataModuleStyle(
+                        dataModuleShape: QrDataModuleShape.square,
+                        color: Colors.black,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -379,19 +432,19 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                 await Clipboard.setData(ClipboardData(text: link));
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Link copied')),
+                    SnackBar(content: Text(AppLocalizations.of(context)!.linkCopied)),
                   );
                 }
               },
-              child: const Text('Copy'),
+              child: Text(l.copy),
             ),
             TextButton(
               onPressed: () => Share.share(link),
-              child: const Text('Share'),
+              child: Text(l.share),
             ),
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Done'),
+              child: Text(l.done),
             ),
           ],
         );
@@ -446,7 +499,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         children: [
           if (!isFromMe) const SizedBox(width: 0), // Align left for received
           Flexible(
-            child: Container(
+            child: GestureDetector(
+              onLongPress: (Platform.isAndroid || Platform.isIOS)
+                  ? () => _showMessageActions(message, senderName, isFromMe)
+                  : null,
+              onSecondaryTapDown: (!Platform.isAndroid && !Platform.isIOS)
+                  ? (d) => _showMessageActions(message, senderName, isFromMe)
+                  : null,
+              child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               margin: EdgeInsets.only(
                 left: isFromMe ? 48 : 0,
@@ -487,8 +547,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${timestamp.hour.toString().padLeft(2, '0')}:'
-                        '${timestamp.minute.toString().padLeft(2, '0')}',
+                        formatMessageTime(timestamp),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: (isFromMe
                                   ? theme.colorScheme.onPrimaryContainer
@@ -512,8 +571,57 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                 ],
               ),
             ),
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _seedReply(String senderName) {
+    final prefix = '@[$senderName] ';
+    final current = _messageController.text;
+    if (current.startsWith(prefix)) return;
+    final newText = current.isEmpty ? prefix : '$prefix$current';
+    _messageController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newText.length),
+    );
+    _inputFocusNode.requestFocus();
+  }
+
+  void _showMessageActions(MessageData message, String senderName, bool isFromMe) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.copy),
+              title: Text(AppLocalizations.of(context)!.copyMessageText),
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: message.content));
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(AppLocalizations.of(context)!.copied),
+                    duration: const Duration(seconds: 1),
+                  ),
+                );
+              },
+            ),
+            if (!isFromMe)
+              ListTile(
+                leading: const Icon(Icons.reply),
+                title: Text(AppLocalizations.of(context)!.reply),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _seedReply(senderName);
+                },
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -550,8 +658,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           shrinkWrap: true,
           itemCount: _mentionSuggestions.length,
           itemBuilder: (context, index) {
-            final contact = _mentionSuggestions[index];
-            final name = contact.name ?? 'Unknown';
+            final name = _mentionSuggestions[index];
             return ListTile(
               leading: const CircleAvatar(
                 child: Icon(Icons.person, size: 18),
@@ -564,6 +671,15 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         ),
       ),
     );
+  }
+
+  List<String> get _channelSenderNames {
+    return _messages
+        .where((m) => !(m.isSentByMe ?? false))
+        .map((m) => m.senderName ?? _getSenderName(m.senderId))
+        .where((name) => name.isNotEmpty && name != 'Unknown')
+        .toSet()
+        .toList();
   }
 
   void _updateMentionSuggestions(String text) {
@@ -581,15 +697,16 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       return;
     }
     final query = before.substring(atIndex + 1);
-    if (query.isEmpty || query.contains(' ')) {
+    if (query.contains(' ')) {
       if (_mentionSuggestions.isNotEmpty)
         setState(() => _mentionSuggestions = []);
       return;
     }
     final queryLower = query.toLowerCase();
-    final filtered = _allContacts
-        .where((c) => (c.name ?? '').toLowerCase().contains(queryLower))
-        .toList();
+    final names = _channelSenderNames;
+    final filtered = query.isEmpty
+        ? names
+        : names.where((n) => n.toLowerCase().contains(queryLower)).toList();
     setState(() => _mentionSuggestions = filtered);
   }
 
@@ -608,6 +725,33 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       selection: TextSelection.collapsed(offset: newCursor),
     );
     setState(() => _mentionSuggestions = []);
+    if (!Platform.isAndroid && !Platform.isIOS) _inputFocusNode.requestFocus();
+  }
+
+  void _onScroll() {
+    final atBottom = _scrollController.offset <= 50;
+    if (atBottom != _isAtBottom) {
+      setState(() {
+        _isAtBottom = atBottom;
+        if (atBottom) _messages = _allMessages;
+      });
+    }
+  }
+
+  void _scrollToBottom() {
+    setState(() {
+      _messages = _allMessages;
+      _isAtBottom = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Future<void> _sendMessage() async {
@@ -617,7 +761,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
     // Clear input immediately
     _messageController.clear();
-    setState(() => _mentionSuggestions = []);
+    setState(() { _mentionSuggestions = []; _messages = _allMessages; });
+    if (!Platform.isAndroid && !Platform.isIOS) _inputFocusNode.requestFocus();
 
     // Scroll to bottom
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -644,8 +789,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         // Show error snackbar
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to send message'),
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.failedToSendMessage),
               backgroundColor: Colors.red,
             ),
           );
@@ -656,7 +801,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(AppLocalizations.of(context)!.genericError(e.toString())),
             backgroundColor: Colors.red,
           ),
         );

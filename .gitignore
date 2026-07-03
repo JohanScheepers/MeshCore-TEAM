@@ -59,3 +59,5 @@ app.*.map.json
 ios/Podfile.lock
 .claude/
 macos/Podfile
+lib/l10n/app_localizations.dart
+lib/l10n/app_localizations_*.dart

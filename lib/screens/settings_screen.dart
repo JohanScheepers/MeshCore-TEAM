@@ -4,6 +4,8 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:meshcore_team/database/database.dart';
@@ -11,7 +13,9 @@ import 'package:meshcore_team/models/app_settings.dart';
 import 'package:meshcore_team/repositories/channel_repository.dart';
 import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
-import 'package:meshcore_team/widgets/night_clock.dart';
+
+const MethodChannel _appLifecycleChannel =
+    MethodChannel('com.meshcore.team/app_lifecycle');
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -23,12 +27,13 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsService>();
 
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
-        title: const Text('Settings'),
+        title: Text(l10n.settings),
         actions: const [],
       ),
       body: ListView(
@@ -36,7 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Text(
-              'Location',
+              l10n.location,
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
@@ -53,18 +58,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                        child: Text('Location Source',
+                        child: Text(l10n.locationSource,
                             style: const TextStyle(fontWeight: FontWeight.w500)),
                       ),
                       RadioListTile<String>(
-                        title: const Text('Phone GPS'),
+                        title: Text(l10n.phoneGps),
                         value: LocationSource.phone,
                         groupValue: settings.settings.locationSource,
                         onChanged: (v) => _setLocationSource(settings, v!),
                       ),
                       RadioListTile<String>(
-                        title: const Text('Companion GPS'),
-                        subtitle: const Text('Phone fallback'),
+                        title: Text(l10n.companionGps),
+                        subtitle: Text(l10n.phoneFallback),
                         value: LocationSource.companion,
                         groupValue: settings.settings.locationSource,
                         onChanged: (v) => _setLocationSource(settings, v!),
@@ -82,11 +87,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       leading: Icon(settings.settings.backgroundLocationEnabled
                           ? Icons.my_location
                           : Icons.location_disabled),
-                      title: const Text('Always On Location',
-                          style: TextStyle(fontWeight: FontWeight.w500)),
+                      title: Text(l10n.alwaysOnLocation,
+                          style: const TextStyle(fontWeight: FontWeight.w500)),
                       subtitle: Text(settings.settings.backgroundLocationEnabled
-                          ? 'Enabled — location updates continue in background'
-                          : 'Disabled'),
+                          ? l10n.locationEnabledBackground
+                          : l10n.disabled),
                       trailing: const Icon(Icons.chevron_right),
                     ),
                   ),
@@ -99,7 +104,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Text(
-              'Appearance',
+              l10n.appearance,
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
@@ -114,39 +119,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                     child: DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(labelText: 'Theme'),
+                      decoration: InputDecoration(labelText: l10n.theme),
                       value: settings.settings.appTheme,
-                      items: const [
+                      items: [
                         DropdownMenuItem(
                           value: AppThemeMode.system,
                           child: Row(children: [
-                            Icon(Icons.brightness_auto, size: 18),
-                            SizedBox(width: 8),
-                            Text('System default'),
+                            const Icon(Icons.brightness_auto, size: 18),
+                            const SizedBox(width: 8),
+                            Text(l10n.themeSystemDefault),
                           ]),
                         ),
                         DropdownMenuItem(
                           value: AppThemeMode.light,
                           child: Row(children: [
-                            Icon(Icons.light_mode, size: 18),
-                            SizedBox(width: 8),
-                            Text('Light'),
+                            const Icon(Icons.light_mode, size: 18),
+                            const SizedBox(width: 8),
+                            Text(l10n.themeLight),
                           ]),
                         ),
                         DropdownMenuItem(
                           value: AppThemeMode.dark,
                           child: Row(children: [
-                            Icon(Icons.dark_mode, size: 18),
-                            SizedBox(width: 8),
-                            Text('Dark'),
+                            const Icon(Icons.dark_mode, size: 18),
+                            const SizedBox(width: 8),
+                            Text(l10n.themeDark),
                           ]),
                         ),
                         DropdownMenuItem(
                           value: AppThemeMode.nighttime,
                           child: Row(children: [
-                            Icon(Icons.nightlight_round, size: 18),
-                            SizedBox(width: 8),
-                            Text('Red Light Discipline'),
+                            const Icon(Icons.nightlight_round, size: 18),
+                            const SizedBox(width: 8),
+                            Text(l10n.redLightDiscipline),
                           ]),
                         ),
                       ],
@@ -158,9 +163,122 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Text(
+              l10n.data,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: Column(
+              children: [
+                _buildAutoPurgeCard(context, l10n, settings),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+          if (Platform.isAndroid) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Text(
+                l10n.android,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              child: Column(
+                children: [
+                  Card(
+                    child: ListTile(
+                      onTap: () => _toggleKeepScreenOnLock(settings),
+                      leading: Icon(settings.settings.keepScreenOnLock
+                          ? Icons.screen_lock_portrait
+                          : Icons.screen_lock_portrait_outlined),
+                      title: Text(l10n.keepScreenOn,
+                          style: const TextStyle(fontWeight: FontWeight.w500)),
+                      subtitle: Text(settings.settings.keepScreenOnLock
+                          ? l10n.keepScreenOnEnabled
+                          : l10n.disabled),
+                      trailing: const Icon(Icons.chevron_right),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  static const _purgeDayOptions = [7, 14, 30, 60, 90, 180, 365, 0];
+
+  Widget _buildAutoPurgeCard(BuildContext context, AppLocalizations l10n,
+      SettingsService settingsService) {
+    final days = settingsService.settings.contactAutoPurgeDays;
+    final sliderIndex = () {
+      final idx = _purgeDayOptions.indexOf(days);
+      return idx < 0 ? _purgeDayOptions.length - 1 : idx;
+    }();
+    final label = days == 0
+        ? l10n.autoPurgeContactsNever
+        : l10n.autoPurgeContactsDays(days);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(l10n.autoPurgeContacts,
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+                Text(label,
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ),
+            Slider(
+              value: sliderIndex.toDouble(),
+              min: 0,
+              max: (_purgeDayOptions.length - 1).toDouble(),
+              divisions: _purgeDayOptions.length - 1,
+              onChanged: (v) {
+                final selected = _purgeDayOptions[v.round()];
+                settingsService.setContactAutoPurgeDays(selected);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  Future<void> _toggleKeepScreenOnLock(SettingsService settingsService) async {
+    final enabled = !settingsService.settings.keepScreenOnLock;
+    await settingsService.setKeepScreenOnLock(enabled);
+    try {
+      await _appLifecycleChannel
+          .invokeMethod('setShowOverLockScreen', {'enabled': enabled});
+    } catch (e) {
+      debugPrint('[KeepScreenOnLock] platform channel error: $e');
+    }
   }
 
   Future<void> _setLocationSource(SettingsService settingsService, String source) async {
@@ -171,9 +289,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final needsGps = source == LocationSource.companion || autonomousEnabled;
     final ok = await connectionVM.setGpsEnabled(needsGps);
     if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Could not configure companion GPS — no GPS hardware?'),
-        duration: Duration(seconds: 3),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(AppLocalizations.of(context)!.couldNotConfigureCompanionGps),
+        duration: const Duration(seconds: 3),
       ));
     }
   }
@@ -188,6 +306,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildLocationTrackingCard(SettingsService settings) {
+    final l10n = AppLocalizations.of(context)!;
     final isConnected = context.select<ConnectionViewModel, bool>((vm) => vm.isConnected);
     final s = settings.settings;
 
@@ -196,8 +315,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SwitchListTile(
-            title: const Text('Location Tracking',
-                style: TextStyle(fontWeight: FontWeight.w500)),
+            title: Text(l10n.locationTracking,
+                style: const TextStyle(fontWeight: FontWeight.w500)),
             value: s.telemetryEnabled,
             onChanged: (v) => settings.setTelemetryEnabled(v),
           ),
@@ -221,11 +340,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       }
 
                       return DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(labelText: 'Channel'),
+                        decoration: InputDecoration(labelText: l10n.channel),
                         value: currentHash,
                         items: [
-                          const DropdownMenuItem<String>(
-                              value: null, child: Text('None')),
+                          DropdownMenuItem<String>(
+                              value: null, child: Text(l10n.none)),
                           for (final c in privateChannels)
                             DropdownMenuItem<String>(
                               value: c.hash.toRadixString(16).toLowerCase(),
@@ -280,7 +399,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final shouldEnable = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Background Location'),
+        title: Text(AppLocalizations.of(context)!.backgroundLocation),
         content: const Text(
           'MeshCore TEAM needs background location access to continue '
           'sharing your position with the mesh network when the app is '
@@ -291,11 +410,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Not Now'),
+            child: Text(AppLocalizations.of(context)!.notNow),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Enable'),
+            child: Text(AppLocalizations.of(context)!.enable),
           ),
         ],
       ),
@@ -322,7 +441,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Permission Required'),
+          title: Text(AppLocalizations.of(context)!.permissionRequired),
           content: const Text(
             'Background location was denied. Please enable "Always" '
             'location access in your device Settings for MeshCore TEAM.',
@@ -330,14 +449,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(AppLocalizations.of(context)!.cancel),
             ),
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 openAppSettings();
               },
-              child: const Text('Open Settings'),
+              child: Text(AppLocalizations.of(context)!.openSettings),
             ),
           ],
         ),
@@ -374,12 +493,13 @@ class _TelemetrySlidersState extends State<_TelemetrySliders> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-          child: Text('Interval: ${_interval.round()}s'),
+          child: Text(l10n.intervalSeconds(_interval.round().toString())),
         ),
         Slider(
           value: _interval,
@@ -392,7 +512,7 @@ class _TelemetrySlidersState extends State<_TelemetrySliders> {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-          child: Text('Min distance: ${_distance.round()}m'),
+          child: Text(l10n.minDistanceMeters(_distance.round().toString())),
         ),
         Slider(
           value: _distance,

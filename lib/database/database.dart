@@ -77,6 +77,29 @@ class AppDatabase extends _$AppDatabase {
         onCreate: (Migrator m) async {
           await m.createAll();
         },
+        beforeOpen: (details) async {
+          // Self-healing: ensure columns exist regardless of prior migration state.
+          // ALTER TABLE ADD COLUMN fails if column already exists — that's fine, we ignore it.
+          for (final sql in [
+            'ALTER TABLE contacts ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
+            "ALTER TABLE channels ADD COLUMN notification_mode TEXT NOT NULL DEFAULT 'normal'",
+            'ALTER TABLE channels ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
+          ]) {
+            try {
+              await customStatement(sql);
+            } catch (_) {}
+          }
+          // Patch any NULLs left by a partial earlier migration.
+          await customStatement(
+            'UPDATE contacts SET is_favorite = 0 WHERE is_favorite IS NULL',
+          );
+          await customStatement(
+            "UPDATE channels SET notification_mode = 'normal' WHERE notification_mode IS NULL",
+          );
+          await customStatement(
+            'UPDATE channels SET is_favorite = 0 WHERE is_favorite IS NULL',
+          );
+        },
         onUpgrade: (Migrator m, int from, int to) async {
           // Migration from schema version 1 to 2: Add isRead column to Messages table
           if (from == 1 && to >= 2) {
@@ -128,10 +151,17 @@ class AppDatabase extends _$AppDatabase {
                 '[Migration] Added isAutonomousDevice to contact_display_states table');
           }
 
-          // Migration from schema version 7 to 8: Add imported_overlay_maps table
+          // Migration from schema version 7 to 8: new tables, favorites, channel notification mode
           if (from <= 7 && to >= 8) {
             await m.createTable(importedOverlayMaps);
-            print('[Migration] Created imported_overlay_maps table');
+            await m.addColumn(contacts, contacts.isFavorite);
+            await customStatement(
+              "ALTER TABLE channels ADD COLUMN notification_mode TEXT NOT NULL DEFAULT 'normal'",
+            );
+            await customStatement(
+              'ALTER TABLE channels ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
+            );
+            print('[Migration] v7->v8: importedOverlayMaps, favorites, channel notification mode');
           }
         },
       );
@@ -142,6 +172,6 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'meshcore_team.db'));
-    return NativeDatabase(file);
+    return NativeDatabase.createInBackground(file);
   });
 }

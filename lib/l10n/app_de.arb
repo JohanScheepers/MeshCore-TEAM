@@ -1,0 +1,691 @@
+{
+  "@@locale": "de",
+
+  "cancel": "Abbrechen",
+  "ok": "OK",
+  "done": "Fertig",
+  "save": "Speichern",
+  "delete": "Löschen",
+  "edit": "Bearbeiten",
+  "add": "Hinzufügen",
+  "close": "Schließen",
+  "back": "Zurück",
+  "retry": "Erneut versuchen",
+  "confirm": "Bestätigen",
+  "skip": "Überspringen",
+  "apply": "Anwenden",
+  "create": "Erstellen",
+  "enable": "Aktivieren",
+  "allow": "Erlauben",
+  "share": "Teilen",
+  "download": "Herunterladen",
+  "import": "Importieren",
+  "export": "Exportieren",
+  "navigate": "Navigieren",
+  "stop": "Stopp",
+  "copy": "Kopieren",
+  "reply": "Antworten",
+  "join": "Beitreten",
+  "name": "Name",
+  "continue_": "Weiter",
+  "tryAgain": "Erneut versuchen",
+  "notNow": "Nicht jetzt",
+  "selectAll": "Alle auswählen",
+  "selectAnother": "Andere auswählen",
+  "selectMultiple": "Mehrere auswählen",
+  "keepSharing": "Weiter teilen",
+  "chooseFile": "Datei auswählen",
+  "chooseSaveLocation": "Speicherort auswählen",
+  "openSettings": "Einstellungen öffnen",
+  "openAppSettings": "App-Einstellungen öffnen",
+  "scanQrCode": "QR-Code scannen",
+  "fromFile": "Aus Datei",
+  "fromQrCode": "Aus QR-Code",
+
+  "settings": "Einstellungen",
+  "about": "Über",
+  "appSettings": "App-Einstellungen",
+  "theme": "Design",
+  "themeLight": "Hell",
+  "themeDark": "Dunkel",
+  "themeSystemDefault": "Systemstandard",
+  "debugLogs": "Debug-Protokolle",
+  "clearLogs": "Protokolle löschen",
+  "exportLogs": "Protokolle exportieren",
+  "noLogEntries": "Keine Protokolleinträge",
+  "noLogsToExport": "Keine Protokolle zum Exportieren",
+
+  "connection": "Verbindung",
+  "notConnected": "Nicht verbunden",
+  "noDevicesFound": "Keine Geräte gefunden",
+  "scanningForDevices": "Suche nach MeshCore-Geräten...",
+  "deviceName": "Gerätename",
+  "enterDeviceName": "Gerätenamen eingeben",
+  "setIdentity": "Identität festlegen",
+  "configName": "Konfigurationsname",
+  "radioSettings": "Funkeinstellungen",
+  "frequencyMhz": "Frequenz (MHz)",
+  "bandwidth": "Bandbreite",
+  "spreadingFactor": "Spreizfaktor",
+  "codingRate": "Codierungsrate",
+  "presetConfiguration": "Voreinstellung",
+  "exportConfig": "Konfiguration exportieren",
+  "importTeamConfig": "Team-Konfiguration importieren",
+  "createTeamConfig": "Team-Konfiguration erstellen",
+  "teamConfig": "Team-Konfiguration",
+  "shareConfigOffline": "Konfiguration offline teilen",
+  "importConfig": "Importieren",
+  "configExportedSuccessfully": "Konfiguration erfolgreich exportiert",
+  "exportFailed": "Export fehlgeschlagen",
+  "failedToSetDeviceName": "Gerätename konnte nicht gesetzt werden",
+  "failedToSendAdvert": "Ankündigung konnte nicht gesendet werden",
+  "advertSentSuccessfully": "Ankündigung erfolgreich gesendet",
+  "failedToSendMessage": "Nachricht konnte nicht gesendet werden",
+  "autonomousMode": "Autonomer Modus",
+  "campMode": "Lager-Modus",
+  "smartForwarding": "Intelligente Weiterleitung",
+  "forwardingAlgorithmDebug": "Weiterleitungsalgorithmus (Debug)",
+  "forwardingDebug": "Weiterleitungs-Debug",
+  "forwardingV1Tel": "Weiterleitung V1 (#TEL)",
+  "topologyT": "Topologie #T",
+  "autoPreferTopology": "Automatisch (bevorzuge Topologie)",
+  "phoneGps": "Telefon-GPS",
+  "phoneFallback": "Telefon-Fallback",
+  "phoneAutonomousNoPhone": "Telefon: Autonom (kein Telefon)",
+  "companionGps": "Companion-GPS",
+  "locationSource": "Standortquelle",
+  "locationTracking": "Standortverfolgung",
+  "alwaysOnLocation": "Standort immer aktiv",
+  "backgroundLocation": "Hintergrundstandort",
+  "keepScreenOn": "Bildschirm aktiv lassen / Über Sperrbildschirm anzeigen",
+  "redLightDiscipline": "Rotlichtdisziplin",
+  "batteryOptimization": "Akkuoptimierung",
+  "battery": "Akku",
+  "storage": "Speicher",
+
+  "channel": "Kanal",
+  "channelName": "Kanalname",
+  "addChannel": "Kanal hinzufügen",
+  "addChannelLower": "Kanal hinzufügen",
+  "channelActions": "Kanalaktionen",
+  "createPrivateChannel": "Privaten Kanal erstellen",
+  "joinHashtagChannel": "Hashtag-Kanal beitreten",
+  "deleteChannel": "Kanal löschen?",
+  "shareChannel": "Kanal teilen",
+  "shareChannelLower": "Kanal teilen",
+  "deriveKeyFromName": "Schlüssel aus #Name ableiten – kein QR erforderlich",
+  "publicChannelName": "#public",
+  "addViaLinkQr": "Über Link / QR-Code hinzufügen",
+  "nameOrLink": "Name oder Link",
+  "secretOrLink": "Geheimnis oder Link",
+  "meshcoreChannelAddPlaceholder": "meshcore://channel/add?...",
+  "invalidChannelLink": "Ungültiger Kanal-Link",
+  "invalidChannelLinkKey": "Ungültiger Kanal-Link / Schlüssel",
+  "invalidTelemetryChannel": "Ungültiger Telemetriekanal",
+  "invalidQrCode": "Ungültiger QR-Code. Es wurde eine Download-URL erwartet.",
+  "noGroupChannelActive": "Kein Gruppenkanal aktiv",
+  "noTelemetryChannelSet": "Kein Telemetriekanal festgelegt",
+  "groupStatus": "Gruppenstatus",
+  "hexCharsOrBase64": "32 Hex-Zeichen oder Base64",
+  "channelCreated": "Erstellt: {name}",
+  "@channelCreated": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "channelJoined": "Beigetreten: {name}",
+  "@channelJoined": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "channelAdded": "Hinzugefügt: {name}",
+  "@channelAdded": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+
+  "directMessage": "Direktnachricht",
+  "directMessagesDisabledForRepeaters": "Direktnachrichten sind für Repeater deaktiviert",
+  "typeAMessage": "Nachricht eingeben...",
+  "copyMessageText": "Nachrichtentext kopieren",
+  "notificationsMuted": "🔕 Stumm",
+  "notificationsSilent": "🔕 Lautlos",
+  "channelNotifications": "Kanal-Benachrichtigungen",
+  "notificationModeNormal": "Normal",
+  "notificationModeNormalDesc": "Alle Benachrichtigungen",
+  "notificationModeSilent": "Lautlos",
+  "notificationModeSilentDesc": "Keine Alarme, Badge wird noch angezeigt",
+  "notificationModeMuted": "Stumm",
+  "notificationModeMutedDesc": "Keine Alarme, kein Badge",
+  "sortByMessageCount": "Nach Nachrichtenanzahl sortieren",
+  "sortByChannelNumber": "Nach Kanalnummer sortieren",
+
+  "map": "Karte",
+  "mapSettings": "Karteneinstellungen",
+  "mapType": "Kartentyp",
+  "offlineMaps": "Offline-Karten",
+  "manageOfflineMaps": "Offline-Karten verwalten",
+  "downloadMapArea": "Kartenbereich herunterladen",
+  "noOfflineMapsDownloaded": "Keine Offline-Karten heruntergeladen",
+  "removesDownloadedTilesAndMetadata": "Entfernt heruntergeladene Kacheln und Metadaten",
+  "importedMapsKmz": "Importierte Karten (KMZ)",
+  "manageImportedMapsKmz": "Importierte Karten (KMZ) verwalten",
+  "importKmz": "KMZ importieren",
+  "importKmzFile": "KMZ-Datei importieren",
+  "centerOnMap": "Auf Karte zentrieren",
+  "noMembersOnMap": "Keine Mitglieder auf der Karte",
+  "showContactPaths": "Kontaktpfade anzeigen",
+  "showTrackedUserNames": "Verfolgte Benutzernamen anzeigen",
+  "showWaypointAndRouteNames": "Wegpunkt- und Routennamen anzeigen",
+  "locationSharingOff": "Standortfreigabe aus",
+  "locationSharingOn": "Standortfreigabe ein",
+  "locationSharingIsOff": "Standortfreigabe ist deaktiviert",
+  "stopSharing": "Teilen beenden?",
+  "gettingLocation": "Standort wird ermittelt...",
+  "featureComingSoon": "{feature} demnächst verfügbar",
+  "@featureComingSoon": {
+    "placeholders": {
+      "feature": { "type": "String" }
+    }
+  },
+  "contactInfo": "{name} ({id}) • Hops:{hops} • Gehört:{heard}",
+  "@contactInfo": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "id": { "type": "String" },
+      "hops": { "type": "String" },
+      "heard": { "type": "String" }
+    }
+  },
+
+  "manageWaypointsAndRoutes": "Wegpunkte und Routen verwalten",
+  "waypointName": "Wegpunktname",
+  "waypointType": "Wegpunkttyp",
+  "addWaypoint": "Wegpunkt hinzufügen",
+  "editWaypoint": "Wegpunkt bearbeiten",
+  "deleteWaypoint": "Wegpunkt löschen",
+  "createWaypoint": "Wegpunkt erstellen",
+  "navigateToWaypoint": "Zum Wegpunkt navigieren",
+  "navigateTo": "Navigieren zu",
+  "cancelNavigation": "Navigation abbrechen",
+  "createRoute": "Route erstellen",
+  "routeName": "Routenname",
+  "noWaypointsOrRoutesYet": "Noch keine Wegpunkte oder Routen.",
+  "waypointAlreadyExists": "Wegpunkt bereits vorhanden",
+  "addAtLeast2PointsForRoute": "Mindestens 2 Punkte für eine Route hinzufügen",
+  "waypointNameHint": "z.B. Zuhause, Trailhead, Stadtzentrum",
+  "routeNameHint": "z.B. Hauptlager, Stand Alpha",
+  "channelNameHint": "z.B. Team Alpha, SAR Einheit 5",
+  "descriptionOptional": "Beschreibung (optional)",
+  "additionalNotes": "Weitere Notizen…",
+  "shareWithTeamWhenSaved": "Beim Speichern mit Team teilen",
+  "shareViaMesh": "Über Mesh teilen",
+  "shareWithOtherApps": "Mit anderen Apps teilen",
+  "shareEllipsis": "Teilen…",
+  "exportToGpx": "Als GPX exportieren",
+  "importFromGpx": "Aus GPX importieren",
+  "pleaseSelectGpxFile": "Bitte eine .gpx-Datei auswählen",
+  "saveToFileEllipsis": "In Datei speichern…",
+  "deleteSelected": "Ausgewählte löschen",
+  "cancelSelection": "Auswahl abbrechen",
+  "exportSelected": "Ausgewählte exportieren",
+  "shareSelected": "Ausgewählte teilen",
+  "wipeSelected": "Ausgewählte bereinigen",
+  "deleteAllLocal": "Alle lokalen löschen",
+  "deleteAllReceived": "Alle empfangenen löschen",
+  "clearAll": "Alle löschen",
+  "none": "Keine",
+  "deleteFailed": "Löschen fehlgeschlagen: {error}",
+  "@deleteFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "deletedWaypoints": "{count} Wegpunkt(e) gelöscht",
+  "@deletedWaypoints": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "importedWaypoints": "{count} Wegpunkt(e) importiert",
+  "@importedWaypoints": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "savedToPath": "Gespeichert in {path}",
+  "@savedToPath": {
+    "placeholders": {
+      "path": { "type": "String" }
+    }
+  },
+  "exportFailedError": "Export fehlgeschlagen: {error}",
+  "@exportFailedError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "importFailedError": "Import fehlgeschlagen: {error}",
+  "@importFailedError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "totalCount": "Gesamt: {count}",
+  "@totalCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "localCount": "Lokal: {count}",
+  "@localCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "receivedCount": "Empfangen: {count}",
+  "@receivedCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "routesCount": "Routen: {count}",
+  "@routesCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "permissionRequired": "Berechtigung erforderlich",
+  "cameraPermissionRequired": "Kameraberechtigung erforderlich",
+  "continueToPermissions": "Zu Berechtigungen fortfahren",
+  "storage2": "Speicher",
+
+  "wipe": "Bereinigen",
+  "wipeLocalData": "Lokale Daten bereinigen",
+  "dataWipedSuccessfully": "Daten erfolgreich bereinigt",
+  "wipingData": "Daten werden bereinigt...",
+  "areYouSure": "Sind Sie sicher?",
+
+  "linkCopied": "Link kopiert",
+  "copied": "Kopiert",
+
+  "debugLogsTitleWithCount": "Debug-Protokolle ({count})",
+  "@debugLogsTitleWithCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "exitApp": "App beenden",
+  "finished": "Fertig",
+  "removeFromGroup": "Aus Gruppe entfernen",
+  "clearsFromFirmwareAndLocalDatabase": "Löscht aus Firmware und lokaler Datenbank",
+  "thisWillStopTheConfigServer": "Dies beendet den Konfigurationsserver. ",
+  "failedToApplySettings": "Einstellungen konnten nicht angewendet werden. Falls der autonome Modus aktiviert wird, stellen Sie sicher, dass das Companion-GPS aktiviert ist und einen gültigen Fix hat.",
+  "noGroupStatusChannel": "Kein Gruppenkanal aktiv",
+
+  "channels": "Kanäle",
+  "search": "Suchen",
+  "contacts": "Kontakte",
+  "route": "Route",
+  "waypointsAndRoutes": "Wegpunkte und Routen",
+
+  "channelsWithPrivateCount": "Kanäle ({count} privat)",
+  "@channelsWithPrivateCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "waypointsAndRoutesWithCount": "Wegpunkte und Routen ({count})",
+  "@waypointsAndRoutesWithCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "offlineMapsWithCount": "Offline-Karten ({count} Bereiche)",
+  "@offlineMapsWithCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "offlineMapAreas": "Offline-Kartenbereiche",
+  "overlayMapsKmz": "Überlagerungskarten (KMZ)",
+
+  "genericError": "Fehler: {error}",
+  "@genericError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "clearAllFailed": "Alle löschen fehlgeschlagen: {error}",
+  "@clearAllFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "failedToAddWaypoint": "Wegpunkt konnte nicht hinzugefügt werden: {error}",
+  "@failedToAddWaypoint": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "wipeFailed": "Bereinigung fehlgeschlagen: {error}",
+  "@wipeFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+
+  "channelDeleted": "Gelöscht: {name}",
+  "@channelDeleted": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "channelHash": "Hash: {hash}",
+  "@channelHash": {
+    "placeholders": {
+      "hash": { "type": "String" }
+    }
+  },
+  "channelIndex": "Index: {index}",
+  "@channelIndex": {
+    "placeholders": {
+      "index": { "type": "String" }
+    }
+  },
+  "joinChannelConfirmation": "{tag} beitreten?",
+  "@joinChannelConfirmation": {
+    "placeholders": {
+      "tag": { "type": "String" }
+    }
+  },
+
+  "lastHeard": "Zuletzt gehört: {time}",
+  "@lastHeard": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "lastSeen": "Zuletzt gesehen: {time}",
+  "@lastSeen": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "hopCountLabel": "Hop-Anzahl: {count}",
+  "@hopCountLabel": {
+    "placeholders": {
+      "count": { "type": "String" }
+    }
+  },
+
+  "inspectForwardingMode": "Aktiven Weiterleitungsmodus und Topologie prüfen",
+  "forwardingPublicKey": "Öffentlicher Schlüssel: {key}",
+  "@forwardingPublicKey": {
+    "placeholders": {
+      "key": { "type": "String" }
+    }
+  },
+  "forwardingDirect": "Direkt: {value}",
+  "@forwardingDirect": {
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+  "forwardingRepeater": "Repeater: {value}",
+  "@forwardingRepeater": {
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+  "forwardingOutOfRange": "Außer Reichweite: {value}",
+  "@forwardingOutOfRange": {
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+  "forwardingMode": "Modus: {mode}",
+  "@forwardingMode": {
+    "placeholders": {
+      "mode": { "type": "String" }
+    }
+  },
+  "forwardingLastMaxHops": "Letzter max. Hops: {hops}",
+  "@forwardingLastMaxHops": {
+    "placeholders": {
+      "hops": { "type": "String" }
+    }
+  },
+  "forwardingLastTrigger": "Letzter Auslöser: {trigger}",
+  "@forwardingLastTrigger": {
+    "placeholders": {
+      "trigger": { "type": "String" }
+    }
+  },
+  "forwardingLastApplied": "Zuletzt angewendet: {time}",
+  "@forwardingLastApplied": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "forwardingLastError": "Letzter Fehler: {error}",
+  "@forwardingLastError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "forwardingCandidateReason": "Kandidatengrund: {reason}",
+  "@forwardingCandidateReason": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+
+  "zoomRange": "Zoombereich: {min}–{max}",
+  "@zoomRange": {
+    "placeholders": {
+      "min": { "type": "String" },
+      "max": { "type": "String" }
+    }
+  },
+  "minDistanceMeters": "Mindestabstand: {distance}m",
+  "@minDistanceMeters": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "mapProviderLabel": "Anbieter: {label}",
+  "@mapProviderLabel": {
+    "placeholders": {
+      "label": { "type": "String" }
+    }
+  },
+  "intervalSeconds": "Intervall: {seconds}s",
+  "@intervalSeconds": {
+    "placeholders": {
+      "seconds": { "type": "String" }
+    }
+  },
+
+  "companionBattery": "Companion: {battery}",
+  "@companionBattery": {
+    "placeholders": {
+      "battery": { "type": "String" }
+    }
+  },
+  "phoneBattery": "Telefon: {battery}",
+  "@phoneBattery": {
+    "placeholders": {
+      "battery": { "type": "String" }
+    }
+  },
+
+  "couldNotConfigureCompanionGps": "Companion-GPS konnte nicht konfiguriert werden – keine GPS-Hardware?",
+  "scanChannelQr": "Kanal-QR-Code scannen",
+  "scanConfigQrCode": "Konfigurations-QR-Code scannen",
+  "wipePermanentDeleteWarning": "Dies löscht die ausgewählten Daten dauerhaft.",
+
+  "tileCount": "{count} Kacheln",
+  "@tileCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "channelTypePublic": "Typ: Öffentlich",
+  "channelTypePrivate": "Typ: Privat",
+  "publicChannel": "Öffentlicher Kanal",
+  "privateChannel": "Privater Kanal",
+  "disabled": "Deaktiviert",
+  "keepScreenOnEnabled": "Aktiviert — Bildschirm bleibt an und wird über dem Sperrbildschirm angezeigt",
+  "connected": "Verbunden",
+  "connecting": "Verbinde...",
+  "scanning": "Suche...",
+  "error": "Fehler",
+  "disconnect": "Trennen",
+  "disconnectDevice": "Gerät trennen",
+  "advert": "Ankündigung",
+  "firmwareStock": "Standard",
+  "firmwareCustom": "Benutzerdefiniert",
+  "firmwareInfo": "FW: {type} • {forwarding} • {autonomous}",
+  "@firmwareInfo": {
+    "placeholders": {
+      "type": { "type": "String" },
+      "forwarding": { "type": "String" },
+      "autonomous": { "type": "String" }
+    }
+  },
+  "deviceId": "ID: {address}",
+  "@deviceId": {
+    "placeholders": {
+      "address": { "type": "String" }
+    }
+  },
+  "batteryVoltage": "Akku: {voltage}V",
+  "@batteryVoltage": {
+    "placeholders": {
+      "voltage": { "type": "String" }
+    }
+  },
+  "idle": "Leerlauf",
+  "syncingContacts": "Kontakte werden synchronisiert...",
+  "syncingChannels": "Kanäle werden synchronisiert...",
+  "syncingMessages": "Nachrichten werden synchronisiert...",
+  "syncComplete": "Synchronisierung abgeschlossen",
+  "logCategorySync": "Sync",
+  "logCategoryBle": "BLE",
+  "logCategoryTelemetry": "Telemetrie",
+  "logCategoryForwarding": "Weiterleitung",
+  "logCategoryGeneral": "Allgemein",
+  "autoScrollOn": "Auto-Scroll ein",
+  "autoScrollOff": "Auto-Scroll aus",
+  "sharingLocation": "Standort wird geteilt",
+  "locationSharingEnabledNotConnected": "Standortfreigabe aktiviert (nicht verbunden)",
+  "campModeForwardingActive": "Camp-Modus – Weiterleitung aktiv ({hops, plural, one{1 Hop} other{{hops} Hops}})",
+  "@campModeForwardingActive": {
+    "placeholders": {
+      "hops": { "type": "int" }
+    }
+  },
+  "policyEngineForwardingActive": "Regelwerk: Weiterleitung aktiv ({hops, plural, one{1 Hop} other{{hops} Hops}})",
+  "@policyEngineForwardingActive": {
+    "placeholders": {
+      "hops": { "type": "int" }
+    }
+  },
+  "forwardingModeCamp": "Weiterleitungsmodus: Camp",
+  "defaultRouting": "Standard-Routing",
+  "typeAMessageToChannel": "Nachricht an {channel} eingeben...",
+  "@typeAMessageToChannel": {
+    "placeholders": {
+      "channel": { "type": "String" }
+    }
+  },
+  "noMessagesInChannel": "Keine Nachrichten in diesem Kanal",
+  "beFirstToStartConversation": "Starte als Erster die Unterhaltung",
+  "noMessagesYet": "Noch keine Nachrichten",
+  "sendMessageToStartConversation": "Sende eine Nachricht, um das Gespräch zu beginnen",
+  "directConnection": "Direkt",
+  "hopCount": "{hops, plural, one{1 Hop} other{{hops} Hops}}",
+  "@hopCount": {
+    "placeholders": {
+      "hops": { "type": "int" }
+    }
+  },
+  "noMapMarkersOnly": "Keine Karte (nur Markierungen)",
+  "filterContacts": "Kontakte filtern",
+  "filterEndNodes": "Endknoten",
+  "clearFilters": "Filter zurücksetzen",
+  "filterHasLocation": "Hat Standort",
+  "filterNoLocation": "Kein Standort",
+  "filterRepeaters": "Repeater",
+  "sortByName": "Nach Name sortieren",
+  "sortByLastSeen": "Nach letztem Kontakt sortieren",
+  "sortByFavorites": "Favoriten zuerst",
+  "noContactsMatchFilter": "Keine Kontakte entsprechen dem Filter",
+  "noContacts": "Keine Kontakte",
+  "connectToDeviceToSeeContacts": "Verbinde ein Gerät und synchronisiere, um Kontakte zu sehen",
+  "unknown": "Unbekannt",
+  "repeater": "Repeater",
+  "repeaterLabel": "REPEATER",
+  "locationCoordinates": "Standort: {lat}, {lon}",
+  "@locationCoordinates": {
+    "placeholders": {
+      "lat": { "type": "String" },
+      "lon": { "type": "String" }
+    }
+  },
+  "location": "Standort",
+  "appearance": "Erscheinungsbild",
+  "data": "Daten",
+  "deleteContact": "Kontakt loeschen",
+  "contactDeletedName": "{name} geloescht",
+  "@contactDeletedName": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "autoPurgeContacts": "Kontakte automatisch loeschen",
+  "autoPurgeContactsDays": "{count} Tag(e)",
+  "@autoPurgeContactsDays": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "autoPurgeContactsNever": "Nie",
+  "deleteAllContacts": "Alle Kontakte loeschen",
+  "deleteAllContactsConfirm": "Alle Kontakte werden dauerhaft von diesem Geraet und vom Companion geloescht. Kontakte erscheinen wieder, sobald Knoten im Mesh gehoert werden.",
+  "deleteAllChannels": "Alle Kanaele loeschen",
+  "deleteAllChannelsConfirm": "Alle privaten Kanaele werden dauerhaft von diesem Geraet und vom Companion geloescht. Der oeffentliche Kanal wird nicht beeinflusst.",
+  "channelsDeleted": "{count} Kanal/Kanaele geloescht",
+  "@channelsDeleted": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "deleteAllContactsFavoritesNote": "Favoriten werden nicht geloescht.",
+  "contactsDeleted": "{count} Kontakt(e) geloescht",
+  "@contactsDeleted": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "android": "Android",
+  "locationEnabledBackground": "Aktiviert — Standortaktualisierungen laufen im Hintergrund weiter",
+  "trackingChannelIndex": "Tracking-Kanal-Index: {index} • Timeout: 12h • Sichtbare Nutzer: {count}",
+  "@trackingChannelIndex": {
+    "placeholders": {
+      "index": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
+  "trackingChannelNotConfigured": "Tracking-Kanal nicht konfiguriert",
+  "teamMembersCanNoLongerDownload": "Teammitglieder können nicht mehr herunterladen.",
+
+  "offlineShareServer": "Konfiguration offline teilen",
+  "importKmzFromFile": "KMZ-Datei importieren"
+}

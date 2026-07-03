@@ -6,16 +6,18 @@
 // Non-commercial use only. See LICENSE file for details.
 
 import 'dart:async';
+import 'dart:io' show Platform;
+import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:typed_data';
-
 import '../database/database.dart';
-import '../repositories/contact_repository.dart';
+import '../l10n/app_localizations.dart';
 import '../repositories/message_repository.dart';
 import '../services/message_notification_service.dart';
+import '../utils/message_time_format.dart';
 import '../widgets/chat_message_text.dart';
+import '../widgets/status_bar_actions.dart';
 
 /// Direct message chat screen for one-on-one conversations
 class DirectMessageScreen extends StatefulWidget {
@@ -32,23 +34,52 @@ class DirectMessageScreen extends StatefulWidget {
 
 class _DirectMessageScreenState extends State<DirectMessageScreen> {
   late final MessageRepository _messageRepository;
-  late final ContactRepository _contactRepository;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  int _previousMessageCount = 0;
+  final FocusNode _inputFocusNode = FocusNode();
   int? _firstUnreadTimestamp;
-  List<ContactData> _allContacts = [];
-  List<ContactData> _mentionSuggestions = [];
-  StreamSubscription<List<ContactData>>? _contactsSub;
+  StreamSubscription<List<MessageData>>? _messagesSub;
+  late final Stream<List<MessageData>> _messagesStream;
+  List<MessageData> _allMessages = const [];
+  List<MessageData> _messages = const [];
+  bool _messagesLoaded = false;
+  bool _isAtBottom = true;
+
+  int get _newMessageCount => _allMessages.length - _messages.length;
 
   @override
   void initState() {
     super.initState();
     _messageRepository = Provider.of<MessageRepository>(context, listen: false);
-    _contactRepository = Provider.of<ContactRepository>(context, listen: false);
-    _contactsSub = _contactRepository.getAllContacts().listen((contacts) {
-      if (mounted) setState(() => _allContacts = contacts);
+    _scrollController.addListener(_onScroll);
+    _messagesStream =
+        _messageRepository.watchPrivateMessages(widget.contact.hash);
+    _messagesSub = _messagesStream.listen((messages) {
+      if (!mounted) return;
+      setState(() {
+        _allMessages = messages;
+        _messagesLoaded = true;
+        if (_isAtBottom || messages.length <= _messages.length) {
+          _messages = messages;
+        }
+      });
+      if (_isAtBottom) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              0.0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
     });
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _inputFocusNode.requestFocus();
+      });
+    }
 
     // Track active chat for notification suppression
     MessageNotificationService.isMessagesScreenVisible = true;
@@ -70,11 +101,14 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
-    _contactsSub?.cancel();
+    _inputFocusNode.dispose();
+    _messagesSub?.cancel();
 
-    // Mark all messages as read when navigating away
-    _messageRepository.messagesDao
-        .markContactMessagesAsRead(widget.contact.hash);
+    // Only write if there are unread messages to avoid unnecessary DB cascade
+    if (_messages.any((m) => !m.isRead)) {
+      _messageRepository.messagesDao
+          .markContactMessagesAsRead(widget.contact.hash);
+    }
 
     // Clear active chat tracking
     MessageNotificationService.isMessagesScreenVisible = false;
@@ -85,6 +119,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final recipientKey = _bytesToHex(widget.contact.publicKey);
     final isRepeater = widget.contact.isRepeater;
@@ -96,7 +131,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
           children: [
             Text(widget.contact.name ?? 'Unknown Contact'),
             Text(
-              'Direct Message',
+              l10n.directMessage,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -104,6 +139,9 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
           ],
         ),
         elevation: 0,
+        actions: const [
+          StatusBarActions(),
+        ],
       ),
       body: Column(
         children: [
@@ -123,60 +161,12 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
 
           // Messages list
           Expanded(
-            child: StreamBuilder<List<MessageData>>(
-              stream:
-                  _messageRepository.watchPrivateMessages(widget.contact.hash),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: theme.colorScheme.error,
-                          size: 48,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Error loading messages',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: theme.colorScheme.error,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          snapshot.error.toString(),
-                          style: theme.textTheme.bodySmall,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final messages = snapshot.data ?? [];
-
-                // Auto-scroll to bottom when new messages arrive
-                if (messages.length > _previousMessageCount) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (_scrollController.hasClients) {
-                      _scrollController.animateTo(
-                        0.0,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOut,
-                      );
-                    }
-                  });
-                  _previousMessageCount = messages.length;
-                }
-
-                if (messages.isEmpty) {
-                  return Center(
+            child: Stack(
+              children: [
+                if (!_messagesLoaded)
+                  const Center(child: CircularProgressIndicator())
+                else if (_messages.isEmpty)
+                  Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -187,14 +177,14 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'No messages yet',
+                          l10n.noMessagesYet,
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: theme.colorScheme.outline,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Send a message to start the conversation',
+                          l10n.sendMessageToStartConversation,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.outline,
                           ),
@@ -202,37 +192,72 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                         ),
                       ],
                     ),
-                  );
-                }
+                  )
+                else
+                  ListView.builder(
+                    reverse: true,
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final message =
+                          _messages[_messages.length - 1 - index];
+                      final showUnreadDivider =
+                          _firstUnreadTimestamp != null &&
+                              message.timestamp == _firstUnreadTimestamp;
 
-                return ListView.builder(
-                  reverse: true,
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final message = messages[messages.length - 1 - index];
-                    final showUnreadDivider = _firstUnreadTimestamp != null &&
-                        message.timestamp == _firstUnreadTimestamp;
-
-                    return Column(
-                      children: [
-                        if (showUnreadDivider) _buildUnreadDivider(theme),
-                        _buildMessageBubble(message, theme),
-                      ],
-                    );
-                  },
-                );
-              },
+                      return Column(
+                        children: [
+                          if (showUnreadDivider) _buildUnreadDivider(theme),
+                          _buildMessageBubble(message, theme),
+                        ],
+                      );
+                    },
+                  ),
+                if (_newMessageCount > 0)
+                  Positioned(
+                    bottom: 8,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: GestureDetector(
+                        onTap: _scrollToBottom,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: const [
+                              BoxShadow(
+                                blurRadius: 4,
+                                color: Colors.black26,
+                              )
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '$_newMessageCount new ${_newMessageCount == 1 ? 'message' : 'messages'}',
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: theme.colorScheme.onPrimaryContainer,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.keyboard_arrow_down,
+                                size: 18,
+                                color: theme.colorScheme.onPrimaryContainer,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-          ),
-
-          // @mention suggestions
-          AnimatedSize(
-            duration: const Duration(milliseconds: 150),
-            curve: Curves.easeInOut,
-            alignment: Alignment.bottomCenter,
-            child: _buildMentionSuggestions(),
           ),
 
           // Message input
@@ -256,9 +281,10 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                       children: [
                         TextField(
                           controller: _messageController,
+                          focusNode: _inputFocusNode,
                           enabled: !isRepeater,
                           decoration: InputDecoration(
-                            hintText: 'Type a message...',
+                            hintText: l10n.typeAMessage,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24),
                               borderSide: BorderSide.none,
@@ -276,7 +302,6 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                           textInputAction: TextInputAction.send,
                           onSubmitted: (_) => _sendMessage(),
                           onChanged: (text) {
-                            // Mark as read when user starts typing
                             if (text.isNotEmpty && _firstUnreadTimestamp != null) {
                               _messageRepository.messagesDao
                                   .markContactMessagesAsRead(widget.contact.hash);
@@ -284,7 +309,6 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                                 _firstUnreadTimestamp = null;
                               });
                             }
-                            _updateMentionSuggestions(text);
                           },
                         ),
                         Positioned(
@@ -335,7 +359,14 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
         children: [
           if (!isFromMe) const SizedBox(width: 0), // Align left for received
           Flexible(
-            child: Container(
+            child: GestureDetector(
+              onLongPress: (Platform.isAndroid || Platform.isIOS)
+                  ? () => _showMessageActions(message)
+                  : null,
+              onSecondaryTapDown: (!Platform.isAndroid && !Platform.isIOS)
+                  ? (d) => _showMessageActions(message)
+                  : null,
+              child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               margin: EdgeInsets.only(
                 left: isFromMe ? 48 : 0,
@@ -366,8 +397,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${timestamp.hour.toString().padLeft(2, '0')}:'
-                        '${timestamp.minute.toString().padLeft(2, '0')}',
+                        formatMessageTime(timestamp),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: (isFromMe
                                   ? theme.colorScheme.onPrimaryContainer
@@ -390,6 +420,7 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                   ),
                 ],
               ),
+            ),
             ),
           ),
         ],
@@ -442,85 +473,38 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
     }
   }
 
-  Widget _buildMentionSuggestions() {
-    if (_mentionSuggestions.isEmpty) return const SizedBox.shrink();
-    final theme = Theme.of(context);
-    return Material(
-      elevation: 4,
-      color: theme.colorScheme.surface,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 200),
-        child: ListView.builder(
-          padding: EdgeInsets.zero,
-          shrinkWrap: true,
-          itemCount: _mentionSuggestions.length,
-          itemBuilder: (context, index) {
-            final contact = _mentionSuggestions[index];
-            final name = contact.name ?? 'Unknown';
-            return ListTile(
-              leading: const CircleAvatar(
-                child: Icon(Icons.person, size: 18),
-              ),
-              title: Text(name),
-              dense: true,
-              onTap: () => _applyMention(name),
-            );
-          },
-        ),
-      ),
-    );
+  void _onScroll() {
+    final atBottom = _scrollController.offset <= 50;
+    if (atBottom != _isAtBottom) {
+      setState(() {
+        _isAtBottom = atBottom;
+        if (atBottom) _messages = _allMessages;
+      });
+    }
   }
 
-  void _updateMentionSuggestions(String text) {
-    final cursor = _messageController.selection.baseOffset;
-    if (cursor <= 0) {
-      if (_mentionSuggestions.isNotEmpty)
-        setState(() => _mentionSuggestions = []);
-      return;
-    }
-    final before = text.substring(0, cursor.clamp(0, text.length));
-    final atIndex = before.lastIndexOf('@');
-    if (atIndex == -1) {
-      if (_mentionSuggestions.isNotEmpty)
-        setState(() => _mentionSuggestions = []);
-      return;
-    }
-    final query = before.substring(atIndex + 1);
-    if (query.isEmpty || query.contains(' ')) {
-      if (_mentionSuggestions.isNotEmpty)
-        setState(() => _mentionSuggestions = []);
-      return;
-    }
-    final queryLower = query.toLowerCase();
-    final filtered = _allContacts
-        .where((c) => (c.name ?? '').toLowerCase().contains(queryLower))
-        .toList();
-    setState(() => _mentionSuggestions = filtered);
-  }
-
-  void _applyMention(String contactName) {
-    final text = _messageController.text;
-    final cursor = _messageController.selection.baseOffset;
-    if (cursor <= 0) return;
-    final before = text.substring(0, cursor.clamp(0, text.length));
-    final atIndex = before.lastIndexOf('@');
-    if (atIndex == -1) return;
-    final after = cursor < text.length ? text.substring(cursor) : '';
-    final newText = '${text.substring(0, atIndex)}@[$contactName] $after';
-    final newCursor = atIndex + contactName.length + 4; // @[name][space]
-    _messageController.value = TextEditingValue(
-      text: newText,
-      selection: TextSelection.collapsed(offset: newCursor),
-    );
-    setState(() => _mentionSuggestions = []);
+  void _scrollToBottom() {
+    setState(() {
+      _messages = _allMessages;
+      _isAtBottom = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Future<void> _sendMessage() async {
     if (widget.contact.isRepeater) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Direct messages are disabled for repeaters'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.directMessagesDisabledForRepeaters),
           ),
         );
       }
@@ -533,7 +517,8 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
 
     // Clear input immediately
     _messageController.clear();
-    setState(() => _mentionSuggestions = []);
+    setState(() => _messages = _allMessages);
+    if (!Platform.isAndroid && !Platform.isIOS) _inputFocusNode.requestFocus();
 
     // Scroll to bottom
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -561,8 +546,8 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
         // Show error snackbar
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to send message'),
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.failedToSendMessage),
               backgroundColor: Colors.red,
             ),
           );
@@ -573,12 +558,39 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(AppLocalizations.of(context)!.genericError(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
       }
     }
+  }
+
+  void _showMessageActions(MessageData message) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.copy),
+              title: Text(AppLocalizations.of(context)!.copyMessageText),
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: message.content));
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(AppLocalizations.of(context)!.copied),
+                    duration: const Duration(seconds: 1),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   String _bytesToHex(List<int> bytes) {

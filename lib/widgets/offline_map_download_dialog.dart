@@ -12,6 +12,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:meshcore_team/database/database.dart';
 import 'package:meshcore_team/services/map_tile_cache_service.dart';
+import '../l10n/app_localizations.dart';
 
 class OfflineMapDownloadDialog extends StatefulWidget {
   final LatLngBounds bounds;
@@ -173,6 +174,7 @@ class _OfflineMapDownloadDialogState extends State<OfflineMapDownloadDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final estimatedTiles = _estimatedTiles;
     final estimatedBytes = _estimatedBytes;
 
@@ -183,7 +185,7 @@ class _OfflineMapDownloadDialogState extends State<OfflineMapDownloadDialog> {
 
     return AlertDialog(
       scrollable: true,
-      title: const Text('Download Map Area'),
+      title: Text(l10n.downloadMapArea),
       content: SizedBox(
         width: 420,
         child: SingleChildScrollView(
@@ -192,15 +194,15 @@ class _OfflineMapDownloadDialogState extends State<OfflineMapDownloadDialog> {
             children: [
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Provider: ${widget.providerLabel}'),
+                child: Text(l10n.mapProviderLabel(widget.providerLabel)),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _nameController,
                 enabled: !_isDownloading,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  hintText: 'e.g. Home, Trailhead, City Center',
+                decoration: InputDecoration(
+                  labelText: l10n.name,
+                  hintText: l10n.waypointNameHint,
                 ),
                 onChanged: (_) {
                   if (_error != null) {
@@ -213,7 +215,7 @@ class _OfflineMapDownloadDialogState extends State<OfflineMapDownloadDialog> {
               const SizedBox(height: 16),
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Zoom range: $_minZoom–$_maxZoom'),
+                child: Text(l10n.zoomRange('$_minZoom', '$_maxZoom')),
               ),
               RangeSlider(
                 values: RangeValues(_minZoom.toDouble(), _maxZoom.toDouble()),
@@ -280,11 +282,11 @@ class _OfflineMapDownloadDialogState extends State<OfflineMapDownloadDialog> {
             }
             Navigator.of(context).pop();
           },
-          child: Text(_isDownloading ? 'Cancel' : 'Close'),
+          child: Text(_isDownloading ? l10n.cancel : l10n.close),
         ),
         FilledButton(
           onPressed: _isDownloading ? null : _startDownload,
-          child: const Text('Download'),
+          child: Text(l10n.download),
         ),
       ],
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:meshcore_team/models/waypoint.dart';
+import '../l10n/app_localizations.dart';
 
 class WaypointCreateDialog extends StatefulWidget {
   final double latitude;
@@ -32,11 +33,12 @@ class _WaypointCreateDialogState extends State<WaypointCreateDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final name = _nameController.text.trim();
 
     return AlertDialog(
       scrollable: true,
-      title: const Text('Add Waypoint'),
+      title: Text(l10n.addWaypoint),
       content: SizedBox(
         width: 420,
         child: SingleChildScrollView(
@@ -64,17 +66,17 @@ class _WaypointCreateDialogState extends State<WaypointCreateDialog> {
               const SizedBox(height: 12),
               TextField(
                 controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Waypoint Name',
-                  hintText: 'e.g. Main Camp, Stand Alpha',
+                decoration: InputDecoration(
+                  labelText: l10n.waypointName,
+                  hintText: l10n.routeNameHint,
                 ),
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<WaypointType>(
                 value: _selectedType,
-                decoration: const InputDecoration(
-                  labelText: 'Waypoint Type',
+                decoration: InputDecoration(
+                  labelText: l10n.waypointType,
                 ),
                 items: [
                   for (final type in WaypointType.values)
@@ -94,16 +96,16 @@ class _WaypointCreateDialogState extends State<WaypointCreateDialog> {
               const SizedBox(height: 12),
               TextField(
                 controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Description (Optional)',
-                  hintText: 'Additional notes…',
+                decoration: InputDecoration(
+                  labelText: l10n.descriptionOptional,
+                  hintText: l10n.additionalNotes,
                 ),
                 maxLines: 3,
               ),
               const SizedBox(height: 4),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Share with team when saved'),
+                title: Text(l10n.shareWithTeamWhenSaved),
                 value: _shareWithTeam,
                 onChanged: (v) => setState(() => _shareWithTeam = v),
               ),
@@ -114,7 +116,7 @@ class _WaypointCreateDialogState extends State<WaypointCreateDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(l10n.cancel),
         ),
         TextButton(
           onPressed: name.isEmpty
@@ -129,7 +131,7 @@ class _WaypointCreateDialogState extends State<WaypointCreateDialog> {
                     ),
                   );
                 },
-          child: const Text('Add Waypoint'),
+          child: Text(l10n.addWaypoint),
         ),
       ],
     );

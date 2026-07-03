@@ -9,6 +9,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:meshcore_team/services/team_config_server.dart';
 import 'package:meshcore_team/services/team_config_service.dart';
+import '../l10n/app_localizations.dart';
 
 /// Multi-step screen for sharing a team config over a local hotspot/Wi-Fi.
 ///
@@ -54,6 +55,7 @@ class _OfflineShareScreenState extends State<OfflineShareScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return PopScope(
       canPop: _step == _ShareStep.instructions,
       onPopInvokedWithResult: (didPop, _) {
@@ -63,7 +65,7 @@ class _OfflineShareScreenState extends State<OfflineShareScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Share Config Offline'),
+          title: Text(l10n.shareConfigOffline),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: _handleBack,
@@ -246,7 +248,7 @@ class _OfflineShareScreenState extends State<OfflineShareScreen> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
+                      child: Text(AppLocalizations.of(context)!.cancel),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -258,7 +260,7 @@ class _OfflineShareScreenState extends State<OfflineShareScreen> {
                           _step = _ShareStep.pickFile;
                         });
                       },
-                      child: const Text('Continue'),
+                      child: Text(AppLocalizations.of(context)!.continue_),
                     ),
                   ),
                 ],
@@ -340,7 +342,7 @@ class _OfflineShareScreenState extends State<OfflineShareScreen> {
                   FilledButton.icon(
                     onPressed: _pickConfigFile,
                     icon: const Icon(Icons.file_open),
-                    label: const Text('Choose File'),
+                    label: Text(AppLocalizations.of(context)!.chooseFile),
                   ),
                   if (_errorMessage != null) ...[
                     const SizedBox(height: 16),
@@ -367,7 +369,7 @@ class _OfflineShareScreenState extends State<OfflineShareScreen> {
                   _step = _ShareStep.instructions;
                 });
               },
-              child: const Text('Back'),
+              child: Text(AppLocalizations.of(context)!.back),
             ),
           ),
         ),
@@ -539,21 +541,21 @@ class _OfflineShareScreenState extends State<OfflineShareScreen> {
                           _errorMessage = null;
                         });
                       },
-                      child: const Text('Select Another'),
+                      child: Text(AppLocalizations.of(context)!.selectAnother),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
+                      child: Text(AppLocalizations.of(context)!.cancel),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: FilledButton(
                       onPressed: _startServing,
-                      child: const Text('Confirm'),
+                      child: Text(AppLocalizations.of(context)!.confirm),
                     ),
                   ),
                 ],
@@ -752,7 +754,7 @@ class _OfflineShareScreenState extends State<OfflineShareScreen> {
               FilledButton.icon(
                 onPressed: _stopAndFinish,
                 icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Finished'),
+                label: Text(AppLocalizations.of(context)!.finished),
               ),
             ],
           ),
@@ -764,21 +766,23 @@ class _OfflineShareScreenState extends State<OfflineShareScreen> {
   Future<void> _confirmStopServer() async {
     final stop = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Stop Sharing?'),
-        content: const Text('This will stop the config server. '
-            'Team members will no longer be able to download.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Keep Sharing'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Stop'),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final l = AppLocalizations.of(context)!;
+        return AlertDialog(
+          title: Text(l.stopSharing),
+          content: Text('${l.thisWillStopTheConfigServer}${l.teamMembersCanNoLongerDownload}'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l.keepSharing),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l.stop),
+            ),
+          ],
+        );
+      },
     );
 
     if (stop == true && mounted) {

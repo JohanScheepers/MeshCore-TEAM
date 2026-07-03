@@ -508,6 +508,12 @@ class ConnectionViewModel extends ChangeNotifier {
       // Wait 200ms
       await Future.delayed(const Duration(milliseconds: 200));
 
+      // Sync device clock before session start
+      final nowSecs = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final timeCmd = BleCommands.buildSetDeviceTime(nowSecs);
+      await _bleManager.sendFrame(timeCmd);
+      debugPrint('[ConnectionVM] 🕐 SET_DEVICE_TIME sent: $nowSecs');
+
       // Send CMD_APP_START to initialize session
       debugPrint('[ConnectionVM] 📡 Sending CMD_APP_START...');
       final appStartCmd = BleCommands.buildAppStart();
@@ -534,6 +540,14 @@ class ConnectionViewModel extends ChangeNotifier {
       }
 
       await _finalizeAfterSync();
+
+      final purgeDays = _settingsService.settings.contactAutoPurgeDays;
+      if (purgeDays > 0) {
+        final purged = await _contactRepository.purgeContactsOlderThan(purgeDays);
+        if (purged > 0) {
+          debugPrint('[ConnectionVM] 🗑️ Auto-purged $purged contact(s) older than $purgeDays days');
+        }
+      }
     } catch (e) {
       debugPrint('[ConnectionVM] ❌ Initial sync failed: $e');
       _updateSyncStatus(
@@ -842,8 +856,9 @@ class ConnectionViewModel extends ChangeNotifier {
 
     // Start listening for PUSH_MSG_WAITING (device will push when messages available)
     _messageRepository.startPushListener();
+    _messageRepository.beginNotificationSync();
 
-    // Actively pull any queued messages now (some firmware won’t emit a PUSH immediately).
+    // Actively pull any queued messages now (some firmware won't emit a PUSH immediately).
     final pulled = await _messageRepository.syncMessagesNow();
     debugPrint(
         '[ConnectionVM] ✅ Phase 3 complete: pulled $pulled messages (listener active)');
@@ -851,6 +866,7 @@ class ConnectionViewModel extends ChangeNotifier {
     // All phases complete
     _updateSyncStatus(
         const SyncStatus(phase: SyncPhase.complete, isComplete: true));
+    await _messageRepository.endNotificationSync();
     debugPrint('[ConnectionVM] ✅ All sync phases complete');
   }
 
@@ -896,12 +912,14 @@ class ConnectionViewModel extends ChangeNotifier {
     _updateSyncStatus(const SyncStatus(phase: SyncPhase.syncingMessages));
 
     _messageRepository.startPushListener();
+    _messageRepository.beginNotificationSync();
     final pulled = await _messageRepository.syncMessagesNow();
     debugPrint(
         '[ConnectionVM] ✅ Reconnect sync complete: pulled $pulled messages (channels skipped)');
 
     _updateSyncStatus(
         const SyncStatus(phase: SyncPhase.complete, isComplete: true));
+    await _messageRepository.endNotificationSync();
   }
 
   Future<void> _finalizeAfterSync() async {

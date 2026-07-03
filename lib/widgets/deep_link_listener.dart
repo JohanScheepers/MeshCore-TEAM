@@ -7,6 +7,7 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:meshcore_team/repositories/channel_repository.dart';
+import '../l10n/app_localizations.dart';
 
 class DeepLinkListener extends StatefulWidget {
   final Widget child;
@@ -64,13 +65,14 @@ class _DeepLinkListenerState extends State<DeepLinkListener> {
 
       if (!mounted) return;
 
+      final l10n = AppLocalizations.of(context)!;
       if (imported == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid channel link')),
+          SnackBar(content: Text(l10n.invalidChannelLink)),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Added: ${imported.name}')),
+          SnackBar(content: Text(l10n.channelAdded(imported.name))),
         );
       }
     } catch (e) {

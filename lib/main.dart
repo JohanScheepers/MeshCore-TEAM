@@ -5,9 +5,12 @@
 // This file is part of TEAM-Flutter.
 // Non-commercial use only. See LICENSE file for details.
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/app_localizations.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:provider/provider.dart';
@@ -48,6 +51,7 @@ import 'services/debug_log_service.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 const bool isBetaBuild = bool.fromEnvironment('BETA');
+const String _forceLocale = String.fromEnvironment('FORCE_LOCALE');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -137,6 +141,13 @@ Future<void> _runAppStartup() async {
     // Initialize BLE Connection Manager
     print('📡 Initializing BLE manager...');
     final bleManager = BleConnectionManager();
+    // NOTE: iOS CoreBluetooth state restoration is intentionally NOT enabled
+    // here. FlutterBluePlus.setOptions(restoreState: true) creates the
+    // CBCentralManager, which surfaces the iOS Bluetooth / "find devices on
+    // your local network" prompt. Calling it during startup made that prompt
+    // appear *before* the permission screen. It is deferred to
+    // _PermissionGate._startDeferredReconnect(), which runs after the gate and
+    // still before the first BLE connect.
     print('✅ BLE manager initialized');
 
     // Initialize BLE Service
@@ -321,8 +332,8 @@ void _handleNotificationTap(
       if (contact != null) {
         if (contact.isRepeater) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Direct messages are disabled for repeaters'),
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.directMessagesDisabledForRepeaters),
             ),
           );
           return;
@@ -456,6 +467,14 @@ class TeamFlutterApp extends StatelessWidget {
           return MaterialApp(
             navigatorKey: navigatorKey,
             title: 'TEAM Flutter',
+            locale: _forceLocale.isNotEmpty ? Locale(_forceLocale) : null,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
             theme: ThemeData(
               colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
               appBarTheme: const AppBarTheme(
@@ -489,6 +508,14 @@ class TeamFlutterApp extends StatelessWidget {
               AppThemeMode.nighttime => ThemeMode.dark,
               _ => ThemeMode.system,
             },
+            builder: (context, child) => Listener(
+              onPointerDown: (event) {
+                if (event.buttons & kBackMouseButton != 0) {
+                  navigatorKey.currentState?.maybePop();
+                }
+              },
+              child: child!,
+            ),
             home: const DeepLinkListener(
               child: _PermissionGate(),
             ),
@@ -498,6 +525,7 @@ class TeamFlutterApp extends StatelessWidget {
     );
   }
 }
+
 
 ThemeData _nighttimeTheme() {
   final base = ColorScheme.fromSeed(
@@ -666,7 +694,7 @@ class _PermissionGateState extends State<_PermissionGate>
           '🔐 Permissions check: ${allGranted ? "✅ Granted" : "❌ Not granted"}');
 
       if (allGranted) {
-        _startDeferredReconnect();
+        unawaited(_startDeferredReconnect());
       }
 
       setState(() {
@@ -683,15 +711,27 @@ class _PermissionGateState extends State<_PermissionGate>
   }
 
   void _onPermissionsGranted() {
-    _startDeferredReconnect();
+    unawaited(_startDeferredReconnect());
     setState(() {
       _permissionsGranted = true;
     });
   }
 
-  /// Start auto-reconnect that was deferred until after permissions.
-  void _startDeferredReconnect() {
+  /// Enable deferred iOS BLE options and start auto-reconnect, both of which
+  /// were deferred until after the permission gate.
+  Future<void> _startDeferredReconnect() async {
     if (Platform.isAndroid) return; // Android native service handles reconnect
+
+    // iOS: enable CoreBluetooth state restoration now (deferred from startup so
+    // the OS Bluetooth / Local Network prompt doesn't appear before the
+    // permission screen). This creates the CBCentralManager, so it must run
+    // before the first BLE connect below — but only now that we're past the
+    // gate. Applied regardless of whether an auto-reconnect follows, so a later
+    // manual connect is also covered.
+    final bleManager = context.read<BleConnectionManager>();
+    await bleManager.enableIosStateRestoration();
+    if (!mounted) return;
+
     final settings = context.read<SettingsService>();
     if (!settings.settings.serviceWasRunning ||
         settings.settings.manualDisconnect) {

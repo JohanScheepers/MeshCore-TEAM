@@ -228,7 +228,10 @@ class MeshConnectionService extends ChangeNotifier {
     if (!_isWakeLockEnabled) return;
 
     try {
-      await WakelockPlus.disable();
+      // wakelock_plus clears FLAG_KEEP_SCREEN_ON on disable; skip if our setting owns it
+      if (!_settings.settings.keepScreenOnLock) {
+        await WakelockPlus.disable();
+      }
       _isWakeLockEnabled = false;
       debugPrint('[MeshService] 🔄 Wake lock disabled');
     } catch (e) {

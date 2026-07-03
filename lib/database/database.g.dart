@@ -131,6 +131,16 @@ class $ContactsTable extends Contacts
   late final GeneratedColumn<String> companionDeviceKey =
       GeneratedColumn<String>('companion_device_key', aliasedName, true,
           type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _isFavoriteMeta =
+      const VerificationMeta('isFavorite');
+  @override
+  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
+      'is_favorite', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_favorite" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         publicKey,
@@ -149,7 +159,8 @@ class $ContactsTable extends Contacts
         lastTelemetryTimestamp,
         isOutOfRange,
         isAutonomousDevice,
-        companionDeviceKey
+        companionDeviceKey,
+        isFavorite
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -255,6 +266,12 @@ class $ContactsTable extends Contacts
           companionDeviceKey.isAcceptableOrUnknown(
               data['companion_device_key']!, _companionDeviceKeyMeta));
     }
+    if (data.containsKey('is_favorite')) {
+      context.handle(
+          _isFavoriteMeta,
+          isFavorite.isAcceptableOrUnknown(
+              data['is_favorite']!, _isFavoriteMeta));
+    }
     return context;
   }
 
@@ -301,6 +318,8 @@ class $ContactsTable extends Contacts
           DriftSqlType.bool, data['${effectivePrefix}is_autonomous_device'])!,
       companionDeviceKey: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}companion_device_key']),
+      isFavorite: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_favorite'])!,
     );
   }
 
@@ -328,6 +347,7 @@ class ContactData extends DataClass implements Insertable<ContactData> {
   final bool isOutOfRange;
   final bool isAutonomousDevice;
   final String? companionDeviceKey;
+  final bool isFavorite;
   const ContactData(
       {required this.publicKey,
       required this.hash,
@@ -345,7 +365,8 @@ class ContactData extends DataClass implements Insertable<ContactData> {
       this.lastTelemetryTimestamp,
       required this.isOutOfRange,
       required this.isAutonomousDevice,
-      this.companionDeviceKey});
+      this.companionDeviceKey,
+      required this.isFavorite});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -384,6 +405,7 @@ class ContactData extends DataClass implements Insertable<ContactData> {
     if (!nullToAbsent || companionDeviceKey != null) {
       map['companion_device_key'] = Variable<String>(companionDeviceKey);
     }
+    map['is_favorite'] = Variable<bool>(isFavorite);
     return map;
   }
 
@@ -421,6 +443,7 @@ class ContactData extends DataClass implements Insertable<ContactData> {
       companionDeviceKey: companionDeviceKey == null && nullToAbsent
           ? const Value.absent()
           : Value(companionDeviceKey),
+      isFavorite: Value(isFavorite),
     );
   }
 
@@ -450,6 +473,7 @@ class ContactData extends DataClass implements Insertable<ContactData> {
       isAutonomousDevice: serializer.fromJson<bool>(json['isAutonomousDevice']),
       companionDeviceKey:
           serializer.fromJson<String?>(json['companionDeviceKey']),
+      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
     );
   }
   @override
@@ -475,6 +499,7 @@ class ContactData extends DataClass implements Insertable<ContactData> {
       'isOutOfRange': serializer.toJson<bool>(isOutOfRange),
       'isAutonomousDevice': serializer.toJson<bool>(isAutonomousDevice),
       'companionDeviceKey': serializer.toJson<String?>(companionDeviceKey),
+      'isFavorite': serializer.toJson<bool>(isFavorite),
     };
   }
 
@@ -495,7 +520,8 @@ class ContactData extends DataClass implements Insertable<ContactData> {
           Value<int?> lastTelemetryTimestamp = const Value.absent(),
           bool? isOutOfRange,
           bool? isAutonomousDevice,
-          Value<String?> companionDeviceKey = const Value.absent()}) =>
+          Value<String?> companionDeviceKey = const Value.absent(),
+          bool? isFavorite}) =>
       ContactData(
         publicKey: publicKey ?? this.publicKey,
         hash: hash ?? this.hash,
@@ -524,6 +550,7 @@ class ContactData extends DataClass implements Insertable<ContactData> {
         companionDeviceKey: companionDeviceKey.present
             ? companionDeviceKey.value
             : this.companionDeviceKey,
+        isFavorite: isFavorite ?? this.isFavorite,
       );
   ContactData copyWithCompanion(ContactsCompanion data) {
     return ContactData(
@@ -561,6 +588,8 @@ class ContactData extends DataClass implements Insertable<ContactData> {
       companionDeviceKey: data.companionDeviceKey.present
           ? data.companionDeviceKey.value
           : this.companionDeviceKey,
+      isFavorite:
+          data.isFavorite.present ? data.isFavorite.value : this.isFavorite,
     );
   }
 
@@ -583,7 +612,8 @@ class ContactData extends DataClass implements Insertable<ContactData> {
           ..write('lastTelemetryTimestamp: $lastTelemetryTimestamp, ')
           ..write('isOutOfRange: $isOutOfRange, ')
           ..write('isAutonomousDevice: $isAutonomousDevice, ')
-          ..write('companionDeviceKey: $companionDeviceKey')
+          ..write('companionDeviceKey: $companionDeviceKey, ')
+          ..write('isFavorite: $isFavorite')
           ..write(')'))
         .toString();
   }
@@ -606,7 +636,8 @@ class ContactData extends DataClass implements Insertable<ContactData> {
       lastTelemetryTimestamp,
       isOutOfRange,
       isAutonomousDevice,
-      companionDeviceKey);
+      companionDeviceKey,
+      isFavorite);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -627,7 +658,8 @@ class ContactData extends DataClass implements Insertable<ContactData> {
           other.lastTelemetryTimestamp == this.lastTelemetryTimestamp &&
           other.isOutOfRange == this.isOutOfRange &&
           other.isAutonomousDevice == this.isAutonomousDevice &&
-          other.companionDeviceKey == this.companionDeviceKey);
+          other.companionDeviceKey == this.companionDeviceKey &&
+          other.isFavorite == this.isFavorite);
 }
 
 class ContactsCompanion extends UpdateCompanion<ContactData> {
@@ -648,6 +680,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
   final Value<bool> isOutOfRange;
   final Value<bool> isAutonomousDevice;
   final Value<String?> companionDeviceKey;
+  final Value<bool> isFavorite;
   final Value<int> rowid;
   const ContactsCompanion({
     this.publicKey = const Value.absent(),
@@ -667,6 +700,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
     this.isOutOfRange = const Value.absent(),
     this.isAutonomousDevice = const Value.absent(),
     this.companionDeviceKey = const Value.absent(),
+    this.isFavorite = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ContactsCompanion.insert({
@@ -687,6 +721,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
     this.isOutOfRange = const Value.absent(),
     this.isAutonomousDevice = const Value.absent(),
     this.companionDeviceKey = const Value.absent(),
+    this.isFavorite = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : publicKey = Value(publicKey),
         hash = Value(hash),
@@ -709,6 +744,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
     Expression<bool>? isOutOfRange,
     Expression<bool>? isAutonomousDevice,
     Expression<String>? companionDeviceKey,
+    Expression<bool>? isFavorite,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -735,6 +771,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
         'is_autonomous_device': isAutonomousDevice,
       if (companionDeviceKey != null)
         'companion_device_key': companionDeviceKey,
+      if (isFavorite != null) 'is_favorite': isFavorite,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -757,6 +794,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
       Value<bool>? isOutOfRange,
       Value<bool>? isAutonomousDevice,
       Value<String?>? companionDeviceKey,
+      Value<bool>? isFavorite,
       Value<int>? rowid}) {
     return ContactsCompanion(
       publicKey: publicKey ?? this.publicKey,
@@ -780,6 +818,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
       isOutOfRange: isOutOfRange ?? this.isOutOfRange,
       isAutonomousDevice: isAutonomousDevice ?? this.isAutonomousDevice,
       companionDeviceKey: companionDeviceKey ?? this.companionDeviceKey,
+      isFavorite: isFavorite ?? this.isFavorite,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -842,6 +881,9 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
     if (companionDeviceKey.present) {
       map['companion_device_key'] = Variable<String>(companionDeviceKey.value);
     }
+    if (isFavorite.present) {
+      map['is_favorite'] = Variable<bool>(isFavorite.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -868,6 +910,7 @@ class ContactsCompanion extends UpdateCompanion<ContactData> {
           ..write('isOutOfRange: $isOutOfRange, ')
           ..write('isAutonomousDevice: $isAutonomousDevice, ')
           ..write('companionDeviceKey: $companionDeviceKey, ')
+          ..write('isFavorite: $isFavorite, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -927,15 +970,23 @@ class $ChannelsTable extends Channels
   late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
       'created_at', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _muteNotificationsMeta =
-      const VerificationMeta('muteNotifications');
+  static const VerificationMeta _notificationModeMeta =
+      const VerificationMeta('notificationMode');
   @override
-  late final GeneratedColumn<bool> muteNotifications = GeneratedColumn<bool>(
-      'mute_notifications', aliasedName, false,
+  late final GeneratedColumn<String> notificationMode = GeneratedColumn<String>(
+      'notification_mode', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('normal'));
+  static const VerificationMeta _isFavoriteMeta =
+      const VerificationMeta('isFavorite');
+  @override
+  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
+      'is_favorite', aliasedName, false,
       type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultConstraints: GeneratedColumn.constraintIsAlways(
-          'CHECK ("mute_notifications" IN (0, 1))'),
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_favorite" IN (0, 1))'),
       defaultValue: const Constant(false));
   static const VerificationMeta _companionDeviceKeyMeta =
       const VerificationMeta('companionDeviceKey');
@@ -952,7 +1003,8 @@ class $ChannelsTable extends Channels
         shareLocation,
         channelIndex,
         createdAt,
-        muteNotifications,
+        notificationMode,
+        isFavorite,
         companionDeviceKey
       ];
   @override
@@ -1007,11 +1059,17 @@ class $ChannelsTable extends Channels
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
-    if (data.containsKey('mute_notifications')) {
+    if (data.containsKey('notification_mode')) {
       context.handle(
-          _muteNotificationsMeta,
-          muteNotifications.isAcceptableOrUnknown(
-              data['mute_notifications']!, _muteNotificationsMeta));
+          _notificationModeMeta,
+          notificationMode.isAcceptableOrUnknown(
+              data['notification_mode']!, _notificationModeMeta));
+    }
+    if (data.containsKey('is_favorite')) {
+      context.handle(
+          _isFavoriteMeta,
+          isFavorite.isAcceptableOrUnknown(
+              data['is_favorite']!, _isFavoriteMeta));
     }
     if (data.containsKey('companion_device_key')) {
       context.handle(
@@ -1042,8 +1100,10 @@ class $ChannelsTable extends Channels
           .read(DriftSqlType.int, data['${effectivePrefix}channel_index'])!,
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
-      muteNotifications: attachedDatabase.typeMapping.read(
-          DriftSqlType.bool, data['${effectivePrefix}mute_notifications'])!,
+      notificationMode: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}notification_mode'])!,
+      isFavorite: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_favorite'])!,
       companionDeviceKey: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}companion_device_key']),
     );
@@ -1063,7 +1123,8 @@ class ChannelData extends DataClass implements Insertable<ChannelData> {
   final bool shareLocation;
   final int channelIndex;
   final int createdAt;
-  final bool muteNotifications;
+  final String notificationMode;
+  final bool isFavorite;
   final String? companionDeviceKey;
   const ChannelData(
       {required this.hash,
@@ -1073,7 +1134,8 @@ class ChannelData extends DataClass implements Insertable<ChannelData> {
       required this.shareLocation,
       required this.channelIndex,
       required this.createdAt,
-      required this.muteNotifications,
+      required this.notificationMode,
+      required this.isFavorite,
       this.companionDeviceKey});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1085,7 +1147,8 @@ class ChannelData extends DataClass implements Insertable<ChannelData> {
     map['share_location'] = Variable<bool>(shareLocation);
     map['channel_index'] = Variable<int>(channelIndex);
     map['created_at'] = Variable<int>(createdAt);
-    map['mute_notifications'] = Variable<bool>(muteNotifications);
+    map['notification_mode'] = Variable<String>(notificationMode);
+    map['is_favorite'] = Variable<bool>(isFavorite);
     if (!nullToAbsent || companionDeviceKey != null) {
       map['companion_device_key'] = Variable<String>(companionDeviceKey);
     }
@@ -1101,7 +1164,8 @@ class ChannelData extends DataClass implements Insertable<ChannelData> {
       shareLocation: Value(shareLocation),
       channelIndex: Value(channelIndex),
       createdAt: Value(createdAt),
-      muteNotifications: Value(muteNotifications),
+      notificationMode: Value(notificationMode),
+      isFavorite: Value(isFavorite),
       companionDeviceKey: companionDeviceKey == null && nullToAbsent
           ? const Value.absent()
           : Value(companionDeviceKey),
@@ -1119,7 +1183,8 @@ class ChannelData extends DataClass implements Insertable<ChannelData> {
       shareLocation: serializer.fromJson<bool>(json['shareLocation']),
       channelIndex: serializer.fromJson<int>(json['channelIndex']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
-      muteNotifications: serializer.fromJson<bool>(json['muteNotifications']),
+      notificationMode: serializer.fromJson<String>(json['notificationMode']),
+      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       companionDeviceKey:
           serializer.fromJson<String?>(json['companionDeviceKey']),
     );
@@ -1135,7 +1200,8 @@ class ChannelData extends DataClass implements Insertable<ChannelData> {
       'shareLocation': serializer.toJson<bool>(shareLocation),
       'channelIndex': serializer.toJson<int>(channelIndex),
       'createdAt': serializer.toJson<int>(createdAt),
-      'muteNotifications': serializer.toJson<bool>(muteNotifications),
+      'notificationMode': serializer.toJson<String>(notificationMode),
+      'isFavorite': serializer.toJson<bool>(isFavorite),
       'companionDeviceKey': serializer.toJson<String?>(companionDeviceKey),
     };
   }
@@ -1148,7 +1214,8 @@ class ChannelData extends DataClass implements Insertable<ChannelData> {
           bool? shareLocation,
           int? channelIndex,
           int? createdAt,
-          bool? muteNotifications,
+          String? notificationMode,
+          bool? isFavorite,
           Value<String?> companionDeviceKey = const Value.absent()}) =>
       ChannelData(
         hash: hash ?? this.hash,
@@ -1158,7 +1225,8 @@ class ChannelData extends DataClass implements Insertable<ChannelData> {
         shareLocation: shareLocation ?? this.shareLocation,
         channelIndex: channelIndex ?? this.channelIndex,
         createdAt: createdAt ?? this.createdAt,
-        muteNotifications: muteNotifications ?? this.muteNotifications,
+        notificationMode: notificationMode ?? this.notificationMode,
+        isFavorite: isFavorite ?? this.isFavorite,
         companionDeviceKey: companionDeviceKey.present
             ? companionDeviceKey.value
             : this.companionDeviceKey,
@@ -1176,9 +1244,11 @@ class ChannelData extends DataClass implements Insertable<ChannelData> {
           ? data.channelIndex.value
           : this.channelIndex,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      muteNotifications: data.muteNotifications.present
-          ? data.muteNotifications.value
-          : this.muteNotifications,
+      notificationMode: data.notificationMode.present
+          ? data.notificationMode.value
+          : this.notificationMode,
+      isFavorite:
+          data.isFavorite.present ? data.isFavorite.value : this.isFavorite,
       companionDeviceKey: data.companionDeviceKey.present
           ? data.companionDeviceKey.value
           : this.companionDeviceKey,
@@ -1195,7 +1265,8 @@ class ChannelData extends DataClass implements Insertable<ChannelData> {
           ..write('shareLocation: $shareLocation, ')
           ..write('channelIndex: $channelIndex, ')
           ..write('createdAt: $createdAt, ')
-          ..write('muteNotifications: $muteNotifications, ')
+          ..write('notificationMode: $notificationMode, ')
+          ..write('isFavorite: $isFavorite, ')
           ..write('companionDeviceKey: $companionDeviceKey')
           ..write(')'))
         .toString();
@@ -1210,7 +1281,8 @@ class ChannelData extends DataClass implements Insertable<ChannelData> {
       shareLocation,
       channelIndex,
       createdAt,
-      muteNotifications,
+      notificationMode,
+      isFavorite,
       companionDeviceKey);
   @override
   bool operator ==(Object other) =>
@@ -1223,7 +1295,8 @@ class ChannelData extends DataClass implements Insertable<ChannelData> {
           other.shareLocation == this.shareLocation &&
           other.channelIndex == this.channelIndex &&
           other.createdAt == this.createdAt &&
-          other.muteNotifications == this.muteNotifications &&
+          other.notificationMode == this.notificationMode &&
+          other.isFavorite == this.isFavorite &&
           other.companionDeviceKey == this.companionDeviceKey);
 }
 
@@ -1235,7 +1308,8 @@ class ChannelsCompanion extends UpdateCompanion<ChannelData> {
   final Value<bool> shareLocation;
   final Value<int> channelIndex;
   final Value<int> createdAt;
-  final Value<bool> muteNotifications;
+  final Value<String> notificationMode;
+  final Value<bool> isFavorite;
   final Value<String?> companionDeviceKey;
   const ChannelsCompanion({
     this.hash = const Value.absent(),
@@ -1245,7 +1319,8 @@ class ChannelsCompanion extends UpdateCompanion<ChannelData> {
     this.shareLocation = const Value.absent(),
     this.channelIndex = const Value.absent(),
     this.createdAt = const Value.absent(),
-    this.muteNotifications = const Value.absent(),
+    this.notificationMode = const Value.absent(),
+    this.isFavorite = const Value.absent(),
     this.companionDeviceKey = const Value.absent(),
   });
   ChannelsCompanion.insert({
@@ -1256,7 +1331,8 @@ class ChannelsCompanion extends UpdateCompanion<ChannelData> {
     this.shareLocation = const Value.absent(),
     required int channelIndex,
     required int createdAt,
-    this.muteNotifications = const Value.absent(),
+    this.notificationMode = const Value.absent(),
+    this.isFavorite = const Value.absent(),
     this.companionDeviceKey = const Value.absent(),
   })  : name = Value(name),
         sharedKey = Value(sharedKey),
@@ -1271,7 +1347,8 @@ class ChannelsCompanion extends UpdateCompanion<ChannelData> {
     Expression<bool>? shareLocation,
     Expression<int>? channelIndex,
     Expression<int>? createdAt,
-    Expression<bool>? muteNotifications,
+    Expression<String>? notificationMode,
+    Expression<bool>? isFavorite,
     Expression<String>? companionDeviceKey,
   }) {
     return RawValuesInsertable({
@@ -1282,7 +1359,8 @@ class ChannelsCompanion extends UpdateCompanion<ChannelData> {
       if (shareLocation != null) 'share_location': shareLocation,
       if (channelIndex != null) 'channel_index': channelIndex,
       if (createdAt != null) 'created_at': createdAt,
-      if (muteNotifications != null) 'mute_notifications': muteNotifications,
+      if (notificationMode != null) 'notification_mode': notificationMode,
+      if (isFavorite != null) 'is_favorite': isFavorite,
       if (companionDeviceKey != null)
         'companion_device_key': companionDeviceKey,
     });
@@ -1296,7 +1374,8 @@ class ChannelsCompanion extends UpdateCompanion<ChannelData> {
       Value<bool>? shareLocation,
       Value<int>? channelIndex,
       Value<int>? createdAt,
-      Value<bool>? muteNotifications,
+      Value<String>? notificationMode,
+      Value<bool>? isFavorite,
       Value<String?>? companionDeviceKey}) {
     return ChannelsCompanion(
       hash: hash ?? this.hash,
@@ -1306,7 +1385,8 @@ class ChannelsCompanion extends UpdateCompanion<ChannelData> {
       shareLocation: shareLocation ?? this.shareLocation,
       channelIndex: channelIndex ?? this.channelIndex,
       createdAt: createdAt ?? this.createdAt,
-      muteNotifications: muteNotifications ?? this.muteNotifications,
+      notificationMode: notificationMode ?? this.notificationMode,
+      isFavorite: isFavorite ?? this.isFavorite,
       companionDeviceKey: companionDeviceKey ?? this.companionDeviceKey,
     );
   }
@@ -1335,8 +1415,11 @@ class ChannelsCompanion extends UpdateCompanion<ChannelData> {
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
-    if (muteNotifications.present) {
-      map['mute_notifications'] = Variable<bool>(muteNotifications.value);
+    if (notificationMode.present) {
+      map['notification_mode'] = Variable<String>(notificationMode.value);
+    }
+    if (isFavorite.present) {
+      map['is_favorite'] = Variable<bool>(isFavorite.value);
     }
     if (companionDeviceKey.present) {
       map['companion_device_key'] = Variable<String>(companionDeviceKey.value);
@@ -1354,7 +1437,8 @@ class ChannelsCompanion extends UpdateCompanion<ChannelData> {
           ..write('shareLocation: $shareLocation, ')
           ..write('channelIndex: $channelIndex, ')
           ..write('createdAt: $createdAt, ')
-          ..write('muteNotifications: $muteNotifications, ')
+          ..write('notificationMode: $notificationMode, ')
+          ..write('isFavorite: $isFavorite, ')
           ..write('companionDeviceKey: $companionDeviceKey')
           ..write(')'))
         .toString();
@@ -5838,6 +5922,7 @@ typedef $$ContactsTableCreateCompanionBuilder = ContactsCompanion Function({
   Value<bool> isOutOfRange,
   Value<bool> isAutonomousDevice,
   Value<String?> companionDeviceKey,
+  Value<bool> isFavorite,
   Value<int> rowid,
 });
 typedef $$ContactsTableUpdateCompanionBuilder = ContactsCompanion Function({
@@ -5858,6 +5943,7 @@ typedef $$ContactsTableUpdateCompanionBuilder = ContactsCompanion Function({
   Value<bool> isOutOfRange,
   Value<bool> isAutonomousDevice,
   Value<String?> companionDeviceKey,
+  Value<bool> isFavorite,
   Value<int> rowid,
 });
 
@@ -5926,6 +6012,9 @@ class $$ContactsTableFilterComposer
   ColumnFilters<String> get companionDeviceKey => $composableBuilder(
       column: $table.companionDeviceKey,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isFavorite => $composableBuilder(
+      column: $table.isFavorite, builder: (column) => ColumnFilters(column));
 }
 
 class $$ContactsTableOrderingComposer
@@ -5995,6 +6084,9 @@ class $$ContactsTableOrderingComposer
   ColumnOrderings<String> get companionDeviceKey => $composableBuilder(
       column: $table.companionDeviceKey,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isFavorite => $composableBuilder(
+      column: $table.isFavorite, builder: (column) => ColumnOrderings(column));
 }
 
 class $$ContactsTableAnnotationComposer
@@ -6056,6 +6148,9 @@ class $$ContactsTableAnnotationComposer
 
   GeneratedColumn<String> get companionDeviceKey => $composableBuilder(
       column: $table.companionDeviceKey, builder: (column) => column);
+
+  GeneratedColumn<bool> get isFavorite => $composableBuilder(
+      column: $table.isFavorite, builder: (column) => column);
 }
 
 class $$ContactsTableTableManager extends RootTableManager<
@@ -6098,6 +6193,7 @@ class $$ContactsTableTableManager extends RootTableManager<
             Value<bool> isOutOfRange = const Value.absent(),
             Value<bool> isAutonomousDevice = const Value.absent(),
             Value<String?> companionDeviceKey = const Value.absent(),
+            Value<bool> isFavorite = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ContactsCompanion(
@@ -6118,6 +6214,7 @@ class $$ContactsTableTableManager extends RootTableManager<
             isOutOfRange: isOutOfRange,
             isAutonomousDevice: isAutonomousDevice,
             companionDeviceKey: companionDeviceKey,
+            isFavorite: isFavorite,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -6138,6 +6235,7 @@ class $$ContactsTableTableManager extends RootTableManager<
             Value<bool> isOutOfRange = const Value.absent(),
             Value<bool> isAutonomousDevice = const Value.absent(),
             Value<String?> companionDeviceKey = const Value.absent(),
+            Value<bool> isFavorite = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ContactsCompanion.insert(
@@ -6158,6 +6256,7 @@ class $$ContactsTableTableManager extends RootTableManager<
             isOutOfRange: isOutOfRange,
             isAutonomousDevice: isAutonomousDevice,
             companionDeviceKey: companionDeviceKey,
+            isFavorite: isFavorite,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -6187,7 +6286,8 @@ typedef $$ChannelsTableCreateCompanionBuilder = ChannelsCompanion Function({
   Value<bool> shareLocation,
   required int channelIndex,
   required int createdAt,
-  Value<bool> muteNotifications,
+  Value<String> notificationMode,
+  Value<bool> isFavorite,
   Value<String?> companionDeviceKey,
 });
 typedef $$ChannelsTableUpdateCompanionBuilder = ChannelsCompanion Function({
@@ -6198,7 +6298,8 @@ typedef $$ChannelsTableUpdateCompanionBuilder = ChannelsCompanion Function({
   Value<bool> shareLocation,
   Value<int> channelIndex,
   Value<int> createdAt,
-  Value<bool> muteNotifications,
+  Value<String> notificationMode,
+  Value<bool> isFavorite,
   Value<String?> companionDeviceKey,
 });
 
@@ -6232,9 +6333,12 @@ class $$ChannelsTableFilterComposer
   ColumnFilters<int> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<bool> get muteNotifications => $composableBuilder(
-      column: $table.muteNotifications,
+  ColumnFilters<String> get notificationMode => $composableBuilder(
+      column: $table.notificationMode,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isFavorite => $composableBuilder(
+      column: $table.isFavorite, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get companionDeviceKey => $composableBuilder(
       column: $table.companionDeviceKey,
@@ -6273,9 +6377,12 @@ class $$ChannelsTableOrderingComposer
   ColumnOrderings<int> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<bool> get muteNotifications => $composableBuilder(
-      column: $table.muteNotifications,
+  ColumnOrderings<String> get notificationMode => $composableBuilder(
+      column: $table.notificationMode,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isFavorite => $composableBuilder(
+      column: $table.isFavorite, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get companionDeviceKey => $composableBuilder(
       column: $table.companionDeviceKey,
@@ -6312,8 +6419,11 @@ class $$ChannelsTableAnnotationComposer
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
-  GeneratedColumn<bool> get muteNotifications => $composableBuilder(
-      column: $table.muteNotifications, builder: (column) => column);
+  GeneratedColumn<String> get notificationMode => $composableBuilder(
+      column: $table.notificationMode, builder: (column) => column);
+
+  GeneratedColumn<bool> get isFavorite => $composableBuilder(
+      column: $table.isFavorite, builder: (column) => column);
 
   GeneratedColumn<String> get companionDeviceKey => $composableBuilder(
       column: $table.companionDeviceKey, builder: (column) => column);
@@ -6349,7 +6459,8 @@ class $$ChannelsTableTableManager extends RootTableManager<
             Value<bool> shareLocation = const Value.absent(),
             Value<int> channelIndex = const Value.absent(),
             Value<int> createdAt = const Value.absent(),
-            Value<bool> muteNotifications = const Value.absent(),
+            Value<String> notificationMode = const Value.absent(),
+            Value<bool> isFavorite = const Value.absent(),
             Value<String?> companionDeviceKey = const Value.absent(),
           }) =>
               ChannelsCompanion(
@@ -6360,7 +6471,8 @@ class $$ChannelsTableTableManager extends RootTableManager<
             shareLocation: shareLocation,
             channelIndex: channelIndex,
             createdAt: createdAt,
-            muteNotifications: muteNotifications,
+            notificationMode: notificationMode,
+            isFavorite: isFavorite,
             companionDeviceKey: companionDeviceKey,
           ),
           createCompanionCallback: ({
@@ -6371,7 +6483,8 @@ class $$ChannelsTableTableManager extends RootTableManager<
             Value<bool> shareLocation = const Value.absent(),
             required int channelIndex,
             required int createdAt,
-            Value<bool> muteNotifications = const Value.absent(),
+            Value<String> notificationMode = const Value.absent(),
+            Value<bool> isFavorite = const Value.absent(),
             Value<String?> companionDeviceKey = const Value.absent(),
           }) =>
               ChannelsCompanion.insert(
@@ -6382,7 +6495,8 @@ class $$ChannelsTableTableManager extends RootTableManager<
             shareLocation: shareLocation,
             channelIndex: channelIndex,
             createdAt: createdAt,
-            muteNotifications: muteNotifications,
+            notificationMode: notificationMode,
+            isFavorite: isFavorite,
             companionDeviceKey: companionDeviceKey,
           ),
           withReferenceMapper: (p0) => p0

@@ -15,7 +15,8 @@ class Channel {
   final bool shareLocation;
   final int channelIndex;
   final int createdAt;
-  final bool muteNotifications;
+  final String notificationMode;
+  final bool isFavorite;
   final String? companionDeviceKey;
 
   Channel({
@@ -26,7 +27,8 @@ class Channel {
     required this.shareLocation,
     required this.channelIndex,
     required this.createdAt,
-    required this.muteNotifications,
+    required this.notificationMode,
+    required this.isFavorite,
     this.companionDeviceKey,
   });
 
@@ -40,7 +42,8 @@ class Channel {
       shareLocation: data.shareLocation,
       channelIndex: data.channelIndex,
       createdAt: data.createdAt,
-      muteNotifications: data.muteNotifications,
+      notificationMode: data.notificationMode,
+      isFavorite: data.isFavorite,
       companionDeviceKey: data.companionDeviceKey,
     );
   }
@@ -55,7 +58,8 @@ class Channel {
       channelIndex: channelIndex,
       createdAt: createdAt,
       shareLocation: Value(shareLocation),
-      muteNotifications: Value(muteNotifications),
+      notificationMode: Value(notificationMode),
+      isFavorite: Value(isFavorite),
       companionDeviceKey: companionDeviceKey != null
           ? Value(companionDeviceKey)
           : const Value.absent(),
@@ -89,7 +93,8 @@ class Channel {
     bool? shareLocation,
     int? channelIndex,
     int? createdAt,
-    bool? muteNotifications,
+    String? notificationMode,
+    bool? isFavorite,
     String? companionDeviceKey,
   }) {
     return Channel(
@@ -100,7 +105,8 @@ class Channel {
       shareLocation: shareLocation ?? this.shareLocation,
       channelIndex: channelIndex ?? this.channelIndex,
       createdAt: createdAt ?? this.createdAt,
-      muteNotifications: muteNotifications ?? this.muteNotifications,
+      notificationMode: notificationMode ?? this.notificationMode,
+      isFavorite: isFavorite ?? this.isFavorite,
       companionDeviceKey: companionDeviceKey ?? this.companionDeviceKey,
     );
   }

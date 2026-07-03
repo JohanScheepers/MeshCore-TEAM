@@ -179,6 +179,9 @@ class MessageRepository {
   /// - App responds with SYNC_NEXT_MESSAGE to retrieve each message
   /// - Continues until RESP_NO_MORE_MESSAGES received
   /// - Direct messages (code 16) are also pushed directly
+  void beginNotificationSync() => _notificationService.beginSync();
+  Future<void> endNotificationSync() => _notificationService.endSync();
+
   void startPushListener() {
     if (_isListeningForPushes) {
       debugPrint('[MessageSync] Already listening for push notifications');
@@ -226,22 +229,43 @@ class MessageRepository {
 
             final companionKey =
                 _settingsService.settings.currentCompanionPublicKey;
-            final countBefore = (companionKey == null || companionKey.isEmpty)
-                ? (await _contactsDao.getAllContacts()).length
-                : (await _contactsDao.getContactsByCompanion(companionKey))
-                    .length;
+            final since = (companionKey != null && companionKey.isNotEmpty)
+                ? _settingsService.getContactLastmod(companionKey)
+                : 0;
 
-            final result = await _contactRepository.syncContactsComplete();
+            final countBefore = (companionKey == null || companionKey.isEmpty)
+                ? await _contactsDao.getContactCount()
+                : await _contactsDao.getContactCountByCompanion(companionKey);
+
+            var result =
+                await _contactRepository.syncContactsComplete(since: since);
 
             if (!result.success) {
               debugPrint('[🔍DISC] ❌ Contact sync failed or timed out');
               return;
             }
 
+            // If we did an incremental sync and got nothing back, the firmware
+            // may have the contact but outside the lastmod window. Retry full.
+            if (since > 0 && result.mostRecentLastmod == 0) {
+              debugPrint('[🔍DISC] ⚠️ Incremental sync returned nothing — retrying full sync');
+              result = await _contactRepository.syncContactsComplete(since: 0);
+              if (!result.success) {
+                debugPrint('[🔍DISC] ❌ Full sync retry failed');
+                return;
+              }
+            }
+
+            if (result.mostRecentLastmod > 0 &&
+                companionKey != null &&
+                companionKey.isNotEmpty) {
+              await _settingsService.setContactLastmod(
+                  companionKey, result.mostRecentLastmod);
+            }
+
             final countAfter = (companionKey == null || companionKey.isEmpty)
-                ? (await _contactsDao.getAllContacts()).length
-                : (await _contactsDao.getContactsByCompanion(companionKey))
-                    .length;
+                ? await _contactsDao.getContactCount()
+                : await _contactsDao.getContactCountByCompanion(companionKey);
 
             if (countAfter > countBefore) {
               debugPrint(
@@ -264,7 +288,24 @@ class MessageRepository {
         unawaited(() async {
           try {
             await Future<void>.delayed(const Duration(milliseconds: 500));
-            await _contactRepository.syncContactsComplete();
+            final companionKey =
+                _settingsService.settings.currentCompanionPublicKey;
+            final since = (companionKey != null && companionKey.isNotEmpty)
+                ? _settingsService.getContactLastmod(companionKey)
+                : 0;
+            var result =
+                await _contactRepository.syncContactsComplete(since: since);
+            if (result.success && since > 0 && result.mostRecentLastmod == 0) {
+              debugPrint('[🔍DISC] ⚠️ Incremental sync returned nothing — retrying full sync');
+              result = await _contactRepository.syncContactsComplete(since: 0);
+            }
+            if (result.success &&
+                result.mostRecentLastmod > 0 &&
+                companionKey != null &&
+                companionKey.isNotEmpty) {
+              await _settingsService.setContactLastmod(
+                  companionKey, result.mostRecentLastmod);
+            }
           } catch (e) {
             debugPrint('[🔍DISC] ⚠️ New advert contact sync failed: $e');
           }
@@ -363,27 +404,30 @@ class MessageRepository {
     debugPrint('[MessageSync] 🔄 Syncing messages from firmware...');
 
     int messageCount = 0;
-    bool hasMoreMessages = true;
 
-    while (hasMoreMessages) {
-      // Send SYNC_NEXT_MESSAGE
-      final cmd = BleCommands.buildSyncNextMessage();
-      final success = await _bleManager.sendFrame(cmd);
+    while (true) {
+      final result = await _requestNextMessage(timeoutMs: 2000);
 
-      if (!success) {
+      if (result.sendFailed) {
         debugPrint('[MessageSync] ❌ Failed to send SYNC_NEXT_MESSAGE');
         break;
       }
 
-      // Wait for response (timeout 2 seconds)
-      final response = await _waitForMessageResponse(timeoutMs: 2000);
-
-      if (response == null) {
-        // Either timeout or RESP_NO_MORE_MESSAGES (parser returns null for "no more").
-        debugPrint('[MessageSync] ✅ No more messages (or timeout)');
+      if (result.timedOut) {
+        // No frame arrived within the timeout — the firmware never answered
+        // the request (dropped write, firmware busy, or a lost notification),
+        // as opposed to an explicit "no more messages" reply.
+        debugPrint('[MessageSync] ⏱️ TIMEOUT waiting for SYNC_NEXT_MESSAGE '
+            'response (no frame received)');
         break;
       }
 
+      if (result.noMore) {
+        debugPrint('[MessageSync] ✅ No more messages (RESP_NO_MORE_MESSAGES)');
+        break;
+      }
+
+      final response = result.response;
       if (response is ContactMessageReceivedResponse) {
         _handleContactMessage(response);
         messageCount++;
@@ -391,9 +435,9 @@ class MessageRepository {
         _handleChannelMessage(response);
         messageCount++;
       } else {
-        // RESP_NO_MORE_MESSAGES or unknown response
-        debugPrint('[MessageSync] ✅ No more messages');
-        hasMoreMessages = false;
+        debugPrint('[MessageSync] ⚠️ Unexpected response '
+            '${response?.runtimeType}; stopping sync');
+        break;
       }
 
       // Small delay between requests
@@ -404,6 +448,81 @@ class MessageRepository {
         '[MessageSync] ✅ Message sync complete: $messageCount messages retrieved');
 
     return messageCount;
+  }
+
+  /// Send SYNC_NEXT_MESSAGE and wait for the firmware's reply.
+  ///
+  /// The subscription to [BleConnectionManager.receivedFrames] is attached
+  /// **before** the command is sent. `receivedFrames` is a broadcast stream
+  /// and does not buffer, so a listener attached *after* the write (the old
+  /// behaviour) could miss a fast reply on iOS — the frame would be delivered
+  /// to zero listeners and dropped, and the sync would then time out with
+  /// "0 messages" even though a message was waiting.
+  Future<
+      ({
+        BleResponse? response,
+        bool noMore,
+        bool timedOut,
+        bool sendFailed,
+      })> _requestNextMessage({required int timeoutMs}) async {
+    final completer = Completer<
+        ({
+          BleResponse? response,
+          bool noMore,
+          bool timedOut,
+          bool sendFailed,
+        })>();
+
+    StreamSubscription<Uint8List>? sub;
+    Timer? timeoutTimer;
+
+    void finish(
+        {BleResponse? response,
+        bool noMore = false,
+        bool timedOut = false,
+        bool sendFailed = false}) {
+      if (completer.isCompleted) return;
+      timeoutTimer?.cancel();
+      sub?.cancel();
+      completer.complete((
+        response: response,
+        noMore: noMore,
+        timedOut: timedOut,
+        sendFailed: sendFailed,
+      ));
+    }
+
+    // Subscribe first so a fast reply cannot be missed.
+    sub = _bleManager.receivedFrames.listen((frame) {
+      if (frame.isEmpty) return;
+      final responseCode = frame[0];
+
+      if (responseCode == BleConstants.respContactMsgRecvV3 ||
+          responseCode == BleConstants.respChannelMsgRecvV3) {
+        finish(response: BleResponseParser.parse(frame));
+      } else if (responseCode == BleConstants.respNoMoreMessages) {
+        finish(noMore: true);
+      }
+    });
+
+    // Now send the request. Use write-with-response so iOS CoreBluetooth can't
+    // silently drop the command via write-without-response flow control — that
+    // was causing the firmware to never receive SYNC_NEXT_MESSAGE and never
+    // reply, surfacing as a timeout with no frame received.
+    final success = await _bleManager.sendFrame(
+      BleCommands.buildSyncNextMessage(),
+      preferWithResponse: true,
+    );
+    if (!success) {
+      finish(sendFailed: true);
+      return completer.future;
+    }
+
+    timeoutTimer = Timer(Duration(milliseconds: timeoutMs), () {
+      finish(timedOut: true);
+    });
+
+    return completer.future;
   }
 
   /// Wait for message response
@@ -434,56 +553,6 @@ class MessageRepository {
         completer.complete(null);
         sub?.cancel();
       }
-    });
-
-    return completer.future;
-  }
-
-  Future<BleResponse?> _waitForMessageResponse({required int timeoutMs}) async {
-    final completer = Completer<BleResponse?>();
-
-    StreamSubscription<Uint8List>? sub;
-    sub = _bleManager.receivedFrames.listen((frame) {
-      if (frame.isEmpty) return;
-
-      final responseCode = frame[0];
-
-      // Contact message (DM)
-      if (responseCode == BleConstants.respContactMsgRecvV3) {
-        final response = BleResponseParser.parse(frame);
-        if (!completer.isCompleted) {
-          completer.complete(response);
-        }
-        sub?.cancel();
-        return;
-      }
-
-      // Channel message
-      if (responseCode == BleConstants.respChannelMsgRecvV3) {
-        final response = BleResponseParser.parse(frame);
-        if (!completer.isCompleted) {
-          completer.complete(response);
-        }
-        sub?.cancel();
-        return;
-      }
-
-      // No more messages
-      if (responseCode == BleConstants.respNoMoreMessages) {
-        if (!completer.isCompleted) {
-          completer.complete(null);
-        }
-        sub?.cancel();
-        return;
-      }
-    });
-
-    // Timeout
-    Timer(Duration(milliseconds: timeoutMs), () {
-      if (!completer.isCompleted) {
-        completer.complete(null);
-      }
-      sub?.cancel();
     });
 
     return completer.future;
@@ -762,8 +831,10 @@ class MessageRepository {
         debugPrint(
             '[MessageSync] 💾 Saved channel message from $senderName (channel ${channel.name}, idx=${response.channelIndex})');
 
-        // Show notification for received channel messages (not sent by me)
-        if (!response.isFromSelf && insertedMessage != null) {
+        // Show notification for received channel messages (not sent by me, not silenced/muted)
+        if (!response.isFromSelf &&
+            insertedMessage != null &&
+            channel.notificationMode == 'normal') {
           await _notificationService.showMessageNotification(
             message: insertedMessage,
             channelName: channel.name,

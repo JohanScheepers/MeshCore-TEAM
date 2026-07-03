@@ -37,6 +37,8 @@ class Contacts extends Table {
       false))(); // Remote device is in autonomous mode (no phone attached)
   TextColumn get companionDeviceKey => text()
       .nullable()(); // Which companion this contact belongs to (hex string)
+  BoolColumn get isFavorite =>
+      boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {publicKey};
@@ -55,7 +57,9 @@ class Channels extends Table {
   IntColumn get channelIndex =>
       integer()(); // Firmware channel slot (0=public, 1-3=private)
   IntColumn get createdAt => integer()(); // Unix timestamp
-  BoolColumn get muteNotifications =>
+  TextColumn get notificationMode =>
+      text().withDefault(const Constant('normal'))();
+  BoolColumn get isFavorite =>
       boolean().withDefault(const Constant(false))();
   TextColumn get companionDeviceKey =>
       text().nullable()(); // Which companion this channel belongs to

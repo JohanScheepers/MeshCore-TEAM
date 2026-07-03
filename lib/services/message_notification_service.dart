@@ -27,6 +27,11 @@ class MessageNotificationService {
 
   int _notificationIdCounter = 2000;
 
+  static const int _syncBatchThreshold = 5;
+  bool _isSyncing = false;
+  final List<({MessageData message, String channelName, bool isDirect})>
+      _syncQueue = [];
+
   MessageNotificationService({
     required FlutterLocalNotificationsPlugin notifications,
     required SettingsService settings,
@@ -94,6 +99,31 @@ class MessageNotificationService {
     debugPrint('✅ Message notification service initialized');
   }
 
+  void beginSync() {
+    _isSyncing = true;
+    _syncQueue.clear();
+  }
+
+  Future<void> endSync() async {
+    _isSyncing = false;
+    final queued = List.of(_syncQueue);
+    _syncQueue.clear();
+
+    if (queued.isEmpty) return;
+
+    if (queued.length < _syncBatchThreshold) {
+      for (final item in queued) {
+        await _showNotificationInternal(
+          message: item.message,
+          channelName: item.channelName,
+          isDirect: item.isDirect,
+        );
+      }
+    } else {
+      await _showSyncSummaryNotification(queued.length);
+    }
+  }
+
   /// Show notification for a new message
   Future<void> showMessageNotification({
     required MessageData message,
@@ -121,6 +151,19 @@ class MessageNotificationService {
     if (shouldSuppress) {
       debugPrint(
           '📬 Suppressing notification (viewing active chat: hash=${message.channelHash})');
+      return;
+    }
+
+    // Accumulate during sync; flush logic is handled by endSync().
+    if (_isSyncing) {
+      _syncQueue.add((message: message, channelName: channelName, isDirect: isDirect));
+      return;
+    }
+
+    // Suppress replayed history arriving outside the sync window (e.g. room server).
+    final ageMs = DateTime.now().millisecondsSinceEpoch - message.timestamp;
+    if (ageMs > const Duration(minutes: 2).inMilliseconds) {
+      debugPrint('📬 Suppressing stale message notification (age ${ageMs}ms)');
       return;
     }
 
@@ -204,6 +247,29 @@ class MessageNotificationService {
       body,
       platformDetails,
       payload: payload.toJson(),
+    );
+  }
+
+  Future<void> _showSyncSummaryNotification(int count) async {
+    const notificationId = 1999;
+    const androidDetails = AndroidNotificationDetails(
+      channelIdMessages,
+      'Channel Messages',
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+    );
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    await _notifications.show(
+      notificationId,
+      'New messages',
+      'You have $count new messages',
+      const NotificationDetails(android: androidDetails, iOS: iosDetails),
     );
   }
 

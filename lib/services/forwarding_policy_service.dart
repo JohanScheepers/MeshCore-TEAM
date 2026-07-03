@@ -128,16 +128,6 @@ class ForwardingPolicyService extends ChangeNotifier {
 
     _topologySub = _messageRepository.topologyStream.listen(_onTopologyEvent);
 
-    // Watch all display states and filter map-visible ones reactively.
-    _displayStatesSub = _database
-        .select(_database.contactDisplayStates)
-        .watch()
-        .listen((states) {
-      _latestDisplayStates = states;
-      _rebuildMapVisibleKeys();
-      if (_shouldRun) unawaited(_applyPolicyIfNeeded(trigger: 'displayStates'));
-    });
-
     unawaited(_resolveAndCacheTrackingChannelIndex());
 
     _companionKeySub =
@@ -303,6 +293,9 @@ class ForwardingPolicyService extends ChangeNotifier {
     _contactsSub?.cancel();
     _contactsSub = null;
     _latestContacts = const [];
+    _displayStatesSub?.cancel();
+    _displayStatesSub = null;
+    _latestDisplayStates = const [];
     _mapVisibleKeys = null;
     _lastPolicySignature = '';
     _lastAppliedMaxHops = null;
@@ -328,6 +321,15 @@ class ForwardingPolicyService extends ChangeNotifier {
       if (_shouldRun) {
         unawaited(_applyPolicyIfNeeded(trigger: 'topology'));
       }
+    });
+
+    _displayStatesSub = (_database.select(_database.contactDisplayStates)
+          ..where((t) => t.companionDeviceKey.equals(companionKey)))
+        .watch()
+        .listen((states) {
+      _latestDisplayStates = states;
+      _rebuildMapVisibleKeys();
+      if (_shouldRun) unawaited(_applyPolicyIfNeeded(trigger: 'displayStates'));
     });
   }
 

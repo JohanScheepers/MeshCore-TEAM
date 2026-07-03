@@ -7,6 +7,7 @@
 
 import 'dart:async';
 import 'package:drift/drift.dart';
+import 'package:rxdart/rxdart.dart';
 import '../database.dart';
 import '../tables.dart';
 import '../../models/unread_models.dart';
@@ -28,6 +29,28 @@ class ContactsDao extends DatabaseAccessor<AppDatabase>
                 OrderingTerm(expression: t.lastSeen, mode: OrderingMode.desc),
           ]))
         .get();
+  }
+
+  Future<int> getContactCount() async {
+    final query = selectOnly(contacts)..addColumns([contacts.hash.count()]);
+    final result = await query.getSingle();
+    return result.read(contacts.hash.count()) ?? 0;
+  }
+
+  Future<int> getContactCountByCompanion(String companionKey) async {
+    final query = selectOnly(contacts)
+      ..addColumns([contacts.hash.count()])
+      ..where(contacts.companionDeviceKey.equals(companionKey));
+    final result = await query.getSingle();
+    return result.read(contacts.hash.count()) ?? 0;
+  }
+
+  Stream<int> watchContactCount() {
+    final query = selectOnly(contacts)..addColumns([contacts.hash.count()]);
+    return query
+        .watchSingle()
+        .map((row) => row.read(contacts.hash.count()) ?? 0)
+        .distinct();
   }
 
   /// Get contacts for a specific companion device
@@ -173,6 +196,13 @@ class ContactsDao extends DatabaseAccessor<AppDatabase>
     return (update(contacts)..where((t) => t.publicKey.equals(publicKey)))
         .write(ContactsCompanion(
       isOutOfRange: Value(isOutOfRange),
+    ));
+  }
+
+  Future<void> setFavorite(Uint8List publicKey, bool isFavorite) {
+    return (update(contacts)..where((t) => t.publicKey.equals(publicKey)))
+        .write(ContactsCompanion(
+      isFavorite: Value(isFavorite),
     ));
   }
 
@@ -322,71 +352,67 @@ class ContactsDao extends DatabaseAccessor<AppDatabase>
         .toList(growable: false);
   }
 
+  Future<List<ContactWithUnread>> _buildContactsWithUnread(
+    List<ContactData> contactsList,
+    Map<int, int> unreadCounts,
+    Map<int, int> messageCounts,
+  ) async {
+    final contactsWithStats =
+        <({ContactData contact, int unreadCount, int messageCount})>[];
+    for (final contact in contactsList) {
+      contactsWithStats.add((
+        contact: contact,
+        unreadCount: unreadCounts[contact.hash] ?? 0,
+        messageCount: messageCounts[contact.hash] ?? 0,
+      ));
+    }
+    contactsWithStats.sort((a, b) {
+      if (a.contact.isRepeater != b.contact.isRepeater) {
+        return a.contact.isRepeater ? 1 : -1;
+      }
+      final aHasUnread = a.unreadCount > 0;
+      final bHasUnread = b.unreadCount > 0;
+      if (aHasUnread != bHasUnread) return bHasUnread ? 1 : -1;
+      final aHasMessages = a.messageCount > 0;
+      final bHasMessages = b.messageCount > 0;
+      if (aHasMessages != bHasMessages) return bHasMessages ? 1 : -1;
+      if (a.unreadCount != b.unreadCount) {
+        return b.unreadCount.compareTo(a.unreadCount);
+      }
+      return b.contact.lastSeen.compareTo(a.contact.lastSeen);
+    });
+    return contactsWithStats
+        .map((e) =>
+            ContactWithUnread(contact: e.contact, unreadCount: e.unreadCount))
+        .toList(growable: false);
+  }
+
   /// Watch all contacts with unread counts (stream)
   /// Reacts to changes in both contacts and messages tables
   Stream<List<ContactWithUnread>> watchAllContactsWithUnread() async* {
-    // Manually merge streams using StreamController
-    final controller = StreamController<void>();
+    // Yield current state immediately — no debounce for first emit
+    yield await _buildContactsWithUnread(
+      await getAllContacts(),
+      await db.messagesDao.getUnreadCountsForContacts(),
+      await db.messagesDao.getMessageCountsForContacts(),
+    );
 
-    // Listen to contacts changes
+    final controller = StreamController<void>();
     final contactsSub = watchAllContacts().listen((_) {
       if (!controller.isClosed) controller.add(null);
     });
-
-    // Listen to messages changes
-    final messagesSub = db.messagesDao.watchAllMessages().listen((_) {
+    final messagesSub = db.messagesDao.watchMessageCount().listen((_) {
       if (!controller.isClosed) controller.add(null);
     });
 
-    // Emit initial value
-    controller.add(null);
-
     try {
-      await for (final _ in controller.stream) {
-        final contactsList = await getAllContacts();
-        final unreadCounts =
-            await db.messagesDao.getUnreadCountsForContacts();
-        final messageCounts =
-            await db.messagesDao.getMessageCountsForContacts();
-        final contactsWithStats =
-            <({ContactData contact, int unreadCount, int messageCount})>[];
-
-        for (final contact in contactsList) {
-          contactsWithStats.add((
-            contact: contact,
-            unreadCount: unreadCounts[contact.hash] ?? 0,
-            messageCount: messageCounts[contact.hash] ?? 0,
-          ));
-        }
-
-        contactsWithStats.sort((a, b) {
-          if (a.contact.isRepeater != b.contact.isRepeater) {
-            return a.contact.isRepeater ? 1 : -1;
-          }
-
-          final aHasUnread = a.unreadCount > 0;
-          final bHasUnread = b.unreadCount > 0;
-          if (aHasUnread != bHasUnread) {
-            return bHasUnread ? 1 : -1;
-          }
-
-          final aHasMessages = a.messageCount > 0;
-          final bHasMessages = b.messageCount > 0;
-          if (aHasMessages != bHasMessages) {
-            return bHasMessages ? 1 : -1;
-          }
-
-          if (a.unreadCount != b.unreadCount) {
-            return b.unreadCount.compareTo(a.unreadCount);
-          }
-
-          return b.contact.lastSeen.compareTo(a.contact.lastSeen);
-        });
-
-        yield contactsWithStats
-            .map((e) => ContactWithUnread(
-                contact: e.contact, unreadCount: e.unreadCount))
-            .toList(growable: false);
+      await for (final _ in controller.stream
+          .debounceTime(const Duration(milliseconds: 500))) {
+        yield await _buildContactsWithUnread(
+          await getAllContacts(),
+          await db.messagesDao.getUnreadCountsForContacts(),
+          await db.messagesDao.getMessageCountsForContacts(),
+        );
       }
     } finally {
       await contactsSub.cancel();
@@ -399,69 +425,32 @@ class ContactsDao extends DatabaseAccessor<AppDatabase>
   /// Reacts to changes in both contacts and messages tables
   Stream<List<ContactWithUnread>> watchContactsWithUnreadByCompanion(
       String companionKey) async* {
-    // Manually merge streams using StreamController
+    // Yield current state immediately — no debounce for first emit
+    yield await _buildContactsWithUnread(
+      await getContactsByCompanion(companionKey),
+      await db.messagesDao.getUnreadCountsForContactsByCompanion(companionKey),
+      await db.messagesDao.getMessageCountsForContactsByCompanion(companionKey),
+    );
+
     final controller = StreamController<void>();
-
-    // Listen to contacts changes for this companion
     final contactsSub =
-        watchContactsByCompanion(companionKey).listen((contacts) {
+        watchContactsByCompanion(companionKey).listen((_) {
       if (!controller.isClosed) controller.add(null);
     });
-
-    // Listen to messages changes
-    final messagesSub = db.messagesDao.watchAllMessages().listen((_) {
+    final messagesSub = db.messagesDao.watchMessageCount().listen((_) {
       if (!controller.isClosed) controller.add(null);
     });
-
-    // Emit initial value
-    controller.add(null);
 
     try {
-      await for (final _ in controller.stream) {
-        final contactsList = await getContactsByCompanion(companionKey);
-        final unreadCounts = await db.messagesDao
-            .getUnreadCountsForContactsByCompanion(companionKey);
-        final messageCounts = await db.messagesDao
-            .getMessageCountsForContactsByCompanion(companionKey);
-        final contactsWithStats =
-            <({ContactData contact, int unreadCount, int messageCount})>[];
-
-        for (final contact in contactsList) {
-          contactsWithStats.add((
-            contact: contact,
-            unreadCount: unreadCounts[contact.hash] ?? 0,
-            messageCount: messageCounts[contact.hash] ?? 0,
-          ));
-        }
-
-        contactsWithStats.sort((a, b) {
-          if (a.contact.isRepeater != b.contact.isRepeater) {
-            return a.contact.isRepeater ? 1 : -1;
-          }
-
-          final aHasUnread = a.unreadCount > 0;
-          final bHasUnread = b.unreadCount > 0;
-          if (aHasUnread != bHasUnread) {
-            return bHasUnread ? 1 : -1;
-          }
-
-          final aHasMessages = a.messageCount > 0;
-          final bHasMessages = b.messageCount > 0;
-          if (aHasMessages != bHasMessages) {
-            return bHasMessages ? 1 : -1;
-          }
-
-          if (a.unreadCount != b.unreadCount) {
-            return b.unreadCount.compareTo(a.unreadCount);
-          }
-
-          return b.contact.lastSeen.compareTo(a.contact.lastSeen);
-        });
-
-        yield contactsWithStats
-            .map((e) => ContactWithUnread(
-                contact: e.contact, unreadCount: e.unreadCount))
-            .toList(growable: false);
+      await for (final _ in controller.stream
+          .debounceTime(const Duration(milliseconds: 500))) {
+        yield await _buildContactsWithUnread(
+          await getContactsByCompanion(companionKey),
+          await db.messagesDao
+              .getUnreadCountsForContactsByCompanion(companionKey),
+          await db.messagesDao
+              .getMessageCountsForContactsByCompanion(companionKey),
+        );
       }
     } finally {
       await contactsSub.cancel();

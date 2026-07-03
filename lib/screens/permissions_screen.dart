@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:meshcore_team/services/settings_service.dart';
+import '../l10n/app_localizations.dart';
 import '../utils/battery_optimization_helper.dart';
 
 /// Permissions Screen - Requests all required permissions on first launch
@@ -104,9 +105,12 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
       if (requiredGranted) {
         debugPrint('✅ Required permissions granted!');
 
-        // Optional: request background location (Android only). This is not required
+        // Optional: request background ("Always") location. This keeps the
+        // periodic telemetry/position-sharing and location updates running
+        // when the app is backgrounded or the screen is locked. iOS requires
+        // "Always" authorization for background location updates. Not required
         // for initial app usage, so we don't block launch if denied.
-        if (Platform.isAndroid) {
+        if (Platform.isAndroid || Platform.isIOS) {
           await _requestOptionalBackgroundLocation();
         }
 
@@ -182,7 +186,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
             context: context,
             barrierDismissible: false,
             builder: (context) => AlertDialog(
-              title: const Text('Battery Optimization'),
+              title: Text(AppLocalizations.of(context)!.batteryOptimization),
               content: const Text(
                 'To keep your mesh connection active in the background, '
                 'we recommend disabling battery optimization for this app.\n\n'
@@ -192,11 +196,11 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Skip'),
+                  child: Text(AppLocalizations.of(context)!.skip),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Allow'),
+                  child: Text(AppLocalizations.of(context)!.allow),
                 ),
               ],
             ),
@@ -238,6 +242,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: SafeArea(
         child: ListView(
@@ -310,7 +315,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
             if (!_isRequesting && !_permissionsDenied) ...[
               ElevatedButton(
                 onPressed: _requestAllPermissions,
-                child: const Text('Continue to permissions'),
+                child: Text(l10n.continueToPermissions),
               ),
               const SizedBox(height: 12),
               Text(
@@ -347,7 +352,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        _errorMessage ?? 'Permissions Required',
+                        _errorMessage ?? l10n.permissionRequired,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: Colors.red,
                             ),
@@ -370,14 +375,14 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => exit(0),
-                      child: const Text('Exit App'),
+                      child: Text(l10n.exitApp),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: _requestAllPermissions,
-                      child: const Text('Try Again'),
+                      child: Text(l10n.tryAgain),
                     ),
                   ),
                 ],

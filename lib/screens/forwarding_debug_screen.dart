@@ -7,6 +7,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:meshcore_team/database/database.dart';
+import '../l10n/app_localizations.dart';
 import 'package:meshcore_team/models/app_settings.dart';
 import 'package:meshcore_team/services/forwarding_policy_service.dart';
 import 'package:meshcore_team/services/settings_service.dart';
@@ -28,6 +29,7 @@ class _ForwardingDebugScreenState extends State<ForwardingDebugScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final settingsService = context.read<SettingsService>();
     final settings = context.watch<SettingsService>().settings;
     final forwarding = context.watch<ForwardingPolicyService>();
@@ -45,7 +47,7 @@ class _ForwardingDebugScreenState extends State<ForwardingDebugScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Forwarding Debug'),
+        title: Text(l10n.forwardingDebug),
       ),
       body: StreamBuilder<List<ChannelData>>(
         stream: channelsStream,
@@ -78,9 +80,10 @@ class _ForwardingDebugScreenState extends State<ForwardingDebugScreen> {
 
                   final selectedNode = _resolveSelected(nodes);
                   final furthestHop = _furthestHop(visibleTrackedStates);
+                  final fwdL10n = AppLocalizations.of(context)!;
                   final summarySuffix = trackingChannelIndex == null
-                      ? 'Tracking channel not configured'
-                      : 'Tracking channel index: $trackingChannelIndex • timeout: 12h • visible users: ${visibleTrackedStates.length}';
+                      ? fwdL10n.trackingChannelNotConfigured
+                      : fwdL10n.trackingChannelIndex(trackingChannelIndex.toString(), visibleTrackedStates.length);
 
                   return Padding(
                     padding: const EdgeInsets.all(12),
@@ -299,6 +302,7 @@ class _ForwardingDebugScreenState extends State<ForwardingDebugScreen> {
     required int furthestHop,
     required String summarySuffix,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     final statusText = !trackingEnabled
         ? 'Tracking OFF → forwarding inactive'
         : forwarding.isPolicyEngineActive
@@ -318,22 +322,22 @@ class _ForwardingDebugScreenState extends State<ForwardingDebugScreen> {
             const SizedBox(height: 4),
             ThemedDropdown<String>(
               value: selectedAlgorithmMode,
-              decoration: const InputDecoration(
-                labelText: 'Forwarding algorithm (debug)',
+              decoration: InputDecoration(
+                labelText: l10n.forwardingAlgorithmDebug,
                 isDense: true,
               ),
-              items: const [
+              items: [
                 DropdownMenuItem(
                   value: ForwardingAlgorithmMode.forwardingV1,
-                  child: Text('Forwarding V1 (#TEL)'),
+                  child: Text(l10n.forwardingV1Tel),
                 ),
                 DropdownMenuItem(
                   value: ForwardingAlgorithmMode.topology,
-                  child: Text('Topology #T'),
+                  child: Text(l10n.topologyT),
                 ),
                 DropdownMenuItem(
                   value: ForwardingAlgorithmMode.auto,
-                  child: Text('Auto (prefer topology)'),
+                  child: Text(l10n.autoPreferTopology),
                 ),
               ],
               onChanged: (value) {
@@ -408,6 +412,7 @@ class _ForwardingDebugScreenState extends State<ForwardingDebugScreen> {
     required _DebugNode selectedNode,
     required ForwardingPolicyService forwarding,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     final neighbors = _directNeighborsFor(selectedNode, allNodes);
 
     return Card(
@@ -426,12 +431,12 @@ class _ForwardingDebugScreenState extends State<ForwardingDebugScreen> {
                   ?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Text('Public key: ${_hex(selectedNode.publicKey, byteCount: 8)}'),
-            Text('Hop count: ${_hopLabel(selectedNode.hopCount)}'),
-            Text('Direct: ${selectedNode.isDirect ? 'yes' : 'no'}'),
-            Text('Repeater: ${selectedNode.isRepeater ? 'yes' : 'no'}'),
-            Text('Out of range: ${selectedNode.isOutOfRange ? 'yes' : 'no'}'),
-            Text('Last seen: ${_timeLabel(selectedNode.lastSeen)}'),
+            Text(l10n.forwardingPublicKey(_hex(selectedNode.publicKey, byteCount: 8))),
+            Text(l10n.hopCountLabel(_hopLabel(selectedNode.hopCount))),
+            Text(l10n.forwardingDirect(selectedNode.isDirect ? 'yes' : 'no')),
+            Text(l10n.forwardingRepeater(selectedNode.isRepeater ? 'yes' : 'no')),
+            Text(l10n.forwardingOutOfRange(selectedNode.isOutOfRange ? 'yes' : 'no')),
+            Text(l10n.lastSeen(_timeLabel(selectedNode.lastSeen))),
             if (selectedNode.sourceState != null) ...[
               Text(
                   'Telemetry channel idx: ${selectedNode.sourceState!.lastChannelIdx}'),
@@ -445,19 +450,19 @@ class _ForwardingDebugScreenState extends State<ForwardingDebugScreen> {
             ),
             const SizedBox(height: 6),
             if (selectedNode.isSelf) ...[
-              Text('Mode: ${forwarding.forwardingMode}'),
+              Text(l10n.forwardingMode(forwarding.forwardingMode.toString())),
               Text(
                   'Policy engine active: ${forwarding.isPolicyEngineActive ? 'yes' : 'no'}'),
-              Text('Last max hops: ${forwarding.lastAppliedMaxHops ?? 'n/a'}'),
+              Text(l10n.forwardingLastMaxHops((forwarding.lastAppliedMaxHops ?? 'n/a').toString())),
               Text(
                   'Last forward list size: ${forwarding.lastAppliedPrefixCount}'),
-              Text('Last trigger: ${forwarding.lastAppliedTrigger ?? 'n/a'}'),
-              Text('Last applied: ${_timeLabel(forwarding.lastAppliedAt)}'),
-              Text('Last error: ${forwarding.lastPolicyError ?? 'none'}'),
+              Text(l10n.forwardingLastTrigger((forwarding.lastAppliedTrigger ?? 'n/a').toString())),
+              Text(l10n.forwardingLastApplied(_timeLabel(forwarding.lastAppliedAt))),
+              Text(l10n.forwardingLastError(forwarding.lastPolicyError ?? 'none')),
             ] else ...[
               Text(
                   'Forwarding candidate: ${_isForwardingCandidate(selectedNode) ? 'yes' : 'no'}'),
-              Text('Candidate reason: ${_candidateReason(selectedNode)}'),
+              Text(l10n.forwardingCandidateReason(_candidateReason(selectedNode))),
             ],
             const SizedBox(height: 12),
             const Text(
