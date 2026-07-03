@@ -99,11 +99,13 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final channelRepository = context.watch<ChannelRepository>();
+    final isNighttime = context.watch<SettingsService>().settings.appTheme ==
+        AppThemeMode.nighttime;
 
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
-        title: NightTitle(title: l10n.channels),
+        title: isNighttime ? const NightClock() : null,
         actions: [
           SortMenuButton<_ChannelSort>(
             value: _sort,

@@ -121,32 +121,19 @@ class _ContactsScreenState extends State<ContactsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final contactRepository = context.watch<ContactRepository>();
+    final isNighttime = context.watch<SettingsService>().settings.appTheme ==
+        AppThemeMode.nighttime;
 
     return StreamBuilder<List<ContactWithUnread>>(
       stream: contactRepository.watchContactsWithUnread(),
       builder: (context, snapshot) {
         final all = snapshot.data ?? [];
         final contacts = _applyFilterAndSort(all);
-        final hasData = snapshot.connectionState != ConnectionState.waiting;
-        final repCount = contacts.where((c) => c.contact.isRepeater).length;
-        final endCount = contacts.where((c) => !c.contact.isRepeater && !c.contact.isRoomServer).length;
 
         return Scaffold(
           appBar: AppBar(
             centerTitle: false,
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                NightTitle(title: l10n.contacts),
-                if (hasData && all.isNotEmpty)
-                  Text(
-                    'Rep: $repCount  End: $endCount',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-              ],
-            ),
+            title: isNighttime ? const NightClock() : null,
             actions: [
               _buildFilterButton(l10n),
               SortMenuButton<_SortOrder>(
@@ -280,7 +267,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
     return MenuAnchor(
       builder: (context, controller, child) => IconButton(
         icon: Icon(
-          Icons.filter_list,
+          Icons.tune,
           color: anyActive ? colorScheme.primary : null,
         ),
         tooltip: l10n.filterContacts,
