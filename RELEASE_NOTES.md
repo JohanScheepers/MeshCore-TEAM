@@ -1,3 +1,50 @@
+# Release Notes — v1.1.5
+
+## Localization
+- Full internationalization support — in-app text is now translatable, and the app follows your device language automatically.
+- German translation added.
+
+## Contacts
+- Search contacts by name or public-key hash.
+- Filter and sort the contact list, and mark contacts as favorites to keep them at the top.
+- Delete contacts, with an optional auto-purge that removes stale contacts after a configurable number of days.
+- Device clock is synced to the companion radio on connect.
+
+## Channels
+- Per-channel notification modes — set each channel to normal, muted, or favorite.
+- Notification mode and favorite status now persist across syncs.
+- Fixed the muted-channel badge and made channel list sorting stable, with unread marked immediately.
+
+## Messaging
+- Long-press (or right-click on desktop) a message to copy its text or reply.
+- Replying seeds an `@[name]` mention; `@` autocomplete suggests names from the channel history.
+- New-message indicator — the chat holds its scroll position when messages arrive instead of jumping, and shows a badge for unread messages below the fold.
+- Message timestamps now show relative dates.
+
+## Status Bar & Navigation
+- Status icons and the app menu are now available on every screen, including chat screens.
+- Filter and sort controls moved into top-bar dropdown menus for a cleaner layout.
+- New network-bar shortcuts: toggle location tracking, and disconnect/reconnect the companion radio, directly from the status bar.
+- Mouse back button now navigates back (desktop).
+
+## Android
+- New "keep screen on / show over lock screen" option so the app stays visible on the lock screen when needed.
+
+## iOS
+- Background operation overhauled — location sharing and telemetry now keep running while the app is backgrounded or the screen is locked (tested working). Every location consumer shares one background location session so iOS no longer suspends tracking shortly after backgrounding.
+- Improved BLE reliability, including CoreBluetooth state restoration.
+- The Bluetooth / local-network permission prompt no longer appears before the permission explainer screen.
+
+## Performance & Stability
+- Large reduction in Android ANRs (app-not-responding) and notification spam during message sync.
+- Faster reconnects using incremental contact sync on advert updates.
+- Lower per-message rebuild cost and smoother chat scrolling; the database now opens on a background thread.
+
+## Bug Fixes
+- Fixed the share-channel QR dialog rendering (forced black-on-white, resolved layout assertion, removed duplicate repeater label).
+
+---
+
 # Release Notes — v1.1.4
 
 ## KMZ Overlay Maps

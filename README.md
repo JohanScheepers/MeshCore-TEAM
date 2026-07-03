@@ -39,13 +39,24 @@ Core user-facing features that are already implemented:
 
 - BLE scan/connect/disconnect with sync progress (contacts/channels/messages)
 - Identity/name prompt (set how you appear on the mesh)
+- Localization — translatable UI that follows the device language (English and German included)
 - Contacts list with unread badges + direct messages (repeaters are read-only)
+	- Search by name or public-key hash
+	- Filter, sort, and favorite contacts
+	- Delete contacts, with optional auto-purge of stale contacts after a set number of days
 - Channels list with unread badges
 	- Create private channels
 	- Import via link/QR
 	- Share private channels via link/QR
+	- Per-channel notification modes (normal/muted/favorite), persisted across syncs
 	- Hashtag channel creation directly from the chat input
 	- `@mention` autocomplete suggestions from known contacts
+- Messaging
+	- Long-press / right-click a message to copy text or reply
+	- Reply seeds an `@[name]` mention; `@` autocomplete from channel history
+	- New-message indicator that holds scroll position and badges unread messages
+	- Relative-date message timestamps
+- Status icons and app menu on every screen, with network-bar shortcuts to toggle tracking and disconnect/reconnect
 - Map screen
 	- Phone location + optional "track-up" mode
 	- Contact markers (when location tracking is enabled)
@@ -218,6 +229,8 @@ On subsequent connects to the same companion, the app runs an **incremental sync
 - Tap a contact to open a **Direct Message** conversation.
 - If a contact is a **repeater**, direct messaging is disabled (you can still see it in the list).
 - Unread badges show on the Contacts tab icon when new messages arrive.
+- **Search** by name or public-key hash, and use the top-bar menu to **filter**, **sort**, and mark contacts as **favorites**.
+- **Delete** a contact from its details, or enable **auto-purge** in settings to automatically remove contacts not seen for a set number of days.
 
 ### 4) Channels (group chat)
 
@@ -227,6 +240,8 @@ On subsequent connects to the same companion, the app runs an **incremental sync
 	- **Add via Link / QR Code**
 
 Private channels can be shared from inside the channel chat via link or QR code.
+
+Each channel has a **notification mode** (normal, muted, or favorite) that you can set from the channel list or chat menu. Muted channels stop raising notifications, favorites sort to the top, and both settings persist across syncs.
 
 Channel share links use this format:
 
@@ -239,6 +254,8 @@ Treat the link like a password: anyone who has it can join the channel.
 You can create a channel directly from the chat input by typing a hashtag (e.g. `#ops`). The app will prompt you to create a new private channel with that name if one doesn't already exist.
 
 Type `@` in any chat to see an autocomplete list of known contacts. Tapping a suggestion inserts a formatted mention chip into the message.
+
+**Copy and reply:** long-press a message (or right-click on desktop) to copy its text or start a reply. Replying seeds an `@[name]` mention so the recipient sees who you're responding to. When new messages arrive, the chat keeps your scroll position and shows a badge instead of jumping to the bottom.
 
 ### 5) Map, offline maps, waypoints, and routes
 
@@ -399,12 +416,18 @@ Permissions are requested sequentially to avoid stacking iOS system dialogs:
 
 ### Background operation
 
-The app declares `bluetooth-central`, `location`, and `processing` background modes. However, iOS does not allow true foreground services like Android. The BLE connection may be suspended when the app is backgrounded for extended periods. Reconnection on resume is handled automatically, but brief gaps are expected compared to Android's always-on foreground service.
+iOS background operation was **overhauled in v1.1.5** and location + telemetry now run reliably while backgrounded. The app declares `bluetooth-central`, `location`, and `processing` background modes, and holds a shared background location session that keeps the app — and its BLE link to the companion radio — alive when the screen is off or the app is in the background.
+
+- **Location + telemetry in the background** — every location consumer (the map and the telemetry sender) subscribes through a **single shared session** (`buildAppLocationSettings()` in [lib/utils/location_settings.dart](lib/utils/location_settings.dart)) with `allowsBackgroundLocationUpdates` enabled, so GPS updates and telemetry broadcasts continue when backgrounded. iOS shows its blue location indicator while this is active.
+- **Why a shared session** — geolocator reuses one native `CLLocationManager` for all callers, and the *first* subscriber's settings win. If any caller subscribed first with foreground-only settings, the app lost its background execution assertion and iOS suspended it (and telemetry) a few seconds after backgrounding. Routing every caller through the shared background settings fixes this.
+- Because the background-location assertion keeps the process running, the BLE connection stays up alongside it, so tracking and incoming messages continue rather than dropping shortly after backgrounding.
+
+iOS still has no true always-on foreground service like Android, so under sustained memory pressure the system can reclaim the app; reconnection on resume is handled automatically.
 
 ### Known limitations
 
-- **Background BLE persistence** — iOS may suspend the BLE connection after several minutes in the background. The app reconnects on resume, but real-time message delivery while backgrounded is not guaranteed.
-- **Always-location upgrade** — the current permission flow requests When In Use location. Upgrading to Always (for background location tracking) is planned.
+- **Background execution ceiling** — location, telemetry, and BLE keep running via the background-location assertion, but iOS can still suspend the app under heavy memory pressure. It reconnects and resumes on the next foreground or location event.
+- **Always-location (indicator-free) background** — background tracking currently relies on the blue location indicator being shown. An "Always" authorization upgrade that removes the persistent indicator is planned.
 
 See [ios/TODO.md](ios/TODO.md) for the detailed iOS parity checklist.
 
@@ -413,7 +436,7 @@ See [ios/TODO.md](ios/TODO.md) for the detailed iOS parity checklist.
 Planned features and improvements (see also the [issues tracker](../../issues)):
 
 - **Forwarding V2** — topology-aware routing using the mesh graph model (`#T:` topology events). V2 will build a real-time network graph and use it to compute targeted forward lists (`SET_FORWARD_LIST`) instead of relying solely on `maxHops`. The topology strategy skeleton is in place and currently falls back to V1; the graph model and prefix-based routing logic are next.
-- **iOS background reliability** — improve BLE connection persistence using Core Bluetooth state restoration; implement the Always-location upgrade flow for background tracking.
+- **iOS background reliability** — Core Bluetooth state restoration is now enabled (shipped in v1.1.5); continued work on background BLE persistence and the Always-location upgrade flow for background tracking.
 - Topology map visualization — display the mesh network graph on the map screen
 - Multi-companion device switching
 
@@ -422,6 +445,10 @@ Planned features and improvements (see also the [issues tracker](../../issues)):
 - ~~**Team Config export/import**~~ — shipped in v1.0.3-beta2; overlay maps added in v1.1.4
 - ~~**Hashtag channel creation + @mentions**~~ — shipped in v1.1.4
 - ~~**KMZ overlay map import**~~ — shipped in v1.1.4
+- ~~**Localization (English + German)**~~ — shipped in v1.1.5
+- ~~**Contact search, filtering, favorites, and auto-purge**~~ — shipped in v1.1.5
+- ~~**Per-channel notification modes**~~ — shipped in v1.1.5
+- ~~**Message copy/reply + new-message indicator**~~ — shipped in v1.1.5
 
 ### Possible future features
 
