@@ -28,6 +28,7 @@ import 'package:meshcore_team/screens/imported_maps_screen.dart';
 import 'package:meshcore_team/screens/offline_maps_screen.dart';
 import 'package:meshcore_team/services/kmz_import_service.dart';
 import 'package:meshcore_team/services/map_tile_cache_service.dart';
+import 'package:meshcore_team/services/mesh_connection_service.dart';
 import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/theme/night_theme.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
@@ -49,11 +50,16 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final MapController _mapController = MapController();
   LatLng? _userLocation;
   bool _isLoadingLocation = false;
   String? _locationError;
+
+  /// Whether the app is currently backgrounded. On iOS, when backgrounded and
+  /// not connected to a companion, phone GPS is stopped to release the native
+  /// background-location session and let the app suspend.
+  bool _isBackgrounded = false;
 
   double? _headingDegrees;
   double? _courseDegrees;
@@ -1222,6 +1228,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _startCompassTracking();
 
     // Ensure contact marker colors update as contacts go stale (5 min) even if
@@ -1256,7 +1263,48 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.resumed) {
+      _isBackgrounded = false;
+      // Restart phone GPS if the policy still wants it.
+      if (!mounted) return;
+      _applyLocationPolicy(
+        context.read<SettingsService>(),
+        context.read<ConnectionViewModel>(),
+      );
+      return;
+    }
+
+    // paused / inactive / hidden / detached → app is (going) backgrounded.
+    _isBackgrounded = true;
+
+    if (_shouldStopBackgroundLocation()) {
+      debugPrint(
+          '[MapScreen] 📍 Backgrounded & idle (not connected/reconnecting) — stopping phone GPS');
+      _stopPhoneLocationTracking();
+    }
+  }
+
+  /// iOS-only: whether phone GPS should be stopped while backgrounded.
+  ///
+  /// Only when there is no companion session we want to keep or restore — i.e.
+  /// not connected AND the mesh service is fully stopped. While the service is
+  /// running (connected OR auto-reconnecting) we must keep phone GPS alive: on
+  /// iOS the shared location session is what keeps the app awake in the
+  /// background so the scan-based reconnect can find the companion again. Only a
+  /// manual disconnect stops the service, at which point we can release GPS.
+  bool _shouldStopBackgroundLocation() {
+    if (!Platform.isIOS || !mounted) return false;
+    final connected = context.read<ConnectionViewModel>().isConnected;
+    final serviceRunning = context.read<MeshConnectionService>().isServiceRunning;
+    return !connected && !serviceRunning;
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _positionSub?.cancel();
     _positionSub = null;
     _compassSub?.cancel();
@@ -1369,6 +1417,17 @@ class _MapScreenState extends State<MapScreen> {
     SettingsService settingsService,
     ConnectionViewModel connectionVM,
   ) {
+    // iOS: while backgrounded and idle (not connected AND the mesh service is
+    // fully stopped), keep phone GPS off so the native background-location
+    // session is released. Guarding here (not just in didChangeAppLifecycleState)
+    // prevents a stray rebuild from restarting GPS while suspended. NOTE: while
+    // auto-reconnecting the service is still running, so this does NOT fire —
+    // phone GPS stays on to keep the app awake for the reconnect.
+    if (_isBackgrounded && _shouldStopBackgroundLocation()) {
+      _stopPhoneLocationTracking();
+      return;
+    }
+
     final wantsCompanion =
         settingsService.settings.locationSource == LocationSource.companion;
 

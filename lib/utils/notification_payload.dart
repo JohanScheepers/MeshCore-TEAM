@@ -59,4 +59,13 @@ class NotificationPayload {
       data: {'waypointId': waypointId},
     );
   }
+
+  /// Create payload for the persistent mesh-connection status notification.
+  /// Used to identify the notification (and its Stop action) in the tap handler.
+  static NotificationPayload meshConnection() {
+    return const NotificationPayload(
+      type: 'mesh_connection',
+      data: {},
+    );
+  }
 }

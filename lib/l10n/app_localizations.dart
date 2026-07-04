@@ -230,6 +230,12 @@ abstract class AppLocalizations {
   /// **'Stop'**
   String get stop;
 
+  /// No description provided for @stopReconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop reconnecting'**
+  String get stopReconnecting;
+
   /// No description provided for @copy.
   ///
   /// In en, this message translates to:

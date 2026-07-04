@@ -75,6 +75,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stop => 'Stop';
 
   @override
+  String get stopReconnecting => 'Stop reconnecting';
+
+  @override
   String get copy => 'Copy';
 
   @override

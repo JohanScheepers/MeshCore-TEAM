@@ -147,6 +147,22 @@ class BleConnectionManager extends ChangeNotifier {
     }
   }
 
+  /// Opt back out of Core Bluetooth state preservation/restoration (iOS only).
+  ///
+  /// Counterpart to [enableIosStateRestoration].  Called when the user manually
+  /// stops the service so iOS no longer relaunches the app in the background to
+  /// restore the BLE session.  Without this, background persistence would
+  /// outlive an explicit user stop.
+  Future<void> disableIosStateRestoration() async {
+    if (!Platform.isIOS) return;
+    try {
+      await FlutterBluePlus.setOptions(restoreState: false);
+      debugPrint('[BleManager] 🛑 iOS CoreBluetooth state restoration disabled');
+    } catch (e) {
+      debugPrint('[BleManager] ⚠️ Failed to disable state restoration: $e');
+    }
+  }
+
   Future<void> refreshStatus() async {
     if (!_isAndroid) return;
     try {

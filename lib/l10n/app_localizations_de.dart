@@ -75,6 +75,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get stop => 'Stopp';
 
   @override
+  String get stopReconnecting => 'Wiederverbindung stoppen';
+
+  @override
   String get copy => 'Kopieren';
 
   @override
