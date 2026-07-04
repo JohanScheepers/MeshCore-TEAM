@@ -50,6 +50,11 @@ import 'services/debug_log_service.dart';
 // Global navigator key for deep linking
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+// Reference to the mesh connection service, set once created in main(). Used by
+// the notification-response handler (which is registered before the service
+// exists) to route the "Stop" notification action to a full stop.
+MeshConnectionService? _meshServiceRef;
+
 const bool isBetaBuild = bool.fromEnvironment('BETA');
 const String _forceLocale = String.fromEnvironment('FORCE_LOCALE');
 
@@ -109,14 +114,34 @@ Future<void> _runAppStartup() async {
 
     const initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initializationSettingsIOS = DarwinInitializationSettings(
+    final initializationSettingsIOS = DarwinInitializationSettings(
       requestAlertPermission: false, // Request later
       requestBadgePermission: false,
       requestSoundPermission: false,
+      notificationCategories: [
+        // Persistent mesh-connection notification with a "Stop" action so the
+        // user can kill a stuck reconnect. customDismissAction reports swipes.
+        DarwinNotificationCategory(
+          MeshConnectionService.iosNotificationCategoryId,
+          actions: [
+            DarwinNotificationAction.plain(
+              MeshConnectionService.stopActionId,
+              'Stop',
+              options: {
+                DarwinNotificationActionOption.foreground,
+                DarwinNotificationActionOption.destructive,
+              },
+            ),
+          ],
+          options: {
+            DarwinNotificationCategoryOption.customDismissAction,
+          },
+        ),
+      ],
     );
     const initializationSettingsLinux =
         LinuxInitializationSettings(defaultActionName: 'Open notification');
-    const initializationSettings = InitializationSettings(
+    final initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
       linux: initializationSettingsLinux,
@@ -174,6 +199,7 @@ Future<void> _runAppStartup() async {
       settings: settingsService,
       notifications: flutterLocalNotificationsPlugin,
     );
+    _meshServiceRef = meshConnectionService;
     print('✅ Mesh connection service initialized');
 
     // Initialize Repositories
@@ -303,11 +329,28 @@ Future<void> _runAppStartup() async {
 /// Handle notification tap to navigate to specific chat
 void _handleNotificationTap(
     NotificationResponse details, AppDatabase database) async {
-  print('📬 Notification tapped: ${details.payload}');
+  print('📬 Notification tapped: ${details.payload} action=${details.actionId}');
+
+  // Mesh-connection "Stop" action button, or a swipe-dismiss of the persistent
+  // mesh notification → fully stop the service (kills a stuck reconnect).
+  // iOS reports a custom dismiss via the Apple dismiss action identifier.
+  const iosDismissActionId = 'com.apple.UNNotificationDismissActionIdentifier';
+  if (details.actionId == MeshConnectionService.stopActionId ||
+      details.actionId == iosDismissActionId) {
+    print('🛑 Mesh Stop action received — stopping service');
+    await _meshServiceRef?.stopFromNotification();
+    return;
+  }
 
   final payload = NotificationPayload.fromJson(details.payload);
   if (payload == null) {
     print('⚠️ Failed to parse notification payload');
+    return;
+  }
+
+  // A tap on the persistent mesh notification body just opens the app.
+  if (payload.type == 'mesh_connection') {
+    print('📬 Mesh connection notification tapped — opening app');
     return;
   }
 

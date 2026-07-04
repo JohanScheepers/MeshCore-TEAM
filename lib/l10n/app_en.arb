@@ -23,6 +23,7 @@
   "export": "Export",
   "navigate": "Navigate",
   "stop": "Stop",
+  "stopReconnecting": "Stop reconnecting",
   "copy": "Copy",
   "reply": "Reply",
   "join": "Join",

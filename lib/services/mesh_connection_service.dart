@@ -13,6 +13,7 @@ import 'package:meshcore_team/ble/reconnection_manager.dart';
 import 'package:meshcore_team/ble/reconnection_state.dart';
 import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/services/foreground_task_handler.dart';
+import 'package:meshcore_team/utils/notification_payload.dart';
 
 /// Mesh Connection Service
 /// Manages foreground service, wake lock, and auto-reconnection
@@ -25,12 +26,33 @@ class MeshConnectionService extends ChangeNotifier {
 
   static const int _connectionNotificationId = 1001;
 
+  /// iOS notification category carrying the "Stop" action, registered at app
+  /// init in main.dart via [DarwinNotificationCategory].
+  static const String iosNotificationCategoryId = 'mesh_connection';
+
+  /// Action id for the notification "Stop" button.
+  static const String stopActionId = 'stop_mesh';
+
   bool _isServiceRunning = false;
   bool _isWakeLockEnabled = false;
   ReceivePort? _receivePort;
 
+  /// Whether the persistent iOS notification is currently visible. Used so we
+  /// only alert (banner) on the first show and update quietly afterwards,
+  /// avoiding the reconnect-retry notification spam.
+  bool _iosNotificationVisible = false;
+
+  /// Stored lifecycle listener so it can be added once and removed on stop,
+  /// instead of leaking an anonymous closure on every startService().
+  VoidCallback? _lifecycleListener;
+
   bool get isServiceRunning => _isServiceRunning;
   bool get isWakeLockEnabled => _isWakeLockEnabled;
+
+  /// True while the background service is running but the companion is not
+  /// connected — i.e. an auto-reconnect is in progress (or waiting to retry).
+  /// The UI uses this to offer a "Stop reconnecting" affordance.
+  bool get isReconnecting => _isServiceRunning && !_bleManager.isConnected;
 
   MeshConnectionService({
     required BleConnectionManager bleManager,
@@ -157,10 +179,16 @@ class MeshConnectionService extends ChangeNotifier {
     if (!_isServiceRunning) {
       debugPrint('[MeshService] Service not running');
       // On iOS there's no foreground service, but the BLE connection
-      // may still be active. Disconnect it directly.
+      // may still be active (or a reconnect loop may be running). Tear it
+      // down directly.
+      _reconnectionManager.stopReconnecting();
       if (_bleManager.isConnected) {
         debugPrint('[MeshService] BLE still connected — disconnecting');
         await _bleManager.disconnect();
+      }
+      if (Platform.isIOS) {
+        await _bleManager.disableIosStateRestoration();
+        await _removeIOSConnectionNotification();
       }
       return;
     }
@@ -183,9 +211,18 @@ class MeshConnectionService extends ChangeNotifier {
       // Stop reconnection
       _reconnectionManager.stopReconnecting();
 
+      // Stop monitoring so we don't leak listeners across start/stop cycles
+      _stopMonitoringServiceLifecycle();
+
       // Disconnect BLE
       if (_bleManager.isConnected) {
         await _bleManager.disconnect();
+      }
+
+      // Opt back out of iOS state restoration so the OS won't relaunch the app
+      // to restore the BLE session after this explicit stop.
+      if (Platform.isIOS) {
+        await _bleManager.disableIosStateRestoration();
       }
 
       // Stop foreground task
@@ -280,6 +317,9 @@ class MeshConnectionService extends ChangeNotifier {
     }
 
     _previousConnectionState = state;
+
+    // Notify UI so affordances tied to connection/reconnecting state rebuild.
+    notifyListeners();
   }
 
   /// Handle reconnection state changes
@@ -289,6 +329,9 @@ class MeshConnectionService extends ChangeNotifier {
 
     // Update notification
     _updateNotification(_bleManager.state, reconnectionState);
+
+    // Notify UI so the "Stop reconnecting" affordance rebuilds.
+    notifyListeners();
   }
 
   /// Handle disconnection and start auto-reconnect if appropriate
@@ -376,30 +419,49 @@ class MeshConnectionService extends ChangeNotifier {
     }
   }
 
-  /// Show or update a persistent connection notification on iOS
+  /// Show or update a single persistent connection notification on iOS.
+  ///
+  /// Reuses one notification id so status changes (connecting, reconnecting,
+  /// connected) update the same Notification-Center entry rather than posting a
+  /// new banner each time.  Only the first show alerts (banner); subsequent
+  /// updates are passive so the reconnect-retry loop doesn't spam the user.
+  /// Carries the `mesh_connection` category so the "Stop" action button is
+  /// attached.
   Future<void> _showIOSConnectionNotification(String title, String text) async {
     if (_notifications == null) return;
 
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
+    final firstShow = !_iosNotificationVisible;
+
+    final iosDetails = DarwinNotificationDetails(
+      // Alert (banner) only on the first show; update quietly afterwards.
+      // interruptionLevel is the lever that silences background updates:
+      // `passive` adds/updates the entry in Notification Center without
+      // re-alerting, which stops the reconnect-retry spam.
+      presentAlert: firstShow,
       presentBadge: false,
       presentSound: false,
+      interruptionLevel:
+          firstShow ? InterruptionLevel.active : InterruptionLevel.passive,
+      categoryIdentifier: iosNotificationCategoryId,
     );
 
-    final details = const NotificationDetails(iOS: iosDetails);
+    final details = NotificationDetails(iOS: iosDetails);
 
     await _notifications.show(
       _connectionNotificationId,
       title,
       text,
       details,
+      payload: NotificationPayload.meshConnection().toJson(),
     );
+    _iosNotificationVisible = true;
   }
 
   /// Remove the iOS connection notification
   Future<void> _removeIOSConnectionNotification() async {
     if (_notifications == null) return;
     await _notifications.cancel(_connectionNotificationId);
+    _iosNotificationVisible = false;
   }
 
   /// Handle messages from foreground task
@@ -419,15 +481,24 @@ class MeshConnectionService extends ChangeNotifier {
   void _monitorServiceLifecycle() {
     debugPrint('[MeshService] 🔍 Starting lifecycle monitoring...');
 
-    // Listen to BLE connection state changes
-    _bleManager.addListener(() {
-      _checkIfServiceShouldStop();
-    });
+    // Add the shared listener once. Adding a fresh anonymous closure on every
+    // startService() leaked listeners that were never removed.
+    if (_lifecycleListener != null) return;
 
-    // Listen to reconnection state changes
-    _reconnectionManager.addListener(() {
+    _lifecycleListener = () {
       _checkIfServiceShouldStop();
-    });
+    };
+    _bleManager.addListener(_lifecycleListener!);
+    _reconnectionManager.addListener(_lifecycleListener!);
+  }
+
+  /// Remove the lifecycle listener added by [_monitorServiceLifecycle].
+  void _stopMonitoringServiceLifecycle() {
+    final listener = _lifecycleListener;
+    if (listener == null) return;
+    _bleManager.removeListener(listener);
+    _reconnectionManager.removeListener(listener);
+    _lifecycleListener = null;
   }
 
   /// Check if service should stop itself
@@ -473,6 +544,12 @@ class MeshConnectionService extends ChangeNotifier {
     }
   }
 
+  /// Fully stop the service from a notification action (Stop button or swipe).
+  /// Sets the manual-disconnect flag, stops reconnection, disconnects BLE, opts
+  /// out of iOS state restoration, and stops the service so it stays stopped.
+  /// Public so the notification-response handler in main.dart can invoke it.
+  Future<void> stopFromNotification() => _triggerManualDisconnect();
+
   /// Trigger manual disconnect from notification button
   /// Matches Android TEAM manual disconnect flow
   Future<void> _triggerManualDisconnect() async {
@@ -488,7 +565,7 @@ class MeshConnectionService extends ChangeNotifier {
     // Disconnect BLE
     await _bleManager.disconnect();
 
-    // Stop service (will be caught by _checkIfServiceShouldStop)
+    // Stop service (disables restoration + removes notification)
     await stopService();
   }
 
@@ -496,6 +573,7 @@ class MeshConnectionService extends ChangeNotifier {
   void dispose() {
     _bleManager.removeListener(_onConnectionStateChanged);
     _reconnectionManager.removeListener(_onReconnectionStateChanged);
+    _stopMonitoringServiceLifecycle();
     _receivePort?.close();
     super.dispose();
   }
