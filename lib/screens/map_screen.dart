@@ -28,6 +28,7 @@ import 'package:meshcore_team/screens/imported_maps_screen.dart';
 import 'package:meshcore_team/screens/offline_maps_screen.dart';
 import 'package:meshcore_team/services/kmz_import_service.dart';
 import 'package:meshcore_team/services/map_tile_cache_service.dart';
+import 'package:meshcore_team/services/mesh_connection_service.dart';
 import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/theme/night_theme.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
@@ -1279,15 +1280,26 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     // paused / inactive / hidden / detached → app is (going) backgrounded.
     _isBackgrounded = true;
 
-    // iOS only: when not connected to a companion there's nothing to keep phone
-    // GPS alive for in the background, so stop it to release the native
-    // location session and let the app suspend.
-    if (!Platform.isIOS || !mounted) return;
-    if (!context.read<ConnectionViewModel>().isConnected) {
+    if (_shouldStopBackgroundLocation()) {
       debugPrint(
-          '[MapScreen] 📍 Backgrounded & disconnected — stopping phone GPS');
+          '[MapScreen] 📍 Backgrounded & idle (not connected/reconnecting) — stopping phone GPS');
       _stopPhoneLocationTracking();
     }
+  }
+
+  /// iOS-only: whether phone GPS should be stopped while backgrounded.
+  ///
+  /// Only when there is no companion session we want to keep or restore — i.e.
+  /// not connected AND the mesh service is fully stopped. While the service is
+  /// running (connected OR auto-reconnecting) we must keep phone GPS alive: on
+  /// iOS the shared location session is what keeps the app awake in the
+  /// background so the scan-based reconnect can find the companion again. Only a
+  /// manual disconnect stops the service, at which point we can release GPS.
+  bool _shouldStopBackgroundLocation() {
+    if (!Platform.isIOS || !mounted) return false;
+    final connected = context.read<ConnectionViewModel>().isConnected;
+    final serviceRunning = context.read<MeshConnectionService>().isServiceRunning;
+    return !connected && !serviceRunning;
   }
 
   @override
@@ -1405,13 +1417,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     SettingsService settingsService,
     ConnectionViewModel connectionVM,
   ) {
-    // iOS: while backgrounded and not connected to a companion, keep phone GPS
-    // off so the native background-location session is released. Guarding here
-    // (not just in didChangeAppLifecycleState) prevents a stray rebuild from
-    // restarting GPS while suspended.
-    if (Platform.isIOS &&
-        _isBackgrounded &&
-        !connectionVM.isConnected) {
+    // iOS: while backgrounded and idle (not connected AND the mesh service is
+    // fully stopped), keep phone GPS off so the native background-location
+    // session is released. Guarding here (not just in didChangeAppLifecycleState)
+    // prevents a stray rebuild from restarting GPS while suspended. NOTE: while
+    // auto-reconnecting the service is still running, so this does NOT fire —
+    // phone GPS stays on to keep the app awake for the reconnect.
+    if (_isBackgrounded && _shouldStopBackgroundLocation()) {
       _stopPhoneLocationTracking();
       return;
     }
