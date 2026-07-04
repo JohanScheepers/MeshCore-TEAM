@@ -49,11 +49,16 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final MapController _mapController = MapController();
   LatLng? _userLocation;
   bool _isLoadingLocation = false;
   String? _locationError;
+
+  /// Whether the app is currently backgrounded. On iOS, when backgrounded and
+  /// not connected to a companion, phone GPS is stopped to release the native
+  /// background-location session and let the app suspend.
+  bool _isBackgrounded = false;
 
   double? _headingDegrees;
   double? _courseDegrees;
@@ -1222,6 +1227,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _startCompassTracking();
 
     // Ensure contact marker colors update as contacts go stale (5 min) even if
@@ -1256,7 +1262,37 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.resumed) {
+      _isBackgrounded = false;
+      // Restart phone GPS if the policy still wants it.
+      if (!mounted) return;
+      _applyLocationPolicy(
+        context.read<SettingsService>(),
+        context.read<ConnectionViewModel>(),
+      );
+      return;
+    }
+
+    // paused / inactive / hidden / detached → app is (going) backgrounded.
+    _isBackgrounded = true;
+
+    // iOS only: when not connected to a companion there's nothing to keep phone
+    // GPS alive for in the background, so stop it to release the native
+    // location session and let the app suspend.
+    if (!Platform.isIOS || !mounted) return;
+    if (!context.read<ConnectionViewModel>().isConnected) {
+      debugPrint(
+          '[MapScreen] 📍 Backgrounded & disconnected — stopping phone GPS');
+      _stopPhoneLocationTracking();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _positionSub?.cancel();
     _positionSub = null;
     _compassSub?.cancel();
@@ -1369,6 +1405,17 @@ class _MapScreenState extends State<MapScreen> {
     SettingsService settingsService,
     ConnectionViewModel connectionVM,
   ) {
+    // iOS: while backgrounded and not connected to a companion, keep phone GPS
+    // off so the native background-location session is released. Guarding here
+    // (not just in didChangeAppLifecycleState) prevents a stray rebuild from
+    // restarting GPS while suspended.
+    if (Platform.isIOS &&
+        _isBackgrounded &&
+        !connectionVM.isConnected) {
+      _stopPhoneLocationTracking();
+      return;
+    }
+
     final wantsCompanion =
         settingsService.settings.locationSource == LocationSource.companion;
 
