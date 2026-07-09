@@ -211,11 +211,12 @@ class MessageRepository {
             reason: 'PUSH_LOG_RX_DATA');
       }
 
-      // Check for PUSH_ADVERT (0x80) - contact advertisement received
-      // Team parity:
-      // - When an advert is received, do a complete contact sync
-      // - If the sync increases contact count, send a reciprocal advert so the
-      //   new peer can also add us.
+      // Check for PUSH_ADVERT (0x80) - contact advertisement received.
+      // Adverts carry contact info, so on receipt we do an incremental-first
+      // contact sync (falling back to a full sync) to pick up new/updated
+      // contacts. We do NOT send a reciprocal advert in response — replying to
+      // an advert with an advert is not the intended behavior. Auto self-adverts
+      // live only on the #Tel/#T unknown-sender paths.
       if (responseCode == BleConstants.pushCodeAdvert) {
         debugPrint('[🔍DISC] 📢 PUSH_ADVERT received - syncing contacts...');
 
@@ -226,30 +227,38 @@ class MessageRepository {
 
             final companionKey =
                 _settingsService.settings.currentCompanionPublicKey;
-            final countBefore = (companionKey == null || companionKey.isEmpty)
-                ? (await _contactsDao.getAllContacts()).length
-                : (await _contactsDao.getContactsByCompanion(companionKey))
-                    .length;
+            final since = (companionKey != null && companionKey.isNotEmpty)
+                ? _settingsService.getContactLastmod(companionKey)
+                : 0;
 
-            final result = await _contactRepository.syncContactsComplete();
+            var result =
+                await _contactRepository.syncContactsComplete(since: since);
 
             if (!result.success) {
               debugPrint('[🔍DISC] ❌ Contact sync failed or timed out');
               return;
             }
 
-            final countAfter = (companionKey == null || companionKey.isEmpty)
-                ? (await _contactsDao.getAllContacts()).length
-                : (await _contactsDao.getContactsByCompanion(companionKey))
-                    .length;
-
-            if (countAfter > countBefore) {
+            // If we did an incremental sync and got nothing back, the firmware
+            // may have the contact but outside the lastmod window. Retry full.
+            if (since > 0 && result.mostRecentLastmod == 0) {
               debugPrint(
-                  '[🔍DISC] 📤 New contact detected ($countBefore → $countAfter) - sending reciprocal advert');
-              await _bleService.sendSelfAdvert();
-            } else {
-              debugPrint('[🔍DISC] ✓ Existing contact - no reciprocal needed');
+                  '[🔍DISC] ⚠️ Incremental sync returned nothing — retrying full sync');
+              result = await _contactRepository.syncContactsComplete(since: 0);
+              if (!result.success) {
+                debugPrint('[🔍DISC] ❌ Full sync retry failed');
+                return;
+              }
             }
+
+            if (result.mostRecentLastmod > 0 &&
+                companionKey != null &&
+                companionKey.isNotEmpty) {
+              await _settingsService.setContactLastmod(
+                  companionKey, result.mostRecentLastmod);
+            }
+
+            debugPrint('[🔍DISC] ✓ Contact sync complete');
           } catch (e) {
             debugPrint('[🔍DISC] ⚠️ Advert contact sync failed: $e');
           }
@@ -257,14 +266,33 @@ class MessageRepository {
       }
 
       // Check for PUSH_NEW_ADVERT (0x8A) - new advertisement notification.
-      // Team parity: do a delayed contact sync (non-blocking).
+      // Delayed, incremental-first contact sync (non-blocking). Like
+      // PUSH_ADVERT, this only syncs contacts — it never sends a self-advert.
       if (responseCode == BleConstants.pushCodeNewAdvert) {
         debugPrint(
             '[🔍DISC] 📣 PUSH_NEW_ADVERT received - syncing contacts...');
         unawaited(() async {
           try {
             await Future<void>.delayed(const Duration(milliseconds: 500));
-            await _contactRepository.syncContactsComplete();
+            final companionKey =
+                _settingsService.settings.currentCompanionPublicKey;
+            final since = (companionKey != null && companionKey.isNotEmpty)
+                ? _settingsService.getContactLastmod(companionKey)
+                : 0;
+            var result =
+                await _contactRepository.syncContactsComplete(since: since);
+            if (result.success && since > 0 && result.mostRecentLastmod == 0) {
+              debugPrint(
+                  '[🔍DISC] ⚠️ Incremental sync returned nothing — retrying full sync');
+              result = await _contactRepository.syncContactsComplete(since: 0);
+            }
+            if (result.success &&
+                result.mostRecentLastmod > 0 &&
+                companionKey != null &&
+                companionKey.isNotEmpty) {
+              await _settingsService.setContactLastmod(
+                  companionKey, result.mostRecentLastmod);
+            }
           } catch (e) {
             debugPrint('[🔍DISC] ⚠️ New advert contact sync failed: $e');
           }
