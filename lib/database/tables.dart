@@ -222,7 +222,11 @@ class OfflineMapAreas extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// Imported overlay maps table - stores metadata for imported KMZ raster overlay maps
+/// Imported overlay maps table - stores metadata for user-imported raster
+/// overlay maps (Garmin KMZ, MBTiles, and geospatial PDF converted to MBTiles).
+///
+/// Only metadata lives here; the map data itself stays on disk under
+/// {appDocuments}/imported_maps/{id}/. See [OverlayLayerType].
 @DataClassName('ImportedOverlayMapData')
 class ImportedOverlayMaps extends Table {
   TextColumn get id => text()(); // UUID (primary key)
@@ -236,6 +240,21 @@ class ImportedOverlayMaps extends Table {
   RealColumn get boundsSouth => real()();
   RealColumn get boundsEast => real()();
   RealColumn get boundsWest => real()();
+
+  /// Discriminator: 'kmz' | 'mbtiles' | 'geopdf'. Defaults to 'kmz' so rows
+  /// written before schema v9 keep their meaning with no data migration.
+  TextColumn get layerType => text().withDefault(const Constant('kmz'))();
+
+  /// Native zoom range. Null for KMZ, which has no pyramid semantics.
+  IntColumn get minZoom => integer().nullable()();
+  IntColumn get maxZoom => integer().nullable()();
+
+  /// Per-layer render opacity, 0.0-1.0.
+  RealColumn get opacity => real().withDefault(const Constant(1.0))();
+
+  /// On-disk size, recorded at import. Avoids walking a multi-GB MBTiles
+  /// file every time the manage screen rebuilds.
+  IntColumn get sizeBytes => integer().withDefault(const Constant(0))();
 
   @override
   Set<Column> get primaryKey => {id};

@@ -20,6 +20,13 @@ import 'package:meshcore_team/models/map_tile_providers.dart';
 import 'package:meshcore_team/repositories/channel_repository.dart';
 import 'package:meshcore_team/services/map_tile_cache_service.dart';
 
+/// Largest imported overlay map that may be packed into a team config.
+///
+/// The export builds the whole ZIP in memory before encoding it, so a
+/// multi-hundred-megabyte MBTiles archive would exhaust the heap. Maps above
+/// this are skipped and reported back to the caller.
+const int kMaxShareableOverlayBytes = 150 * 1024 * 1024;
+
 /// Progress reported during export or import.
 class TeamConfigProgress {
   final String phase;
@@ -234,6 +241,14 @@ class TeamConfigOverlayMapEntry {
   final double east;
   final double west;
 
+  /// 'kmz' | 'mbtiles' | 'geopdf'. Absent in configs written before MBTiles
+  /// support existed, which is why [fromJson] defaults it to 'kmz'.
+  final String layerType;
+
+  /// Native zoom range for tiled layers; null for KMZ.
+  final int? minZoom;
+  final int? maxZoom;
+
   const TeamConfigOverlayMapEntry({
     required this.id,
     required this.name,
@@ -243,6 +258,9 @@ class TeamConfigOverlayMapEntry {
     required this.south,
     required this.east,
     required this.west,
+    this.layerType = 'kmz',
+    this.minZoom,
+    this.maxZoom,
   });
 
   Map<String, dynamic> toJson() => {
@@ -254,6 +272,9 @@ class TeamConfigOverlayMapEntry {
         'south': south,
         'east': east,
         'west': west,
+        'layerType': layerType,
+        if (minZoom != null) 'minZoom': minZoom,
+        if (maxZoom != null) 'maxZoom': maxZoom,
       };
 
   factory TeamConfigOverlayMapEntry.fromJson(Map<String, dynamic> json) =>
@@ -266,6 +287,9 @@ class TeamConfigOverlayMapEntry {
         south: (json['south'] as num).toDouble(),
         east: (json['east'] as num).toDouble(),
         west: (json['west'] as num).toDouble(),
+        layerType: json['layerType'] as String? ?? 'kmz',
+        minZoom: json['minZoom'] as int?,
+        maxZoom: json['maxZoom'] as int?,
       );
 }
 
@@ -335,6 +359,9 @@ class TeamConfigService {
     TeamConfigRadioSettings? radioSettings,
     void Function(TeamConfigProgress)? onProgress,
     bool Function()? isCancelled,
+    /// Called with the names of any overlay maps left out because they exceed
+    /// [kMaxShareableOverlayBytes]. The export still succeeds without them.
+    void Function(List<String> names)? onOverlayMapsTooLarge,
   }) async {
     final archive = Archive();
 
@@ -465,6 +492,7 @@ class TeamConfigService {
 
     // --- Pack overlay map tile files ---
     final overlayMapEntries = <TeamConfigOverlayMapEntry>[];
+    final overlayMapsTooLarge = <String>[];
     int overlayMapSizeBytes = 0;
 
     for (int mi = 0; mi < overlayMaps.length; mi++) {
@@ -480,8 +508,20 @@ class TeamConfigService {
       final dir = Directory(map.dirPath);
       if (!dir.existsSync()) continue;
 
-      int mapSizeBytes = 0;
+      // The archive is assembled in memory before being encoded, so a large
+      // MBTiles map would exhaust the heap. Skip those rather than crash the
+      // whole export; the manage screen flags which maps are too big to share.
       final files = dir.listSync().whereType<File>().toList();
+      int dirBytes = 0;
+      for (final file in files) {
+        dirBytes += await file.length();
+      }
+      if (dirBytes > kMaxShareableOverlayBytes) {
+        overlayMapsTooLarge.add(map.name);
+        continue;
+      }
+
+      int mapSizeBytes = 0;
       for (final file in files) {
         if (isCancelled?.call() == true) break;
         final bytes = await file.readAsBytes();
@@ -500,6 +540,9 @@ class TeamConfigService {
         south: map.boundsSouth,
         east: map.boundsEast,
         west: map.boundsWest,
+        layerType: map.layerType,
+        minZoom: map.minZoom,
+        maxZoom: map.maxZoom,
       ));
     }
 
@@ -532,7 +575,12 @@ class TeamConfigService {
       'includesOverlayMaps': overlayMapEntries.isNotEmpty,
       'overlayMapCount': overlayMapEntries.length,
       'overlayMapSizeBytes': overlayMapSizeBytes,
+      if (overlayMapsTooLarge.isNotEmpty)
+        'overlayMapsOmittedTooLarge': overlayMapsTooLarge,
     };
+    if (overlayMapsTooLarge.isNotEmpty) {
+      onOverlayMapsTooLarge?.call(List.unmodifiable(overlayMapsTooLarge));
+    }
     final manifestJson = jsonEncode(manifest);
     archive.addFile(ArchiveFile(
       'manifest.json',
@@ -980,6 +1028,10 @@ class TeamConfigService {
             boundsSouth: entry.south,
             boundsEast: entry.east,
             boundsWest: entry.west,
+            layerType: drift.Value(entry.layerType),
+            minZoom: drift.Value(entry.minZoom),
+            maxZoom: drift.Value(entry.maxZoom),
+            sizeBytes: drift.Value(entry.sizeBytes),
           ));
           overlayMapsImported++;
         }

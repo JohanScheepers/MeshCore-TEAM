@@ -3,7 +3,7 @@ description: "Cross-platform mesh networking app for iOS and Android"
 # Licensed under CC BY-NC-SA 4.0 - Non-commercial use only
 publish_to: 'none'
 
-version: 1.1.6+11600
+version: 1.1.6+11601
 
 environment:
   sdk: ^3.6.0
@@ -21,6 +21,9 @@ dependencies:
   # Database
   drift: ^2.14.0
   sqlite3_flutter_libs: ^0.5.0
+  # Direct dependency (also pulled in by drift) so MBTiles files, which are
+  # plain SQLite databases, can be opened read-only outside of drift.
+  sqlite3: ^2.9.0
   path_provider: ^2.1.5
   path: ^1.8.3
 

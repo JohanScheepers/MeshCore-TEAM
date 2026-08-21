@@ -23,6 +23,8 @@ import 'services/settings_service.dart';
 import 'theme/night_theme.dart';
 import 'services/map_tile_cache_service.dart';
 import 'services/kmz_import_service.dart';
+import 'services/mbtiles_import_service.dart';
+import 'services/mbtiles_registry.dart';
 import 'services/message_notification_service.dart';
 import 'services/mesh_connection_service.dart';
 import 'ble/ble_connection_manager.dart';
@@ -461,6 +463,14 @@ class TeamFlutterApp extends StatelessWidget {
 
         // KMZ imported map service
         Provider<KmzImportService>(create: (_) => KmzImportService()),
+
+        // MBTiles imported map service, plus the registry that owns the open
+        // SQLite handles so the map and manage screens share them.
+        Provider<MbtilesImportService>(create: (_) => MbtilesImportService()),
+        Provider<MbtilesRegistry>(
+          create: (_) => MbtilesRegistry(),
+          dispose: (_, registry) => registry.closeAll(),
+        ),
 
         // Settings service provider
         ChangeNotifierProvider<SettingsService>.value(value: settingsService),

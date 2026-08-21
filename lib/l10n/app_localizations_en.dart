@@ -467,16 +467,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Removes downloaded tiles and metadata';
 
   @override
-  String get importedMapsKmz => 'Imported Maps (KMZ)';
+  String get importedMaps => 'Imported Maps';
 
   @override
-  String get manageImportedMapsKmz => 'Manage Imported Maps (KMZ)';
+  String get manageImportedMaps => 'Manage Imported Maps';
 
   @override
-  String get importKmz => 'Import KMZ';
+  String get importMap => 'Import Map';
 
   @override
-  String get importKmzFile => 'Import KMZ file';
+  String get importMapFile => 'Import map file';
 
   @override
   String get centerOnMap => 'Center on map';
@@ -775,7 +775,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get offlineMapAreas => 'Offline Map Areas';
 
   @override
-  String get overlayMapsKmz => 'Overlay Maps (KMZ)';
+  String get overlayMaps => 'Overlay Maps';
 
   @override
   String genericError(String error) {

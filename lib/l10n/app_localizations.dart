@@ -998,29 +998,29 @@ abstract class AppLocalizations {
   /// **'Removes downloaded tiles and metadata'**
   String get removesDownloadedTilesAndMetadata;
 
-  /// No description provided for @importedMapsKmz.
+  /// No description provided for @importedMaps.
   ///
   /// In en, this message translates to:
-  /// **'Imported Maps (KMZ)'**
-  String get importedMapsKmz;
+  /// **'Imported Maps'**
+  String get importedMaps;
 
-  /// No description provided for @manageImportedMapsKmz.
+  /// No description provided for @manageImportedMaps.
   ///
   /// In en, this message translates to:
-  /// **'Manage Imported Maps (KMZ)'**
-  String get manageImportedMapsKmz;
+  /// **'Manage Imported Maps'**
+  String get manageImportedMaps;
 
-  /// No description provided for @importKmz.
+  /// No description provided for @importMap.
   ///
   /// In en, this message translates to:
-  /// **'Import KMZ'**
-  String get importKmz;
+  /// **'Import Map'**
+  String get importMap;
 
-  /// No description provided for @importKmzFile.
+  /// No description provided for @importMapFile.
   ///
   /// In en, this message translates to:
-  /// **'Import KMZ file'**
-  String get importKmzFile;
+  /// **'Import map file'**
+  String get importMapFile;
 
   /// No description provided for @centerOnMap.
   ///
@@ -1544,11 +1544,11 @@ abstract class AppLocalizations {
   /// **'Offline Map Areas'**
   String get offlineMapAreas;
 
-  /// No description provided for @overlayMapsKmz.
+  /// No description provided for @overlayMaps.
   ///
   /// In en, this message translates to:
-  /// **'Overlay Maps (KMZ)'**
-  String get overlayMapsKmz;
+  /// **'Overlay Maps'**
+  String get overlayMaps;
 
   /// No description provided for @genericError.
   ///
