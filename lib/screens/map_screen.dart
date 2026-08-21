@@ -256,6 +256,39 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     return result;
   }
 
+  /// Deepest zoom with real tiles behind it, across the base provider and any
+  /// visible MBTiles overlay.
+  ///
+  /// An imported archive routinely goes deeper than the base map, and capping
+  /// the camera at the base provider's limit would make those levels
+  /// unreachable even though the tiles are sitting in the file.
+  int _nativeMaxZoom(MapTileProviderOption tileConfig) {
+    var deepest = tileConfig.maxNativeZoom;
+    final registry = _mbtilesRegistry;
+    if (registry != null) {
+      for (final m in _overlayMaps) {
+        if (!m.isVisible || !m.type.isTiled) continue;
+        final source = registry.get(m.id);
+        if (source == null) continue;
+        if (source.maxZoom > deepest) deepest = source.maxZoom;
+      }
+    }
+    return deepest;
+  }
+
+  /// Pulls the camera back if it sits deeper than the new provider allows.
+  ///
+  /// Switching from a z20 provider to a z16 one while zoomed all the way in
+  /// otherwise leaves the camera above the new cap until the next gesture.
+  void _clampZoomToProvider(MapTileProviderOption tileConfig) {
+    if (!mounted) return;
+    final limit = (_nativeMaxZoom(tileConfig) + kOverzoomLevels).toDouble();
+    final camera = _mapController.camera;
+    if (camera.zoom > limit) {
+      _mapController.move(camera.center, limit);
+    }
+  }
+
   /// Builds a [TileLayer] for each visible MBTiles-backed overlay map.
   ///
   /// Unlike the KMZ path this needs no viewport culling, tile budget, or
@@ -1294,6 +1327,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           providerLabel: provider.label,
           urlTemplate: provider.urlTemplate,
           subdomains: provider.subdomains,
+          maxNativeZoom: provider.maxNativeZoom,
         );
       },
     );
@@ -1724,6 +1758,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final currentProviderId = normalizeMapProviderId(
       settingsService.settings.mapProvider,
     );
+    final nativeMaxZoom = _nativeMaxZoom(tileConfig);
     final showTrackedUserNames =
         settingsService.settings.mapShowTrackedUserNames;
     final showWaypointNames = settingsService.settings.mapShowWaypointNames;
@@ -1792,6 +1827,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                     .updateVisibility(mapId, !m.isVisible);
               } else {
                 await settingsService.setMapProvider(value);
+                _clampZoomToProvider(tileProviderForId(value));
               }
             },
             itemBuilder: (context) {
@@ -1968,8 +2004,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               initialCenter: _userLocation ??
                   const LatLng(37.7749, -122.4194), // Default to SF
               initialZoom: 15.0,
-              minZoom: 3.0,
-              maxZoom: 18.0,
+              minZoom: kMapMinZoom,
+              // Past the deepest real tile flutter_map upscales rather than
+              // requesting tiles the service does not have.
+              maxZoom: (nativeMaxZoom + kOverzoomLevels).toDouble(),
               backgroundColor: (currentProviderId == MapProvider.noMap || isNighttime)
                   ? Colors.black
                   : const Color(0xFFE0E0E0),
@@ -2042,7 +2080,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                     subdomains: tileConfig.subdomains,
                     tileProvider: tileCache.tileProvider,
                     userAgentPackageName: 'com.meshcore.team',
-                    maxNativeZoom: 18,
+                    maxNativeZoom: tileConfig.maxNativeZoom,
                   );
                   return isNighttime
                       ? ColorFiltered(

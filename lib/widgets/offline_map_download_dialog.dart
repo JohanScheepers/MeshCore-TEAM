@@ -21,6 +21,10 @@ class OfflineMapDownloadDialog extends StatefulWidget {
   final String urlTemplate;
   final List<String> subdomains;
 
+  /// Deepest zoom this provider serves. Downloading past it would cache 404
+  /// bodies or blank placeholders as though they were map tiles.
+  final int maxNativeZoom;
+
   const OfflineMapDownloadDialog({
     super.key,
     required this.bounds,
@@ -28,6 +32,7 @@ class OfflineMapDownloadDialog extends StatefulWidget {
     required this.providerLabel,
     required this.urlTemplate,
     required this.subdomains,
+    required this.maxNativeZoom,
   });
 
   @override
@@ -37,14 +42,20 @@ class OfflineMapDownloadDialog extends StatefulWidget {
 
 class _OfflineMapDownloadDialogState extends State<OfflineMapDownloadDialog> {
   static const int _minAllowedZoom = 8;
-  static const int _maxAllowedZoom = 18;
   static const int _defaultMinZoom = 12;
   static const int _defaultMaxZoom = 16;
 
+  /// Upper end of the slider. Bounded by what the provider actually serves,
+  /// with a floor so the range never collapses to zero divisions.
+  int get _maxAllowedZoom =>
+      widget.maxNativeZoom > _minAllowedZoom + 1
+          ? widget.maxNativeZoom
+          : _minAllowedZoom + 1;
+
   final TextEditingController _nameController = TextEditingController();
 
-  int _minZoom = _defaultMinZoom;
-  int _maxZoom = _defaultMaxZoom;
+  late int _minZoom;
+  late int _maxZoom;
 
   bool _isDownloading = false;
   bool _cancelRequested = false;
@@ -58,6 +69,9 @@ class _OfflineMapDownloadDialogState extends State<OfflineMapDownloadDialog> {
   @override
   void initState() {
     super.initState();
+    // A provider that stops at z16 must not open with a z16-to-z18 default.
+    _maxZoom = _defaultMaxZoom.clamp(_minAllowedZoom, _maxAllowedZoom);
+    _minZoom = _defaultMinZoom.clamp(_minAllowedZoom, _maxZoom);
     _recomputeEstimate();
   }
 
