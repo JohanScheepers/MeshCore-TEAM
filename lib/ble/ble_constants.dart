@@ -12,8 +12,33 @@ class BleConstants {
   static const String txCharacteristicUuid =
       '6E400003-B5A3-F393-E0A9-E50E24DCCA9E'; // Notify (device→app)
 
-  // Device name prefix
-  static const String deviceNamePrefix = 'MeshCore-';
+  // Device name prefixes advertised by stock firmware builds we can talk to.
+  // Scanning is already restricted to the NUS service UUID, but that service is
+  // generic (any Nordic-based board exposes it), so we also gate on the name to
+  // avoid offering unrelated hardware. Community forks that build on the
+  // MeshCore library — WhisperOS ('Whisper-'), RAK ('WisCore-'), LowMesh — use
+  // their own prefixes and were being skipped when we only matched 'MeshCore-'.
+  static const List<String> deviceNamePrefixes = [
+    'MeshCore-',
+    'Whisper-',
+    'WisCore-',
+    'HT-',
+    'LowMesh_MC_',
+    'Seeed',
+    'Lilygo',
+    'NRF52',
+  ];
+
+  /// True if [name] looks like a MeshCore-compatible radio.
+  /// Matched case-insensitively — firmware casing varies between forks.
+  static bool isSupportedDeviceName(String name) {
+    if (name.isEmpty) return false;
+    final lower = name.toLowerCase();
+    for (final prefix in deviceNamePrefixes) {
+      if (lower.startsWith(prefix.toLowerCase())) return true;
+    }
+    return false;
+  }
 
   // Frame protocol
   static const int maxFrameSize = 172; // bytes

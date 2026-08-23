@@ -159,6 +159,29 @@ class MeshBleService : Service() {
         private val txCharUuid: UUID = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
         private val cccdUuid: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
+        // Device name prefixes advertised by stock firmware builds we can talk to.
+        // The scan is already filtered to the NUS service UUID, but that service is
+        // generic (any Nordic-based board exposes it), so we also gate on the name to
+        // avoid offering unrelated hardware. Community forks that build on the
+        // MeshCore library — WhisperOS ("Whisper-"), RAK ("WisCore-"), LowMesh — use
+        // their own prefixes and were being skipped when we only matched "MeshCore-".
+        // Keep in sync with BleConstants.deviceNamePrefixes (lib/ble/ble_constants.dart).
+        private val deviceNamePrefixes = listOf(
+            "MeshCore-",
+            "Whisper-",
+            "WisCore-",
+            "HT-",
+            "LowMesh_MC_",
+            "Seeed",
+            "Lilygo",
+            "NRF52",
+        )
+
+        /** True if [name] looks like a MeshCore-compatible radio. Case-insensitive:
+         *  firmware casing varies between forks. */
+        private fun isSupportedDeviceName(name: String): Boolean =
+            name.isNotEmpty() && deviceNamePrefixes.any { name.startsWith(it, ignoreCase = true) }
+
         fun startService(context: Context) {
             val intent = Intent(context, MeshBleService::class.java).setAction(actionStartService)
             // Start as a normal service. We'll only promote to foreground (persistent
@@ -1090,8 +1113,13 @@ class MeshBleService : Service() {
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
             if (result == null) return
             val device = result.device
-            val name = device.name ?: ""
-            if (name.isNotEmpty() && name.startsWith("MeshCore-")) {
+            // Prefer the advertised name: device.name is the cached GATT name and is
+            // often null for devices we have never bonded with, which would drop an
+            // otherwise valid radio from a cold scan.
+            val name = result.scanRecord?.deviceName?.takeIf { it.isNotEmpty() }
+                ?: device.name
+                ?: ""
+            if (isSupportedDeviceName(name)) {
                 logI("scan result", mapOf("name" to name, "address" to device.address))
                 MeshBleEventBus.send(
                     mapOf(

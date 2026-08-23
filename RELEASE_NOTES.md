@@ -42,6 +42,7 @@
 
 ## Bug Fixes
 - Fixed the share-channel QR dialog rendering (forced black-on-white, resolved layout assertion, removed duplicate repeater label).
+- BLE scan filtering, added support for firmwares that aren't official Meshcore. WhisperOS etc. These will need testing
 
 ---
 

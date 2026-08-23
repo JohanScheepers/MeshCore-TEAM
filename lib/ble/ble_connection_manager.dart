@@ -219,7 +219,7 @@ class BleConnectionManager extends ChangeNotifier {
           final name = r.device.advName.isNotEmpty
               ? r.device.advName
               : r.device.platformName;
-          if (name.startsWith(BleConstants.deviceNamePrefix)) {
+          if (BleConstants.isSupportedDeviceName(name)) {
             final device = MeshBleDevice(
               address: r.device.remoteId.str,
               name: name,
@@ -829,7 +829,7 @@ class BleConnectionManager extends ChangeNotifier {
           final known = await FlutterBluePlus.systemDevices([]);
           for (final d in known) {
             final name = d.advName.isNotEmpty ? d.advName : d.platformName;
-            if (name.startsWith(BleConstants.deviceNamePrefix) &&
+            if (BleConstants.isSupportedDeviceName(name) &&
                 _scanResultsController != null &&
                 !_scanResultsController!.isClosed) {
               debugPrint('[BleManager] Found known device: $name (${d.remoteId})');
