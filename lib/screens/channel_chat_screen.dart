@@ -135,18 +135,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.channel.name),
-            Text(
-              widget.channel.isPublic ? l10n.publicChannel : l10n.privateChannel,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
         elevation: 0,
         actions: [
           if (!widget.channel.isPublic)
@@ -180,6 +168,31 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           ),
           const StatusBarActions(),
         ],
+        bottom:PreferredSize(preferredSize: const Size.fromHeight(48.0), 
+        child: Container(
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.only(
+              left: 16.0, right: 16.0, bottom: 12.0),
+          child: Row(
+            children: [
+                Expanded(
+                  child: Text(widget.channel.name,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w400
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(widget.channel.isPublic ? l10n.publicChannel : l10n.privateChannel,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w400
+                    ),
+                  ),
+                ),
+              ],),
+        ))
       ),
       body: Column(
         children: [
