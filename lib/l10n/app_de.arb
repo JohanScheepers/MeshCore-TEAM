@@ -50,6 +50,9 @@
   "themeLight": "Hell",
   "themeDark": "Dunkel",
   "themeSystemDefault": "Systemstandard",
+  "language": "Sprache",
+  "chooseLanguage": "Sprache auswählen",
+  "languageDeviceDefault": "Gerätesprache verwenden",
   "debugLogs": "Debug-Protokolle",
   "clearLogs": "Protokolle löschen",
   "exportLogs": "Protokolle exportieren",
@@ -624,6 +627,7 @@
   "filterHasLocation": "Hat Standort",
   "filterNoLocation": "Kein Standort",
   "filterRepeaters": "Repeater",
+  "filterRoomServers": "Room-Server",
   "sortByName": "Nach Name sortieren",
   "sortByLastSeen": "Nach letztem Kontakt sortieren",
   "sortByFavorites": "Favoriten zuerst",
@@ -685,8 +689,5 @@
     }
   },
   "trackingChannelNotConfigured": "Tracking-Kanal nicht konfiguriert",
-  "teamMembersCanNoLongerDownload": "Teammitglieder können nicht mehr herunterladen.",
-
-  "offlineShareServer": "Konfiguration offline teilen",
-  "importKmzFromFile": "KMZ-Datei importieren"
+  "teamMembersCanNoLongerDownload": "Teammitglieder können nicht mehr herunterladen."
 }

@@ -4,6 +4,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:meshcore_team/models/app_language.dart';
 import 'package:meshcore_team/models/app_settings.dart';
 
 /// Settings service managing app preferences via SharedPreferences
@@ -48,6 +49,10 @@ class SettingsService extends ChangeNotifier {
   static const String _keyContactAutoPurgeDays = 'contact_auto_purge_days';
   static const String _keyContactLastmod = 'contact_lastmod';
   static const String _keyAppTheme = 'app_theme';
+  static const String _keyLocaleCode = 'locale_code';
+  static const String _keyLanguageChosen = 'language_chosen';
+  static const String _keyCollapsedSettingsSections =
+      'collapsed_settings_sections';
 
   final SharedPreferences _prefs;
   AppSettings _settings = const AppSettings();
@@ -130,6 +135,11 @@ class SettingsService extends ChangeNotifier {
 
     _settings = AppSettings(
       appTheme: _sanitizeAppTheme(_prefs.getString(_keyAppTheme)),
+      localeCode: _sanitizeLocaleCode(_prefs.getString(_keyLocaleCode)),
+      languageChosen: _prefs.getBool(_keyLanguageChosen) ?? false,
+      collapsedSettingsSections:
+          _prefs.getStringList(_keyCollapsedSettingsSections) ??
+              const <String>[],
       locationSource:
           _prefs.getString(_keyLocationSource) ?? LocationSource.phone,
       telemetryEnabled: _prefs.getBool(_keyTelemetryEnabled) ?? false,
@@ -479,6 +489,54 @@ class SettingsService extends ChangeNotifier {
       return AppThemeMode.system;
     }
     return theme;
+  }
+
+  /// Set the app language.
+  ///
+  /// [code] is an [AppLanguage.code] or [AppLanguage.systemDefault]. Takes
+  /// effect immediately: MaterialApp is built inside a
+  /// `Consumer<SettingsService>`, so notifyListeners() re-resolves the locale
+  /// and relocalizes every screen.
+  Future<void> setLocaleCode(String code) async {
+    final sanitized = _sanitizeLocaleCode(code);
+    await _prefs.setString(_keyLocaleCode, sanitized);
+    _settings = _settings.copyWith(localeCode: sanitized);
+    notifyListeners();
+  }
+
+  /// Record that the user has been through the first-launch language picker,
+  /// so it is not shown again on subsequent launches.
+  Future<void> setLanguageChosen(bool chosen) async {
+    await _prefs.setBool(_keyLanguageChosen, chosen);
+    _settings = _settings.copyWith(languageChosen: chosen);
+    notifyListeners();
+  }
+
+  /// Collapse or expand one settings-screen section, remembered across visits.
+  ///
+  /// Only collapsed ids are stored, so a section added in a later release shows
+  /// up expanded rather than hidden behind a closed header.
+  Future<void> setSettingsSectionCollapsed(String id, bool collapsed) async {
+    final current = _settings.collapsedSettingsSections;
+    if (current.contains(id) == collapsed) return;
+
+    final updated = List<String>.from(current);
+    if (collapsed) {
+      updated.add(id);
+    } else {
+      updated.remove(id);
+    }
+
+    await _prefs.setStringList(_keyCollapsedSettingsSections, updated);
+    _settings = _settings.copyWith(collapsedSettingsSections: updated);
+    notifyListeners();
+  }
+
+  String _sanitizeLocaleCode(String? code) {
+    if (!AppLanguage.isValidSetting(code)) {
+      return AppLanguage.systemDefault;
+    }
+    return code!;
   }
 
   /// Clear all settings (reset to defaults)

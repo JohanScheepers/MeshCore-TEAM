@@ -1,11 +1,27 @@
 // Copyright (c) 2026 tmacinc
 // Licensed under CC BY-NC-SA 4.0
 
+import 'package:meshcore_team/models/app_language.dart';
+
 /// Application settings model
 /// Matches Android AppPreferences
 class AppSettings {
   // UI theme
   final String appTheme; // 'system', 'light', 'dark', 'nighttime'
+
+  // Language: an AppLanguage.code, or AppLanguage.systemDefault to follow the
+  // device locale. See AppLanguage for why this is a sentinel and not null.
+  final String localeCode;
+
+  // True once the user has been through the first-launch language picker.
+  // Distinct from localeCode == systemDefault, which is a legitimate choice.
+  final bool languageChosen;
+
+  // Ids of the settings-screen sections the user has collapsed. Stores the
+  // collapsed ones rather than the expanded ones so a newly added section
+  // defaults to expanded (visible) instead of silently hidden.
+  // See SettingsSection in screens/settings_screen.dart.
+  final List<String> collapsedSettingsSections;
 
   // Location settings
   final String locationSource; // 'phone' or 'companion'
@@ -56,6 +72,9 @@ class AppSettings {
 
   const AppSettings({
     this.appTheme = AppThemeMode.system,
+    this.localeCode = AppLanguage.systemDefault,
+    this.languageChosen = false,
+    this.collapsedSettingsSections = const <String>[],
     this.locationSource = LocationSource.phone,
     this.telemetryEnabled = false,
     this.telemetryChannelHash,
@@ -89,6 +108,9 @@ class AppSettings {
 
   AppSettings copyWith({
     String? appTheme,
+    String? localeCode,
+    bool? languageChosen,
+    List<String>? collapsedSettingsSections,
     String? locationSource,
     bool? telemetryEnabled,
     String? telemetryChannelHash,
@@ -121,6 +143,10 @@ class AppSettings {
   }) {
     return AppSettings(
       appTheme: appTheme ?? this.appTheme,
+      localeCode: localeCode ?? this.localeCode,
+      languageChosen: languageChosen ?? this.languageChosen,
+      collapsedSettingsSections:
+          collapsedSettingsSections ?? this.collapsedSettingsSections,
       locationSource: locationSource ?? this.locationSource,
       telemetryEnabled: telemetryEnabled ?? this.telemetryEnabled,
       telemetryChannelHash: telemetryChannelHash ?? this.telemetryChannelHash,

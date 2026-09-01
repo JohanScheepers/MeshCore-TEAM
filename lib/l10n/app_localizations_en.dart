@@ -153,6 +153,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get themeSystemDefault => 'System default';
 
   @override
+  String get language => 'Language';
+
+  @override
+  String get chooseLanguage => 'Choose your language';
+
+  @override
+  String get languageDeviceDefault => 'Use device language';
+
+  @override
   String get debugLogs => 'Debug Logs';
 
   @override

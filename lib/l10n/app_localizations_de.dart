@@ -153,6 +153,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get themeSystemDefault => 'Systemstandard';
 
   @override
+  String get language => 'Sprache';
+
+  @override
+  String get chooseLanguage => 'Sprache auswählen';
+
+  @override
+  String get languageDeviceDefault => 'Gerätesprache verwenden';
+
+  @override
   String get debugLogs => 'Debug-Protokolle';
 
   @override
@@ -1127,7 +1136,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get filterRepeaters => 'Repeater';
 
   @override
-  String get filterRoomServers => 'Room Servers';
+  String get filterRoomServers => 'Room-Server';
 
   @override
   String get sortByName => 'Nach Name sortieren';

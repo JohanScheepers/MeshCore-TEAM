@@ -19,6 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'database/database.dart';
+import 'models/app_language.dart';
 import 'models/app_settings.dart';
 import 'services/settings_service.dart';
 import 'theme/night_theme.dart';
@@ -45,6 +46,7 @@ import 'screens/main_navigation_screen.dart';
 import 'screens/direct_message_screen.dart';
 import 'screens/channel_chat_screen.dart';
 import 'screens/permissions_screen.dart';
+import 'screens/language_screen.dart';
 import 'utils/notification_payload.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'widgets/deep_link_listener.dart';
@@ -522,8 +524,9 @@ class TeamFlutterApp extends StatelessWidget {
           return MaterialApp(
             navigatorKey: navigatorKey,
             title: 'TEAM Flutter',
-            locale: _forceLocale.isNotEmpty ? Locale(_forceLocale) : null,
-            localizationsDelegates: [
+            locale: _selectedLocale(settings.settings.localeCode),
+            localeResolutionCallback: AppLanguage.resolve,
+            localizationsDelegates: const [
               AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
@@ -573,13 +576,28 @@ class TeamFlutterApp extends StatelessWidget {
               },
               child: child!,
             ),
-            home: const DeepLinkListener(child: _PermissionGate(),
+            home: const DeepLinkListener(
+              child: _LanguageGate(
+                child: _PermissionGate(),
+              ),
             ),
           );
         },
       ),
     );
   }
+}
+
+
+/// The explicit locale to force, or null to resolve from the device locale.
+///
+/// [localeCode] is [AppLanguage.systemDefault] or an [AppLanguage.code], from
+/// settings. The FORCE_LOCALE dart-define still wins over both, for testing a
+/// translation without changing the device language.
+Locale? _selectedLocale(String localeCode) {
+  if (_forceLocale.isNotEmpty) return Locale(_forceLocale);
+  if (localeCode == AppLanguage.systemDefault) return null;
+  return Locale(localeCode);
 }
 
 ThemeData _nighttimeTheme() {
@@ -669,6 +687,29 @@ ThemeData _nighttimeTheme() {
     ),
     useMaterial3: true,
   );
+}
+
+/// Language Gate - Shows the language picker on first launch, once, before the
+/// permission gate.
+///
+/// It must come first because the permission screen is itself localized: asking
+/// for Bluetooth and location in the wrong language is exactly the friction the
+/// picker exists to remove. Gated on [AppSettings.languageChosen] rather than on
+/// localeCode, since "follow the device" is a legitimate choice that would
+/// otherwise re-prompt on every launch.
+class _LanguageGate extends StatelessWidget {
+  final Widget child;
+
+  const _LanguageGate({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    // watch, not read: setLanguageChosen() then swaps in [child] with no
+    // navigation, and a language picked on the way through is already live.
+    final settings = context.watch<SettingsService>();
+    if (settings.settings.languageChosen) return child;
+    return const LanguageScreen();
+  }
 }
 
 /// Permission Gate - Shows permissions screen or main app based on permission status

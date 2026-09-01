@@ -8,6 +8,19 @@
 	<false/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<!-- Languages iOS is allowed to report to the app. Without this key iOS
+	     hands Flutter only the development region, so the device language is
+	     never detected and auto-selection silently does nothing on iOS.
+	     KEEP IN SYNC with AppLanguage.all in lib/models/app_language.dart. -->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>de</string>
+		<string>es</string>
+		<string>fr</string>
+		<string>it</string>
+		<string>nl</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>MeshCore TEAM</string>
 	<key>CFBundleExecutable</key>

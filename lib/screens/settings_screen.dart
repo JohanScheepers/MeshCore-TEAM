@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:meshcore_team/database/database.dart';
+import 'package:meshcore_team/models/app_language.dart';
 import 'package:meshcore_team/models/app_settings.dart';
 import 'package:meshcore_team/repositories/channel_repository.dart';
 import 'package:meshcore_team/services/settings_service.dart';
@@ -16,6 +17,18 @@ import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
 
 const MethodChannel _appLifecycleChannel =
     MethodChannel('com.meshcore.team/app_lifecycle');
+
+/// Stable ids for the collapsible sections of the settings screen.
+///
+/// Persisted in [AppSettings.collapsedSettingsSections], so these strings are
+/// storage keys: renaming one silently resets that section to expanded. They
+/// are deliberately independent of the localized section titles.
+class SettingsSection {
+  static const String appearance = 'appearance';
+  static const String location = 'location';
+  static const String data = 'data';
+  static const String android = 'android';
+}
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -38,189 +51,234 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       body: ListView(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Text(
-              l10n.location,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: Column(
-              children: [
-                Card(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                        child: Text(l10n.locationSource,
-                            style: const TextStyle(fontWeight: FontWeight.w500)),
-                      ),
-                      RadioListTile<String>(
-                        title: Text(l10n.phoneGps),
-                        value: LocationSource.phone,
-                        groupValue: settings.settings.locationSource,
-                        onChanged: (v) => _setLocationSource(settings, v!),
-                      ),
-                      RadioListTile<String>(
-                        title: Text(l10n.companionGps),
-                        subtitle: Text(l10n.phoneFallback),
-                        value: LocationSource.companion,
-                        groupValue: settings.settings.locationSource,
-                        onChanged: (v) => _setLocationSource(settings, v!),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _buildLocationTrackingCard(settings),
-                if (Platform.isIOS) ...[
-                  const SizedBox(height: 8),
-                  Card(
-                    child: ListTile(
-                      onTap: () => _showBackgroundLocationDialog(settings),
-                      leading: Icon(settings.settings.backgroundLocationEnabled
-                          ? Icons.my_location
-                          : Icons.location_disabled),
-                      title: Text(l10n.alwaysOnLocation,
-                          style: const TextStyle(fontWeight: FontWeight.w500)),
-                      subtitle: Text(settings.settings.backgroundLocationEnabled
-                          ? l10n.locationEnabledBackground
-                          : l10n.disabled),
-                      trailing: const Icon(Icons.chevron_right),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 16),
-              ],
-            ),
+          _buildSection(
+            context: context,
+            settings: settings,
+            id: SettingsSection.appearance,
+            title: l10n.appearance,
+            children: _appearanceChildren(l10n, settings),
           ),
           const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Text(
-              l10n.appearance,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: Column(
-              children: [
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                    child: DropdownButtonFormField<String>(
-                      decoration: InputDecoration(labelText: l10n.theme),
-                      value: settings.settings.appTheme,
-                      items: [
-                        DropdownMenuItem(
-                          value: AppThemeMode.system,
-                          child: Row(children: [
-                            const Icon(Icons.brightness_auto, size: 18),
-                            const SizedBox(width: 8),
-                            Text(l10n.themeSystemDefault),
-                          ]),
-                        ),
-                        DropdownMenuItem(
-                          value: AppThemeMode.light,
-                          child: Row(children: [
-                            const Icon(Icons.light_mode, size: 18),
-                            const SizedBox(width: 8),
-                            Text(l10n.themeLight),
-                          ]),
-                        ),
-                        DropdownMenuItem(
-                          value: AppThemeMode.dark,
-                          child: Row(children: [
-                            const Icon(Icons.dark_mode, size: 18),
-                            const SizedBox(width: 8),
-                            Text(l10n.themeDark),
-                          ]),
-                        ),
-                        DropdownMenuItem(
-                          value: AppThemeMode.nighttime,
-                          child: Row(children: [
-                            const Icon(Icons.nightlight_round, size: 18),
-                            const SizedBox(width: 8),
-                            Text(l10n.redLightDiscipline),
-                          ]),
-                        ),
-                      ],
-                      onChanged: (v) => settings.setAppTheme(v!),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
+          _buildSection(
+            context: context,
+            settings: settings,
+            id: SettingsSection.location,
+            title: l10n.location,
+            children: _locationChildren(l10n, settings),
           ),
           const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Text(
-              l10n.data,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: Column(
-              children: [
-                _buildAutoPurgeCard(context, l10n, settings),
-                const SizedBox(height: 16),
-              ],
-            ),
+          _buildSection(
+            context: context,
+            settings: settings,
+            id: SettingsSection.data,
+            title: l10n.data,
+            children: [_buildAutoPurgeCard(context, l10n, settings)],
           ),
           if (Platform.isAndroid) ...[
             const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Text(
-                l10n.android,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              child: Column(
-                children: [
-                  Card(
-                    child: ListTile(
-                      onTap: () => _toggleKeepScreenOnLock(settings),
-                      leading: Icon(settings.settings.keepScreenOnLock
-                          ? Icons.screen_lock_portrait
-                          : Icons.screen_lock_portrait_outlined),
-                      title: Text(l10n.keepScreenOn,
-                          style: const TextStyle(fontWeight: FontWeight.w500)),
-                      subtitle: Text(settings.settings.keepScreenOnLock
-                          ? l10n.keepScreenOnEnabled
-                          : l10n.disabled),
-                      trailing: const Icon(Icons.chevron_right),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-              ),
+            _buildSection(
+              context: context,
+              settings: settings,
+              id: SettingsSection.android,
+              title: l10n.android,
+              children: _androidChildren(l10n, settings),
             ),
           ],
         ],
       ),
     );
+  }
+
+  /// A collapsible settings section.
+  ///
+  /// [id] is a stable [SettingsSection] constant, not the localized [title] —
+  /// the remembered collapse state has to survive a language change.
+  Widget _buildSection({
+    required BuildContext context,
+    required SettingsService settings,
+    required String id,
+    required String title,
+    required List<Widget> children,
+  }) {
+    final isCollapsed =
+        settings.settings.collapsedSettingsSections.contains(id);
+
+    return ExpansionTile(
+      // Keyed so the tile keeps its open/closed state as the surrounding
+      // ListView rebuilds (every settings change notifies this screen).
+      key: PageStorageKey<String>(id),
+      title: Text(
+        title,
+        style: Theme.of(context)
+            .textTheme
+            .titleMedium
+            ?.copyWith(fontWeight: FontWeight.bold),
+      ),
+      // Read once on first build; afterwards ExpansionTile owns the live state
+      // and onExpansionChanged writes it back.
+      initiallyExpanded: !isCollapsed,
+      onExpansionChanged: (expanded) =>
+          settings.setSettingsSectionCollapsed(id, !expanded),
+      // The screen separates sections with its own Dividers; suppress the
+      // default M3 expanded/collapsed borders so the lines don't double up.
+      shape: const Border(),
+      collapsedShape: const Border(),
+      tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+      childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+      expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
+    );
+  }
+
+  List<Widget> _appearanceChildren(
+      AppLocalizations l10n, SettingsService settings) {
+    return [
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: DropdownButtonFormField<String>(
+            decoration: InputDecoration(labelText: l10n.theme),
+            value: settings.settings.appTheme,
+            items: [
+              DropdownMenuItem(
+                value: AppThemeMode.system,
+                child: Row(children: [
+                  const Icon(Icons.brightness_auto, size: 18),
+                  const SizedBox(width: 8),
+                  Text(l10n.themeSystemDefault),
+                ]),
+              ),
+              DropdownMenuItem(
+                value: AppThemeMode.light,
+                child: Row(children: [
+                  const Icon(Icons.light_mode, size: 18),
+                  const SizedBox(width: 8),
+                  Text(l10n.themeLight),
+                ]),
+              ),
+              DropdownMenuItem(
+                value: AppThemeMode.dark,
+                child: Row(children: [
+                  const Icon(Icons.dark_mode, size: 18),
+                  const SizedBox(width: 8),
+                  Text(l10n.themeDark),
+                ]),
+              ),
+              DropdownMenuItem(
+                value: AppThemeMode.nighttime,
+                child: Row(children: [
+                  const Icon(Icons.nightlight_round, size: 18),
+                  const SizedBox(width: 8),
+                  Text(l10n.redLightDiscipline),
+                ]),
+              ),
+            ],
+            onChanged: (v) => settings.setAppTheme(v!),
+          ),
+        ),
+      ),
+      const SizedBox(height: 8),
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: DropdownButtonFormField<String>(
+            decoration: InputDecoration(labelText: l10n.language),
+            value: settings.settings.localeCode,
+            items: [
+              DropdownMenuItem(
+                value: AppLanguage.systemDefault,
+                child: Row(children: [
+                  const Icon(Icons.language, size: 18),
+                  const SizedBox(width: 8),
+                  Text(l10n.languageDeviceDefault),
+                ]),
+              ),
+              // Endonyms, matching the first-launch picker: a language
+              // name is most useful to the person who reads it.
+              for (final language in AppLanguage.all)
+                DropdownMenuItem(
+                  value: language.code,
+                  child: Row(children: [
+                    const SizedBox(width: 26),
+                    Text(language.endonym),
+                  ]),
+                ),
+            ],
+            onChanged: (v) => settings.setLocaleCode(v!),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _locationChildren(
+      AppLocalizations l10n, SettingsService settings) {
+    return [
+      Card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(l10n.locationSource,
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+            ),
+            RadioListTile<String>(
+              title: Text(l10n.phoneGps),
+              value: LocationSource.phone,
+              groupValue: settings.settings.locationSource,
+              onChanged: (v) => _setLocationSource(settings, v!),
+            ),
+            RadioListTile<String>(
+              title: Text(l10n.companionGps),
+              subtitle: Text(l10n.phoneFallback),
+              value: LocationSource.companion,
+              groupValue: settings.settings.locationSource,
+              onChanged: (v) => _setLocationSource(settings, v!),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 8),
+      _buildLocationTrackingCard(settings),
+      if (Platform.isIOS) ...[
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            onTap: () => _showBackgroundLocationDialog(settings),
+            leading: Icon(settings.settings.backgroundLocationEnabled
+                ? Icons.my_location
+                : Icons.location_disabled),
+            title: Text(l10n.alwaysOnLocation,
+                style: const TextStyle(fontWeight: FontWeight.w500)),
+            subtitle: Text(settings.settings.backgroundLocationEnabled
+                ? l10n.locationEnabledBackground
+                : l10n.disabled),
+            trailing: const Icon(Icons.chevron_right),
+          ),
+        ),
+      ],
+    ];
+  }
+
+  List<Widget> _androidChildren(
+      AppLocalizations l10n, SettingsService settings) {
+    return [
+      Card(
+        child: ListTile(
+          onTap: () => _toggleKeepScreenOnLock(settings),
+          leading: Icon(settings.settings.keepScreenOnLock
+              ? Icons.screen_lock_portrait
+              : Icons.screen_lock_portrait_outlined),
+          title: Text(l10n.keepScreenOn,
+              style: const TextStyle(fontWeight: FontWeight.w500)),
+          subtitle: Text(settings.settings.keepScreenOnLock
+              ? l10n.keepScreenOnEnabled
+              : l10n.disabled),
+          trailing: const Icon(Icons.chevron_right),
+        ),
+      ),
+    ];
   }
 
   static const _purgeDayOptions = [7, 14, 30, 60, 90, 180, 365, 0];
