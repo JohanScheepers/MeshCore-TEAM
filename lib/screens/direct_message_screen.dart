@@ -126,22 +126,36 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.contact.name ?? 'Unknown Contact'),
-            Text(
-              l10n.directMessage,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
         elevation: 0,
         actions: const [
           StatusBarActions(),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.only(
+              left: 16.0, right: 16.0, bottom: 12.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(widget.contact.name ?? 'Unknown Contact',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+            Expanded(
+                  child:  Text(l10n.directMessage,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ],)
+          ),
+        ),
       ),
       body: Column(
         children: [
