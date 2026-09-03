@@ -19,6 +19,7 @@ import '../l10n/app_localizations.dart';
 import '../repositories/channel_repository.dart';
 import '../repositories/message_repository.dart';
 import '../services/message_notification_service.dart';
+import '../widgets/app_bar_subtitle.dart';
 import '../widgets/chat_message_text.dart';
 import '../widgets/status_bar_actions.dart';
 import '../models/app_settings.dart';
@@ -135,19 +136,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.channel.name),
-            Text(
-              widget.channel.isPublic ? l10n.publicChannel : l10n.privateChannel,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
         elevation: 0,
+        toolbarHeight: AppBarSubtitle.toolbarHeight,
         actions: [
           if (!widget.channel.isPublic)
             IconButton(
@@ -180,6 +170,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           ),
           const StatusBarActions(),
         ],
+        bottom: AppBarSubtitle(
+          title: widget.channel.name,
+          subtitle:
+              widget.channel.isPublic ? l10n.publicChannel : l10n.privateChannel,
+        ),
       ),
       body: Column(
         children: [

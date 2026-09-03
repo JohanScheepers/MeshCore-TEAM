@@ -15,6 +15,7 @@ import 'package:meshcore_team/models/app_settings.dart';
 import 'package:meshcore_team/database/database.dart';
 import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/theme/night_theme.dart';
+import 'package:meshcore_team/widgets/app_bar_subtitle.dart';
 import 'package:meshcore_team/widgets/night_clock.dart';
 import 'package:meshcore_team/widgets/themed_dropdown.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
@@ -132,7 +133,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
-        title: Text(l10n.connection),
+        toolbarHeight: AppBarSubtitle.toolbarHeight,
         actions: [
           if (kDebugMode || isBetaBuild)
             IconButton(
@@ -216,6 +217,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
             ),
           _buildConnectionStatusIndicator(bleManager),
         ],
+        bottom: AppBarSubtitle(title: l10n.connection),
       ),
       body: Column(
         children: [
