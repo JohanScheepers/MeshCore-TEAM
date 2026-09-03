@@ -5402,6 +5402,42 @@ class $ImportedOverlayMapsTable extends ImportedOverlayMaps
   late final GeneratedColumn<double> boundsWest = GeneratedColumn<double>(
       'bounds_west', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _layerTypeMeta =
+      const VerificationMeta('layerType');
+  @override
+  late final GeneratedColumn<String> layerType = GeneratedColumn<String>(
+      'layer_type', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('kmz'));
+  static const VerificationMeta _minZoomMeta =
+      const VerificationMeta('minZoom');
+  @override
+  late final GeneratedColumn<int> minZoom = GeneratedColumn<int>(
+      'min_zoom', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _maxZoomMeta =
+      const VerificationMeta('maxZoom');
+  @override
+  late final GeneratedColumn<int> maxZoom = GeneratedColumn<int>(
+      'max_zoom', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _opacityMeta =
+      const VerificationMeta('opacity');
+  @override
+  late final GeneratedColumn<double> opacity = GeneratedColumn<double>(
+      'opacity', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(1.0));
+  static const VerificationMeta _sizeBytesMeta =
+      const VerificationMeta('sizeBytes');
+  @override
+  late final GeneratedColumn<int> sizeBytes = GeneratedColumn<int>(
+      'size_bytes', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -5413,7 +5449,12 @@ class $ImportedOverlayMapsTable extends ImportedOverlayMaps
         boundsNorth,
         boundsSouth,
         boundsEast,
-        boundsWest
+        boundsWest,
+        layerType,
+        minZoom,
+        maxZoom,
+        opacity,
+        sizeBytes
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5493,6 +5534,26 @@ class $ImportedOverlayMapsTable extends ImportedOverlayMaps
     } else if (isInserting) {
       context.missing(_boundsWestMeta);
     }
+    if (data.containsKey('layer_type')) {
+      context.handle(_layerTypeMeta,
+          layerType.isAcceptableOrUnknown(data['layer_type']!, _layerTypeMeta));
+    }
+    if (data.containsKey('min_zoom')) {
+      context.handle(_minZoomMeta,
+          minZoom.isAcceptableOrUnknown(data['min_zoom']!, _minZoomMeta));
+    }
+    if (data.containsKey('max_zoom')) {
+      context.handle(_maxZoomMeta,
+          maxZoom.isAcceptableOrUnknown(data['max_zoom']!, _maxZoomMeta));
+    }
+    if (data.containsKey('opacity')) {
+      context.handle(_opacityMeta,
+          opacity.isAcceptableOrUnknown(data['opacity']!, _opacityMeta));
+    }
+    if (data.containsKey('size_bytes')) {
+      context.handle(_sizeBytesMeta,
+          sizeBytes.isAcceptableOrUnknown(data['size_bytes']!, _sizeBytesMeta));
+    }
     return context;
   }
 
@@ -5522,6 +5583,16 @@ class $ImportedOverlayMapsTable extends ImportedOverlayMaps
           .read(DriftSqlType.double, data['${effectivePrefix}bounds_east'])!,
       boundsWest: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}bounds_west'])!,
+      layerType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}layer_type'])!,
+      minZoom: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}min_zoom']),
+      maxZoom: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}max_zoom']),
+      opacity: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}opacity'])!,
+      sizeBytes: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}size_bytes'])!,
     );
   }
 
@@ -5543,6 +5614,21 @@ class ImportedOverlayMapData extends DataClass
   final double boundsSouth;
   final double boundsEast;
   final double boundsWest;
+
+  /// Discriminator: 'kmz' | 'mbtiles' | 'geopdf'. Defaults to 'kmz' so rows
+  /// written before schema v9 keep their meaning with no data migration.
+  final String layerType;
+
+  /// Native zoom range. Null for KMZ, which has no pyramid semantics.
+  final int? minZoom;
+  final int? maxZoom;
+
+  /// Per-layer render opacity, 0.0-1.0.
+  final double opacity;
+
+  /// On-disk size, recorded at import. Avoids walking a multi-GB MBTiles
+  /// file every time the manage screen rebuilds.
+  final int sizeBytes;
   const ImportedOverlayMapData(
       {required this.id,
       required this.name,
@@ -5553,7 +5639,12 @@ class ImportedOverlayMapData extends DataClass
       required this.boundsNorth,
       required this.boundsSouth,
       required this.boundsEast,
-      required this.boundsWest});
+      required this.boundsWest,
+      required this.layerType,
+      this.minZoom,
+      this.maxZoom,
+      required this.opacity,
+      required this.sizeBytes});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -5567,6 +5658,15 @@ class ImportedOverlayMapData extends DataClass
     map['bounds_south'] = Variable<double>(boundsSouth);
     map['bounds_east'] = Variable<double>(boundsEast);
     map['bounds_west'] = Variable<double>(boundsWest);
+    map['layer_type'] = Variable<String>(layerType);
+    if (!nullToAbsent || minZoom != null) {
+      map['min_zoom'] = Variable<int>(minZoom);
+    }
+    if (!nullToAbsent || maxZoom != null) {
+      map['max_zoom'] = Variable<int>(maxZoom);
+    }
+    map['opacity'] = Variable<double>(opacity);
+    map['size_bytes'] = Variable<int>(sizeBytes);
     return map;
   }
 
@@ -5582,6 +5682,15 @@ class ImportedOverlayMapData extends DataClass
       boundsSouth: Value(boundsSouth),
       boundsEast: Value(boundsEast),
       boundsWest: Value(boundsWest),
+      layerType: Value(layerType),
+      minZoom: minZoom == null && nullToAbsent
+          ? const Value.absent()
+          : Value(minZoom),
+      maxZoom: maxZoom == null && nullToAbsent
+          ? const Value.absent()
+          : Value(maxZoom),
+      opacity: Value(opacity),
+      sizeBytes: Value(sizeBytes),
     );
   }
 
@@ -5599,6 +5708,11 @@ class ImportedOverlayMapData extends DataClass
       boundsSouth: serializer.fromJson<double>(json['boundsSouth']),
       boundsEast: serializer.fromJson<double>(json['boundsEast']),
       boundsWest: serializer.fromJson<double>(json['boundsWest']),
+      layerType: serializer.fromJson<String>(json['layerType']),
+      minZoom: serializer.fromJson<int?>(json['minZoom']),
+      maxZoom: serializer.fromJson<int?>(json['maxZoom']),
+      opacity: serializer.fromJson<double>(json['opacity']),
+      sizeBytes: serializer.fromJson<int>(json['sizeBytes']),
     );
   }
   @override
@@ -5615,6 +5729,11 @@ class ImportedOverlayMapData extends DataClass
       'boundsSouth': serializer.toJson<double>(boundsSouth),
       'boundsEast': serializer.toJson<double>(boundsEast),
       'boundsWest': serializer.toJson<double>(boundsWest),
+      'layerType': serializer.toJson<String>(layerType),
+      'minZoom': serializer.toJson<int?>(minZoom),
+      'maxZoom': serializer.toJson<int?>(maxZoom),
+      'opacity': serializer.toJson<double>(opacity),
+      'sizeBytes': serializer.toJson<int>(sizeBytes),
     };
   }
 
@@ -5628,7 +5747,12 @@ class ImportedOverlayMapData extends DataClass
           double? boundsNorth,
           double? boundsSouth,
           double? boundsEast,
-          double? boundsWest}) =>
+          double? boundsWest,
+          String? layerType,
+          Value<int?> minZoom = const Value.absent(),
+          Value<int?> maxZoom = const Value.absent(),
+          double? opacity,
+          int? sizeBytes}) =>
       ImportedOverlayMapData(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -5640,6 +5764,11 @@ class ImportedOverlayMapData extends DataClass
         boundsSouth: boundsSouth ?? this.boundsSouth,
         boundsEast: boundsEast ?? this.boundsEast,
         boundsWest: boundsWest ?? this.boundsWest,
+        layerType: layerType ?? this.layerType,
+        minZoom: minZoom.present ? minZoom.value : this.minZoom,
+        maxZoom: maxZoom.present ? maxZoom.value : this.maxZoom,
+        opacity: opacity ?? this.opacity,
+        sizeBytes: sizeBytes ?? this.sizeBytes,
       );
   ImportedOverlayMapData copyWithCompanion(ImportedOverlayMapsCompanion data) {
     return ImportedOverlayMapData(
@@ -5658,6 +5787,11 @@ class ImportedOverlayMapData extends DataClass
           data.boundsEast.present ? data.boundsEast.value : this.boundsEast,
       boundsWest:
           data.boundsWest.present ? data.boundsWest.value : this.boundsWest,
+      layerType: data.layerType.present ? data.layerType.value : this.layerType,
+      minZoom: data.minZoom.present ? data.minZoom.value : this.minZoom,
+      maxZoom: data.maxZoom.present ? data.maxZoom.value : this.maxZoom,
+      opacity: data.opacity.present ? data.opacity.value : this.opacity,
+      sizeBytes: data.sizeBytes.present ? data.sizeBytes.value : this.sizeBytes,
     );
   }
 
@@ -5673,14 +5807,33 @@ class ImportedOverlayMapData extends DataClass
           ..write('boundsNorth: $boundsNorth, ')
           ..write('boundsSouth: $boundsSouth, ')
           ..write('boundsEast: $boundsEast, ')
-          ..write('boundsWest: $boundsWest')
+          ..write('boundsWest: $boundsWest, ')
+          ..write('layerType: $layerType, ')
+          ..write('minZoom: $minZoom, ')
+          ..write('maxZoom: $maxZoom, ')
+          ..write('opacity: $opacity, ')
+          ..write('sizeBytes: $sizeBytes')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, dirPath, tileCount, importedAt,
-      isVisible, boundsNorth, boundsSouth, boundsEast, boundsWest);
+  int get hashCode => Object.hash(
+      id,
+      name,
+      dirPath,
+      tileCount,
+      importedAt,
+      isVisible,
+      boundsNorth,
+      boundsSouth,
+      boundsEast,
+      boundsWest,
+      layerType,
+      minZoom,
+      maxZoom,
+      opacity,
+      sizeBytes);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5694,7 +5847,12 @@ class ImportedOverlayMapData extends DataClass
           other.boundsNorth == this.boundsNorth &&
           other.boundsSouth == this.boundsSouth &&
           other.boundsEast == this.boundsEast &&
-          other.boundsWest == this.boundsWest);
+          other.boundsWest == this.boundsWest &&
+          other.layerType == this.layerType &&
+          other.minZoom == this.minZoom &&
+          other.maxZoom == this.maxZoom &&
+          other.opacity == this.opacity &&
+          other.sizeBytes == this.sizeBytes);
 }
 
 class ImportedOverlayMapsCompanion
@@ -5709,6 +5867,11 @@ class ImportedOverlayMapsCompanion
   final Value<double> boundsSouth;
   final Value<double> boundsEast;
   final Value<double> boundsWest;
+  final Value<String> layerType;
+  final Value<int?> minZoom;
+  final Value<int?> maxZoom;
+  final Value<double> opacity;
+  final Value<int> sizeBytes;
   final Value<int> rowid;
   const ImportedOverlayMapsCompanion({
     this.id = const Value.absent(),
@@ -5721,6 +5884,11 @@ class ImportedOverlayMapsCompanion
     this.boundsSouth = const Value.absent(),
     this.boundsEast = const Value.absent(),
     this.boundsWest = const Value.absent(),
+    this.layerType = const Value.absent(),
+    this.minZoom = const Value.absent(),
+    this.maxZoom = const Value.absent(),
+    this.opacity = const Value.absent(),
+    this.sizeBytes = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ImportedOverlayMapsCompanion.insert({
@@ -5734,6 +5902,11 @@ class ImportedOverlayMapsCompanion
     required double boundsSouth,
     required double boundsEast,
     required double boundsWest,
+    this.layerType = const Value.absent(),
+    this.minZoom = const Value.absent(),
+    this.maxZoom = const Value.absent(),
+    this.opacity = const Value.absent(),
+    this.sizeBytes = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
@@ -5755,6 +5928,11 @@ class ImportedOverlayMapsCompanion
     Expression<double>? boundsSouth,
     Expression<double>? boundsEast,
     Expression<double>? boundsWest,
+    Expression<String>? layerType,
+    Expression<int>? minZoom,
+    Expression<int>? maxZoom,
+    Expression<double>? opacity,
+    Expression<int>? sizeBytes,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -5768,6 +5946,11 @@ class ImportedOverlayMapsCompanion
       if (boundsSouth != null) 'bounds_south': boundsSouth,
       if (boundsEast != null) 'bounds_east': boundsEast,
       if (boundsWest != null) 'bounds_west': boundsWest,
+      if (layerType != null) 'layer_type': layerType,
+      if (minZoom != null) 'min_zoom': minZoom,
+      if (maxZoom != null) 'max_zoom': maxZoom,
+      if (opacity != null) 'opacity': opacity,
+      if (sizeBytes != null) 'size_bytes': sizeBytes,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -5783,6 +5966,11 @@ class ImportedOverlayMapsCompanion
       Value<double>? boundsSouth,
       Value<double>? boundsEast,
       Value<double>? boundsWest,
+      Value<String>? layerType,
+      Value<int?>? minZoom,
+      Value<int?>? maxZoom,
+      Value<double>? opacity,
+      Value<int>? sizeBytes,
       Value<int>? rowid}) {
     return ImportedOverlayMapsCompanion(
       id: id ?? this.id,
@@ -5795,6 +5983,11 @@ class ImportedOverlayMapsCompanion
       boundsSouth: boundsSouth ?? this.boundsSouth,
       boundsEast: boundsEast ?? this.boundsEast,
       boundsWest: boundsWest ?? this.boundsWest,
+      layerType: layerType ?? this.layerType,
+      minZoom: minZoom ?? this.minZoom,
+      maxZoom: maxZoom ?? this.maxZoom,
+      opacity: opacity ?? this.opacity,
+      sizeBytes: sizeBytes ?? this.sizeBytes,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5832,6 +6025,21 @@ class ImportedOverlayMapsCompanion
     if (boundsWest.present) {
       map['bounds_west'] = Variable<double>(boundsWest.value);
     }
+    if (layerType.present) {
+      map['layer_type'] = Variable<String>(layerType.value);
+    }
+    if (minZoom.present) {
+      map['min_zoom'] = Variable<int>(minZoom.value);
+    }
+    if (maxZoom.present) {
+      map['max_zoom'] = Variable<int>(maxZoom.value);
+    }
+    if (opacity.present) {
+      map['opacity'] = Variable<double>(opacity.value);
+    }
+    if (sizeBytes.present) {
+      map['size_bytes'] = Variable<int>(sizeBytes.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5851,6 +6059,11 @@ class ImportedOverlayMapsCompanion
           ..write('boundsSouth: $boundsSouth, ')
           ..write('boundsEast: $boundsEast, ')
           ..write('boundsWest: $boundsWest, ')
+          ..write('layerType: $layerType, ')
+          ..write('minZoom: $minZoom, ')
+          ..write('maxZoom: $maxZoom, ')
+          ..write('opacity: $opacity, ')
+          ..write('sizeBytes: $sizeBytes, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -8360,6 +8573,11 @@ typedef $$ImportedOverlayMapsTableCreateCompanionBuilder
   required double boundsSouth,
   required double boundsEast,
   required double boundsWest,
+  Value<String> layerType,
+  Value<int?> minZoom,
+  Value<int?> maxZoom,
+  Value<double> opacity,
+  Value<int> sizeBytes,
   Value<int> rowid,
 });
 typedef $$ImportedOverlayMapsTableUpdateCompanionBuilder
@@ -8374,6 +8592,11 @@ typedef $$ImportedOverlayMapsTableUpdateCompanionBuilder
   Value<double> boundsSouth,
   Value<double> boundsEast,
   Value<double> boundsWest,
+  Value<String> layerType,
+  Value<int?> minZoom,
+  Value<int?> maxZoom,
+  Value<double> opacity,
+  Value<int> sizeBytes,
   Value<int> rowid,
 });
 
@@ -8415,6 +8638,21 @@ class $$ImportedOverlayMapsTableFilterComposer
 
   ColumnFilters<double> get boundsWest => $composableBuilder(
       column: $table.boundsWest, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get layerType => $composableBuilder(
+      column: $table.layerType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get minZoom => $composableBuilder(
+      column: $table.minZoom, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get maxZoom => $composableBuilder(
+      column: $table.maxZoom, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get opacity => $composableBuilder(
+      column: $table.opacity, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get sizeBytes => $composableBuilder(
+      column: $table.sizeBytes, builder: (column) => ColumnFilters(column));
 }
 
 class $$ImportedOverlayMapsTableOrderingComposer
@@ -8455,6 +8693,21 @@ class $$ImportedOverlayMapsTableOrderingComposer
 
   ColumnOrderings<double> get boundsWest => $composableBuilder(
       column: $table.boundsWest, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get layerType => $composableBuilder(
+      column: $table.layerType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get minZoom => $composableBuilder(
+      column: $table.minZoom, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get maxZoom => $composableBuilder(
+      column: $table.maxZoom, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get opacity => $composableBuilder(
+      column: $table.opacity, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get sizeBytes => $composableBuilder(
+      column: $table.sizeBytes, builder: (column) => ColumnOrderings(column));
 }
 
 class $$ImportedOverlayMapsTableAnnotationComposer
@@ -8495,6 +8748,21 @@ class $$ImportedOverlayMapsTableAnnotationComposer
 
   GeneratedColumn<double> get boundsWest => $composableBuilder(
       column: $table.boundsWest, builder: (column) => column);
+
+  GeneratedColumn<String> get layerType =>
+      $composableBuilder(column: $table.layerType, builder: (column) => column);
+
+  GeneratedColumn<int> get minZoom =>
+      $composableBuilder(column: $table.minZoom, builder: (column) => column);
+
+  GeneratedColumn<int> get maxZoom =>
+      $composableBuilder(column: $table.maxZoom, builder: (column) => column);
+
+  GeneratedColumn<double> get opacity =>
+      $composableBuilder(column: $table.opacity, builder: (column) => column);
+
+  GeneratedColumn<int> get sizeBytes =>
+      $composableBuilder(column: $table.sizeBytes, builder: (column) => column);
 }
 
 class $$ImportedOverlayMapsTableTableManager extends RootTableManager<
@@ -8537,6 +8805,11 @@ class $$ImportedOverlayMapsTableTableManager extends RootTableManager<
             Value<double> boundsSouth = const Value.absent(),
             Value<double> boundsEast = const Value.absent(),
             Value<double> boundsWest = const Value.absent(),
+            Value<String> layerType = const Value.absent(),
+            Value<int?> minZoom = const Value.absent(),
+            Value<int?> maxZoom = const Value.absent(),
+            Value<double> opacity = const Value.absent(),
+            Value<int> sizeBytes = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ImportedOverlayMapsCompanion(
@@ -8550,6 +8823,11 @@ class $$ImportedOverlayMapsTableTableManager extends RootTableManager<
             boundsSouth: boundsSouth,
             boundsEast: boundsEast,
             boundsWest: boundsWest,
+            layerType: layerType,
+            minZoom: minZoom,
+            maxZoom: maxZoom,
+            opacity: opacity,
+            sizeBytes: sizeBytes,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -8563,6 +8841,11 @@ class $$ImportedOverlayMapsTableTableManager extends RootTableManager<
             required double boundsSouth,
             required double boundsEast,
             required double boundsWest,
+            Value<String> layerType = const Value.absent(),
+            Value<int?> minZoom = const Value.absent(),
+            Value<int?> maxZoom = const Value.absent(),
+            Value<double> opacity = const Value.absent(),
+            Value<int> sizeBytes = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ImportedOverlayMapsCompanion.insert(
@@ -8576,6 +8859,11 @@ class $$ImportedOverlayMapsTableTableManager extends RootTableManager<
             boundsSouth: boundsSouth,
             boundsEast: boundsEast,
             boundsWest: boundsWest,
+            layerType: layerType,
+            minZoom: minZoom,
+            maxZoom: maxZoom,
+            opacity: opacity,
+            sizeBytes: sizeBytes,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

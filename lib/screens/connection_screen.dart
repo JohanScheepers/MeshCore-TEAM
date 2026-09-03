@@ -4,7 +4,7 @@
 import 'dart:async';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:meshcore_team/main.dart' show isBetaBuild;
 import 'package:meshcore_team/ble/ble_commands.dart';
@@ -121,6 +121,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
     final bleManager = context.watch<BleConnectionManager>();
     final connectionVM = context.watch<ConnectionViewModel>();
 
@@ -132,7 +133,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
-        title: Text(l10n.connection),
         actions: [
           if (kDebugMode || isBetaBuild)
             IconButton(
@@ -216,6 +216,14 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
             ),
           _buildConnectionStatusIndicator(bleManager),
         ],
+        bottom: PreferredSize(preferredSize: const Size.fromHeight(48.0), child: Container(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 12.0),
+        child: Text(l10n.connection,
+        style: theme.textTheme.titleLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w400
+                  ),)))
       ),
       body: Column(
         children: [

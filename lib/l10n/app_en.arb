@@ -171,10 +171,10 @@
   "downloadMapArea": "Download Map Area",
   "noOfflineMapsDownloaded": "No offline maps downloaded",
   "removesDownloadedTilesAndMetadata": "Removes downloaded tiles and metadata",
-  "importedMapsKmz": "Imported Maps (KMZ)",
-  "manageImportedMapsKmz": "Manage Imported Maps (KMZ)",
-  "importKmz": "Import KMZ",
-  "importKmzFile": "Import KMZ file",
+  "importedMaps": "Imported Maps",
+  "manageImportedMaps": "Manage Imported Maps",
+  "importMap": "Import Map",
+  "importMapFile": "Import map file",
   "centerOnMap": "Center on map",
   "noMembersOnMap": "No members on map",
   "showContactPaths": "Show Contact Paths",
@@ -353,7 +353,7 @@
     }
   },
   "offlineMapAreas": "Offline Map Areas",
-  "overlayMapsKmz": "Overlay Maps (KMZ)",
+  "overlayMaps": "Overlay Maps",
 
   "genericError": "Error: {error}",
   "@genericError": {

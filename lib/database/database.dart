@@ -70,7 +70,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -84,6 +84,11 @@ class AppDatabase extends _$AppDatabase {
             'ALTER TABLE contacts ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
             "ALTER TABLE channels ADD COLUMN notification_mode TEXT NOT NULL DEFAULT 'normal'",
             'ALTER TABLE channels ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
+            "ALTER TABLE imported_overlay_maps ADD COLUMN layer_type TEXT NOT NULL DEFAULT 'kmz'",
+            'ALTER TABLE imported_overlay_maps ADD COLUMN min_zoom INTEGER',
+            'ALTER TABLE imported_overlay_maps ADD COLUMN max_zoom INTEGER',
+            'ALTER TABLE imported_overlay_maps ADD COLUMN opacity REAL NOT NULL DEFAULT 1.0',
+            'ALTER TABLE imported_overlay_maps ADD COLUMN size_bytes INTEGER NOT NULL DEFAULT 0',
           ]) {
             try {
               await customStatement(sql);
@@ -162,6 +167,19 @@ class AppDatabase extends _$AppDatabase {
               'ALTER TABLE channels ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
             );
             print('[Migration] v7->v8: importedOverlayMaps, favorites, channel notification mode');
+          }
+
+          // Migration from schema version 8 to 9: imported overlay maps gain a
+          // layer-type discriminator so MBTiles and geospatial PDF imports can
+          // share the table with the original KMZ rows. Existing rows keep the
+          // 'kmz' default, so no data rewrite is needed.
+          if (from <= 8 && to >= 9) {
+            await m.addColumn(importedOverlayMaps, importedOverlayMaps.layerType);
+            await m.addColumn(importedOverlayMaps, importedOverlayMaps.minZoom);
+            await m.addColumn(importedOverlayMaps, importedOverlayMaps.maxZoom);
+            await m.addColumn(importedOverlayMaps, importedOverlayMaps.opacity);
+            await m.addColumn(importedOverlayMaps, importedOverlayMaps.sizeBytes);
+            print('[Migration] v8->v9: imported_overlay_maps layer_type/zoom/opacity/size_bytes');
           }
         },
       );

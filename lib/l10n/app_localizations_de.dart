@@ -472,16 +472,16 @@ class AppLocalizationsDe extends AppLocalizations {
       'Entfernt heruntergeladene Kacheln und Metadaten';
 
   @override
-  String get importedMapsKmz => 'Importierte Karten (KMZ)';
+  String get importedMaps => 'Importierte Karten';
 
   @override
-  String get manageImportedMapsKmz => 'Importierte Karten (KMZ) verwalten';
+  String get manageImportedMaps => 'Importierte Karten verwalten';
 
   @override
-  String get importKmz => 'KMZ importieren';
+  String get importMap => 'Karte importieren';
 
   @override
-  String get importKmzFile => 'KMZ-Datei importieren';
+  String get importMapFile => 'Kartendatei importieren';
 
   @override
   String get centerOnMap => 'Auf Karte zentrieren';
@@ -781,7 +781,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get offlineMapAreas => 'Offline-Kartenbereiche';
 
   @override
-  String get overlayMapsKmz => 'Überlagerungskarten (KMZ)';
+  String get overlayMaps => 'Überlagerungskarten';
 
   @override
   String genericError(String error) {

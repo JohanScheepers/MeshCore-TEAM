@@ -171,10 +171,10 @@
   "downloadMapArea": "Kartenbereich herunterladen",
   "noOfflineMapsDownloaded": "Keine Offline-Karten heruntergeladen",
   "removesDownloadedTilesAndMetadata": "Entfernt heruntergeladene Kacheln und Metadaten",
-  "importedMapsKmz": "Importierte Karten (KMZ)",
-  "manageImportedMapsKmz": "Importierte Karten (KMZ) verwalten",
-  "importKmz": "KMZ importieren",
-  "importKmzFile": "KMZ-Datei importieren",
+  "importedMaps": "Importierte Karten",
+  "manageImportedMaps": "Importierte Karten verwalten",
+  "importMap": "Karte importieren",
+  "importMapFile": "Kartendatei importieren",
   "centerOnMap": "Auf Karte zentrieren",
   "noMembersOnMap": "Keine Mitglieder auf der Karte",
   "showContactPaths": "Kontaktpfade anzeigen",
@@ -353,7 +353,7 @@
     }
   },
   "offlineMapAreas": "Offline-Kartenbereiche",
-  "overlayMapsKmz": "Überlagerungskarten (KMZ)",
+  "overlayMaps": "Überlagerungskarten",
 
   "genericError": "Fehler: {error}",
   "@genericError": {

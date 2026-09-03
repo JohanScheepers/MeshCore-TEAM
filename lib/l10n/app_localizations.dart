@@ -63,7 +63,7 @@ import 'app_localizations_en.dart';
 /// property.
 abstract class AppLocalizations {
   AppLocalizations(String locale)
-      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -86,16 +86,16 @@ abstract class AppLocalizations {
   /// of delegates is preferred or required.
   static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
       <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('de'),
-    Locale('en')
+    Locale('en'),
   ];
 
   /// No description provided for @cancel.
@@ -998,29 +998,29 @@ abstract class AppLocalizations {
   /// **'Removes downloaded tiles and metadata'**
   String get removesDownloadedTilesAndMetadata;
 
-  /// No description provided for @importedMapsKmz.
+  /// No description provided for @importedMaps.
   ///
   /// In en, this message translates to:
-  /// **'Imported Maps (KMZ)'**
-  String get importedMapsKmz;
+  /// **'Imported Maps'**
+  String get importedMaps;
 
-  /// No description provided for @manageImportedMapsKmz.
+  /// No description provided for @manageImportedMaps.
   ///
   /// In en, this message translates to:
-  /// **'Manage Imported Maps (KMZ)'**
-  String get manageImportedMapsKmz;
+  /// **'Manage Imported Maps'**
+  String get manageImportedMaps;
 
-  /// No description provided for @importKmz.
+  /// No description provided for @importMap.
   ///
   /// In en, this message translates to:
-  /// **'Import KMZ'**
-  String get importKmz;
+  /// **'Import Map'**
+  String get importMap;
 
-  /// No description provided for @importKmzFile.
+  /// No description provided for @importMapFile.
   ///
   /// In en, this message translates to:
-  /// **'Import KMZ file'**
-  String get importKmzFile;
+  /// **'Import map file'**
+  String get importMapFile;
 
   /// No description provided for @centerOnMap.
   ///
@@ -1544,11 +1544,11 @@ abstract class AppLocalizations {
   /// **'Offline Map Areas'**
   String get offlineMapAreas;
 
-  /// No description provided for @overlayMapsKmz.
+  /// No description provided for @overlayMaps.
   ///
   /// In en, this message translates to:
-  /// **'Overlay Maps (KMZ)'**
-  String get overlayMapsKmz;
+  /// **'Overlay Maps'**
+  String get overlayMaps;
 
   /// No description provided for @genericError.
   ///
@@ -2262,8 +2262,9 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   }
 
   throw FlutterError(
-      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
-      'an issue with the localizations generation tool. Please file an issue '
-      'on GitHub with a reproducible sample app and the gen-l10n configuration '
-      'that was used.');
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
 }

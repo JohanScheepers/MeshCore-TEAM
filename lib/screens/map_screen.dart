@@ -7,7 +7,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:drift/drift.dart' hide Column;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:compassx/compassx.dart';
 import 'package:geolocator/geolocator.dart';
@@ -27,6 +27,9 @@ import 'package:meshcore_team/screens/manage_waypoints_screen.dart';
 import 'package:meshcore_team/screens/imported_maps_screen.dart';
 import 'package:meshcore_team/screens/offline_maps_screen.dart';
 import 'package:meshcore_team/services/kmz_import_service.dart';
+import 'package:meshcore_team/services/mbtiles_registry.dart';
+import 'package:meshcore_team/services/mbtiles_source.dart';
+import 'package:meshcore_team/database/daos/imported_overlay_maps_dao.dart';
 import 'package:meshcore_team/services/map_tile_cache_service.dart';
 import 'package:meshcore_team/services/mesh_connection_service.dart';
 import 'package:meshcore_team/services/settings_service.dart';
@@ -99,10 +102,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   LatLng? _navTarget;
   String _navTargetName = '';
 
-  // Imported KMZ overlay maps
+  // Imported overlay maps (KMZ raster overlays and MBTiles pyramids)
   List<ImportedOverlayMapData> _overlayMaps = [];
   final Map<String, List<KmzTile>> _overlayTilesCache = {};
   StreamSubscription<List<ImportedOverlayMapData>>? _overlayMapsSub;
+
+  /// Ids whose MBTiles handle this screen has asked the registry to open, so
+  /// they can be released again when the map is deleted or the screen closes.
+  final Set<String> _openMbtilesIds = {};
+
+  /// Cached in [didChangeDependencies] because [dispose] must release the
+  /// handles, and looking a provider up from a disposing element is unsafe.
+  MbtilesRegistry? _mbtilesRegistry;
   double _mapZoom =
       15.0; // triggers rebuild when zoom changes so overlay budget is re-evaluated
   List<BaseOverlayImage> _cachedOverlayImages = const [];
@@ -245,19 +256,115 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     return result;
   }
 
+  /// Deepest zoom with real tiles behind it, across the base provider and any
+  /// visible MBTiles overlay.
+  ///
+  /// An imported archive routinely goes deeper than the base map, and capping
+  /// the camera at the base provider's limit would make those levels
+  /// unreachable even though the tiles are sitting in the file.
+  int _nativeMaxZoom(MapTileProviderOption tileConfig) {
+    var deepest = tileConfig.maxNativeZoom;
+    final registry = _mbtilesRegistry;
+    if (registry != null) {
+      for (final m in _overlayMaps) {
+        if (!m.isVisible || !m.type.isTiled) continue;
+        final source = registry.get(m.id);
+        if (source == null) continue;
+        if (source.maxZoom > deepest) deepest = source.maxZoom;
+      }
+    }
+    return deepest;
+  }
+
+  /// Pulls the camera back if it sits deeper than the new provider allows.
+  ///
+  /// Switching from a z20 provider to a z16 one while zoomed all the way in
+  /// otherwise leaves the camera above the new cap until the next gesture.
+  void _clampZoomToProvider(MapTileProviderOption tileConfig) {
+    if (!mounted) return;
+    final limit = (_nativeMaxZoom(tileConfig) + kOverzoomLevels).toDouble();
+    final camera = _mapController.camera;
+    if (camera.zoom > limit) {
+      _mapController.move(camera.center, limit);
+    }
+  }
+
+  /// Builds a [TileLayer] for each visible MBTiles-backed overlay map.
+  ///
+  /// Unlike the KMZ path this needs no viewport culling, tile budget, or
+  /// pyramid-level heuristic: an MBTiles archive is already an XYZ pyramid, so
+  /// [TileLayer] handles the viewport itself.
+  List<Widget> _buildMbtilesLayers() {
+    final registry = _mbtilesRegistry;
+    if (registry == null) return const [];
+    final layers = <Widget>[];
+
+    for (final m in _overlayMaps) {
+      if (!m.isVisible || !m.type.isTiled) continue;
+      final source = registry.get(m.id);
+      if (source == null) continue;
+
+      layers.add(TileLayer(
+        // Keyed so Flutter never reconciles this against the base TileLayer,
+        // which is a same-type sibling in the same children list.
+        key: ValueKey('mbtiles-${m.id}'),
+        tileProvider: MbtilesTileProvider(source),
+        // Clamping to the archive's own range makes flutter_map upscale the
+        // deepest available tiles past maxZoom rather than render blanks.
+        minNativeZoom: source.minZoom,
+        maxNativeZoom: source.maxZoom,
+        tileSize: source.tilePixelSize.toDouble(),
+        // Deliberately no `tileBounds`. It would cull tile requests to the
+        // declared extent, but `metadata.bounds` is wrong or missing in plenty
+        // of real archives, and culling on a bad value hides the whole map
+        // with no feedback. Coordinates the archive has no tile for already
+        // resolve to a transparent tile, so the only thing culling saves is a
+        // handful of indexed SQLite lookups that miss.
+        tileDisplay: TileDisplay.instantaneous(opacity: m.opacity),
+        panBuffer: 0,
+      ));
+    }
+    return layers;
+  }
+
   Future<void> _loadMissingOverlayTiles(
       List<ImportedOverlayMapData> maps) async {
-    print('[KMZ] _loadMissingOverlayTiles: ${maps.length} maps in DB');
+    print('[Overlay] _loadMissingOverlayTiles: ${maps.length} maps in DB');
     final kmzService = KmzImportService();
+    final registry = _mbtilesRegistry ?? context.read<MbtilesRegistry>();
+
+    // Release handles for maps that have been deleted or hidden since the
+    // last emission, so a subsequent delete of the directory can succeed.
+    final liveIds = maps.map((m) => m.id).toSet();
+    for (final id in _openMbtilesIds.toList()) {
+      if (!liveIds.contains(id)) {
+        registry.close(id);
+        _openMbtilesIds.remove(id);
+      }
+    }
+
     for (final m in maps) {
-      if (_overlayTilesCache.containsKey(m.id)) {
-        print(
-            '[KMZ]   map "${m.name}" already in cache (${_overlayTilesCache[m.id]!.length} tiles)');
+      if (m.type.isTiled) {
+        if (_openMbtilesIds.contains(m.id)) continue;
+        final source = registry.ensureOpen(m.id, m.dirPath);
+        if (source != null && mounted) {
+          _openMbtilesIds.add(m.id);
+          print(
+              '[Overlay]   opened MBTiles "${m.name}" z${source.minZoom}-${source.maxZoom}, ${source.tileCount} tiles');
+          print('[MBTiles] coverage ${source.describeCoverage()}');
+          setState(() {});
+        }
         continue;
       }
-      print('[KMZ]   loading map "${m.name}" from ${m.dirPath}');
+
+      if (_overlayTilesCache.containsKey(m.id)) {
+        print(
+            '[Overlay]   map "${m.name}" already in cache (${_overlayTilesCache[m.id]!.length} tiles)');
+        continue;
+      }
+      print('[Overlay]   loading KMZ map "${m.name}" from ${m.dirPath}');
       final tiles = await kmzService.loadTiles(m.dirPath);
-      print('[KMZ]   loaded ${tiles?.length ?? 0} tiles for "${m.name}"');
+      print('[Overlay]   loaded ${tiles?.length ?? 0} tiles for "${m.name}"');
       if (tiles != null && mounted) {
         setState(() {
           _overlayTilesCache[m.id] = tiles;
@@ -1220,9 +1327,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           providerLabel: provider.label,
           urlTemplate: provider.urlTemplate,
           subdomains: provider.subdomains,
+          maxNativeZoom: provider.maxNativeZoom,
         );
       },
     );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _mbtilesRegistry = context.read<MbtilesRegistry>();
   }
 
   @override
@@ -1317,6 +1431,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _phoneLocationPollingTimer = null;
     _overlayMapsSub?.cancel();
     _overlayMapsSub = null;
+    // Release MBTiles handles so the manage screen can delete the files.
+    final registry = _mbtilesRegistry;
+    if (registry != null) {
+      for (final id in _openMbtilesIds) {
+        registry.close(id);
+      }
+    }
+    _openMbtilesIds.clear();
     super.dispose();
   }
 
@@ -1636,6 +1758,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final currentProviderId = normalizeMapProviderId(
       settingsService.settings.mapProvider,
     );
+    final nativeMaxZoom = _nativeMaxZoom(tileConfig);
     final showTrackedUserNames =
         settingsService.settings.mapShowTrackedUserNames;
     final showWaypointNames = settingsService.settings.mapShowWaypointNames;
@@ -1704,6 +1827,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                     .updateVisibility(mapId, !m.isVisible);
               } else {
                 await settingsService.setMapProvider(value);
+                _clampZoomToProvider(tileProviderForId(value));
               }
             },
             itemBuilder: (context) {
@@ -1764,11 +1888,21 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                   );
                   break;
                 case 'manage_imported_maps':
-                  Navigator.of(context).push(
+                  final mapResult = await Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => const ImportedMapsScreen(),
                     ),
                   );
+                  // Tapping a map in the list returns its extent so we can
+                  // move the camera onto it.
+                  if (mapResult is LatLngBounds) {
+                    _mapController.fitCamera(
+                      CameraFit.bounds(
+                        bounds: mapResult,
+                        padding: const EdgeInsets.all(24),
+                      ),
+                    );
+                  }
                   break;
                 case 'manage_waypoints':
                   final result = await Navigator.of(context).push(
@@ -1795,7 +1929,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                 ),
                 PopupMenuItem<String>(
                   value: 'manage_imported_maps',
-                  child: Text(l10n.manageImportedMapsKmz),
+                  child: Text(l10n.manageImportedMaps),
                 ),
                 PopupMenuItem<String>(
                   value: 'manage_waypoints',
@@ -1870,8 +2004,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               initialCenter: _userLocation ??
                   const LatLng(37.7749, -122.4194), // Default to SF
               initialZoom: 15.0,
-              minZoom: 3.0,
-              maxZoom: 18.0,
+              minZoom: kMapMinZoom,
+              // Past the deepest real tile flutter_map upscales rather than
+              // requesting tiles the service does not have.
+              maxZoom: (nativeMaxZoom + kOverzoomLevels).toDouble(),
               backgroundColor: (currentProviderId == MapProvider.noMap || isNighttime)
                   ? Colors.black
                   : const Color(0xFFE0E0E0),
@@ -1944,13 +2080,21 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                     subdomains: tileConfig.subdomains,
                     tileProvider: tileCache.tileProvider,
                     userAgentPackageName: 'com.meshcore.team',
-                    maxNativeZoom: 18,
+                    maxNativeZoom: tileConfig.maxNativeZoom,
                   );
                   return isNighttime
                       ? ColorFiltered(
                           colorFilter: kNightMapTileFilter, child: tile)
                       : tile;
                 }),
+              // Imported MBTiles pyramids — above the base tile layer, and
+              // night-filtered like it since they are opaque raster maps.
+              ..._buildMbtilesLayers().map(
+                (layer) => isNighttime
+                    ? ColorFiltered(
+                        colorFilter: kNightMapTileFilter, child: layer)
+                    : layer,
+              ),
               // KMZ imported overlay maps — rendered above the base tile layer
               if (_cachedOverlayImages.isNotEmpty)
                 OverlayImageLayer(

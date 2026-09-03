@@ -4,7 +4,7 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
@@ -301,7 +301,7 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
         // Overlay Maps (KMZ)
         if (_allOverlayMaps.isNotEmpty) ...[
           _buildSectionCard(
-            title: l10n.overlayMapsKmz,
+            title: l10n.overlayMaps,
             subtitle:
                 '${_selectedOverlayMapIds.length} of ${_allOverlayMaps.length} selected',
             children: _allOverlayMaps.map((map) {
@@ -427,6 +427,7 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
 
     try {
       final tileCache = context.read<MapTileCacheService>();
+      var omittedOverlayMaps = const <String>[];
 
       final selectedChannels = _allChannels
           .where((c) => _selectedChannelHashes.contains(c.hash))
@@ -473,9 +474,23 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
                 progress.total > 0 ? progress.current / progress.total : 0;
           });
         },
+        onOverlayMapsTooLarge: (names) => omittedOverlayMaps = names,
       );
 
       if (!mounted) return;
+
+      if (omittedOverlayMaps.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 6),
+            content: Text(
+              'Left out of the config because they are too large to share: '
+              '${omittedOverlayMaps.join(", ")}. '
+              'Transfer the file directly instead.',
+            ),
+          ),
+        );
+      }
 
       // Write ZIP to a temp file. We must NOT send large byte arrays over the
       // Flutter platform channel — Android's StandardMessageCodec will OOM
@@ -839,7 +854,7 @@ class _TeamConfigScreenState extends State<TeamConfigScreen> {
               if (preview.overlayMaps.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  l10n.overlayMapsKmz,
+                  l10n.overlayMaps,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 ...preview.overlayMaps.map((m) => Padding(
