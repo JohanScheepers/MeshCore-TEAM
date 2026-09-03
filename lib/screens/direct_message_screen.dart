@@ -16,6 +16,7 @@ import '../l10n/app_localizations.dart';
 import '../repositories/message_repository.dart';
 import '../services/message_notification_service.dart';
 import '../utils/message_time_format.dart';
+import '../widgets/app_bar_subtitle.dart';
 import '../widgets/chat_message_text.dart';
 import '../widgets/status_bar_actions.dart';
 
@@ -127,34 +128,13 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
+        toolbarHeight: AppBarSubtitle.toolbarHeight,
         actions: const [
           StatusBarActions(),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.only(
-              left: 16.0, right: 16.0, bottom: 12.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(widget.contact.name ?? 'Unknown Contact',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-            Expanded(
-                  child:  Text(l10n.directMessage,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ],)
-          ),
+        bottom: AppBarSubtitle(
+          title: widget.contact.name ?? 'Unknown Contact',
+          subtitle: l10n.directMessage,
         ),
       ),
       body: Column(

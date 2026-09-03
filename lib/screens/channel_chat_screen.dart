@@ -19,6 +19,7 @@ import '../l10n/app_localizations.dart';
 import '../repositories/channel_repository.dart';
 import '../repositories/message_repository.dart';
 import '../services/message_notification_service.dart';
+import '../widgets/app_bar_subtitle.dart';
 import '../widgets/chat_message_text.dart';
 import '../widgets/status_bar_actions.dart';
 import '../models/app_settings.dart';
@@ -136,6 +137,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
+        toolbarHeight: AppBarSubtitle.toolbarHeight,
         actions: [
           if (!widget.channel.isPublic)
             IconButton(
@@ -168,31 +170,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           ),
           const StatusBarActions(),
         ],
-        bottom:PreferredSize(preferredSize: const Size.fromHeight(48.0), 
-        child: Container(
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.only(
-              left: 16.0, right: 16.0, bottom: 12.0),
-          child: Row(
-            children: [
-                Expanded(
-                  child: Text(widget.channel.name,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w400
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Text(widget.channel.isPublic ? l10n.publicChannel : l10n.privateChannel,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w400
-                    ),
-                  ),
-                ),
-              ],),
-        ))
+        bottom: AppBarSubtitle(
+          title: widget.channel.name,
+          subtitle:
+              widget.channel.isPublic ? l10n.publicChannel : l10n.privateChannel,
+        ),
       ),
       body: Column(
         children: [

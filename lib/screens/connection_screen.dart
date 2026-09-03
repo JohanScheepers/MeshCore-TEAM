@@ -15,6 +15,7 @@ import 'package:meshcore_team/models/app_settings.dart';
 import 'package:meshcore_team/database/database.dart';
 import 'package:meshcore_team/services/settings_service.dart';
 import 'package:meshcore_team/theme/night_theme.dart';
+import 'package:meshcore_team/widgets/app_bar_subtitle.dart';
 import 'package:meshcore_team/widgets/night_clock.dart';
 import 'package:meshcore_team/widgets/themed_dropdown.dart';
 import 'package:meshcore_team/viewmodels/connection_viewmodel.dart';
@@ -121,7 +122,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
     final bleManager = context.watch<BleConnectionManager>();
     final connectionVM = context.watch<ConnectionViewModel>();
 
@@ -133,6 +133,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
+        toolbarHeight: AppBarSubtitle.toolbarHeight,
         actions: [
           if (kDebugMode || isBetaBuild)
             IconButton(
@@ -216,14 +217,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
             ),
           _buildConnectionStatusIndicator(bleManager),
         ],
-        bottom: PreferredSize(preferredSize: const Size.fromHeight(48.0), child: Container(
-          alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 12.0),
-        child: Text(l10n.connection,
-        style: theme.textTheme.titleLarge?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w400
-                  ),)))
+        bottom: AppBarSubtitle(title: l10n.connection),
       ),
       body: Column(
         children: [
